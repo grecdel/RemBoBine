@@ -30,7 +30,7 @@ function createOs(S, H, opt = {}) {
   S.build = build;
   const isOs = opt.isOs !== undefined ? !!opt.isOs : fs.existsSync("/etc/rembobine-os");
   S.isOs = isOs;
-  const SY = createSysteme({ roots: () => S.roots, emit: (e) => S.emit(e), run: opt.run, which: opt.which, paths: opt.sysPaths, ssid: opt.ssid, statfs: opt.statfs });
+  const SY = createSysteme({ roots: () => S.roots, emit: (e) => S.emit(e), run: opt.run, which: opt.which, passFile: opt.passFile, paths: opt.sysPaths, ssid: opt.ssid, statfs: opt.statfs });
   // les nouvelles des mises à jour (progression, résultat) : seulement aux appareils de la maison, jamais aux invités
   const emitHome = (e) => { const line = `data: ${JSON.stringify(e)}\n\n`; for (const c of S.clients) if (!c.rbbGuest) { try { c.write(line); } catch (_) {} } };
   const MJ = createMaj({ data: S.data, build, appDir: opt.appDir, roots: S.roots, port: S.port, kiosk: !!opt.kiosk, isOs, cfg: () => S.cfg, emit: emitHome, log: H.log,
@@ -43,6 +43,7 @@ function createOs(S, H, opt = {}) {
   const licDir = opt.licencesDir || "";
   const refuse = (res) => H.send(res, 403, { ok: false, err: "Réservé à la maison (accès invité)." });
 
+  const TV_ONLY = { ok: false, tv: true, err: "Par sécurité, ce réglage se change seulement sur l'écran de la TV (Rembobine OS → Avancé), pas depuis un téléphone." };
   async function route(req, res, p, url, W) {
     const { send } = H, post = req.method === "POST";
     if (p === "/api/system") {
@@ -70,13 +71,16 @@ function createOs(S, H, opt = {}) {
       return send(res, 200, { ok: true });
     }
     // --- partage du dossier Rembobine sur le réseau ---
+    // (le mot de passe de Rembobine OS n'est montré, et le partage changé, QUE sur l'écran de la TV elle-même :
+    //  un téléphone relié, perdu ou volé, ne doit pas pouvoir ouvrir la maison)
     if (p === "/api/share") {
-      if (post) { const b = await H.body(req); return send(res, 200, SY.setShare(!!b.on)); }
-      return send(res, 200, SY.share());
+      if (post) { if (!W.local) return send(res, 200, TV_ONLY); const b = await H.body(req); return send(res, 200, SY.setShare(!!b.on)); }
+      const sh = SY.share();
+      return send(res, 200, W.local || !sh.installed ? sh : { ...sh, pass: "", passTv: true });
     }
-    // --- Avancé : SSH, journal ---
+    // --- Avancé : SSH (seulement depuis l'écran de la TV), journal ---
     if (p === "/api/dev") {
-      if (post) { const b = await H.body(req); if (b.action === "ssh") return send(res, 200, SY.setSsh(!!b.on)); return send(res, 200, { ok: false }); }
+      if (post) { const b = await H.body(req); if (b.action === "ssh") return send(res, 200, W.local ? SY.setSsh(!!b.on) : TV_ONLY); return send(res, 200, { ok: false }); }
       return send(res, 200, { ssh: SY.ssh(), plugins: [], crashes: S.log.filter((l) => /^page :/.test(l.msg)), logs: S.log.slice(-40) });
     }
     // --- mises à jour ---

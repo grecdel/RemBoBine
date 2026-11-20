@@ -9,7 +9,7 @@
 //     « visible », la fenêtre du logiciel se cache, et l'image 3D apparaît en fondu ;
 //  3. « Retour au logiciel » dans la 3D : le jeu fond au noir et répond « retour » ; la fenêtre du logiciel revient
 //     devant (sa page est noire), on dit « cache » au jeu (il se remet hors de l'écran, en pause, SANS quitter),
-//     et la page fond depuis le noir, au même endroit du salon (rbb3dRestore).
+//     et la page fond depuis le noir, au même endroit du salon.
 // Si le jeu n'est pas encore prêt au moment du clic (premier lancement, mémoire faible), la page reste noire avec
 // une petite cassette qui tourne, puis le fondu se fait dès qu'il est prêt : aucune fenêtre ne disparaît.
 //

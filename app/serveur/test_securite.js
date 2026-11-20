@@ -6,7 +6,10 @@
 //  5. fichiers piégés : liste .m3u vers /etc, liens symboliques (sous-titres, paroles, aperçus) ;
 //  6. sauvegarde piégée : elle ne peut pas ajouter d'appareil relié ;
 //  7. mises à jour : signature Ed25519 obligatoire dès qu'une clé publique est configurée ;
-//  8. déni de service simple : corps énorme, trop de conversions vidéo en même temps ; voisins UDP.
+//  8. déni de service simple : corps énorme, trop de conversions vidéo en même temps ; voisins UDP ;
+//  9. un téléphone relié ne lit pas le mot de passe de Rembobine OS et n'allume pas SSH (seulement la TV) ;
+// 10. réseaux : seulement la maison (réseaux privés, Tailscale) ; appairage en JSON seulement ; blocage par adresse ;
+//     appareils oubliés après 90 jours sans nouvelles.
 "use strict";
 process.env.REMBOBINE_FICHES = "0";   // aucun internet pendant les essais (fiches cherchées sur internet : activées par défaut)
 const fs = require("fs"), path = require("path"), os = require("os"), http = require("http"), crypto = require("crypto"), zlib = require("zlib");
@@ -32,6 +35,9 @@ put("Musique/Groupe - Album/01 - Titre.mp3", Buffer.alloc(800, 3)); fs.symlinkSy
 const lan = Object.values(os.networkInterfaces()).flat().find((a) => a && a.family === "IPv4" && !a.internal);
 if (!lan) { console.log("PAS D'ADRESSE RÉSEAU : test impossible ici"); process.exit(1); }
 const PORT = 21000 + Math.floor(Math.random() * 900);
+const PASSF = path.join(T, "mot-de-passe"); fs.writeFileSync(PASSF, "MDP-DE-REMBOBINE-OS");
+const sysRuns = [];   // commandes système demandées (faux systemctl/sudo : rien n'est vraiment lancé)
+const fakeRun = (cmd, args) => { sysRuns.push([cmd, ...(args || [])].join(" ")); return { status: 0, stdout: "inactive\n" }; };
 let ok = 0, ko = 0;
 const check = (cond, what) => { if (cond) ok++; else { ko++; console.log("ÉCHEC :", what); } };
 const wait = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -51,7 +57,8 @@ function stream(host, tok) {
 }
 
 (async () => {
-  const S = createServer({ port: PORT, webDir: path.join(__dirname, "..", "..", "web"), dataDir: path.join(T, "data"), mediaRoots: [M], mpv: "/nonexistent", retroarch: "/nonexistent", version: "test", voisins: false, kioskKey: "cle-de-l-ecran" });
+  const S = createServer({ port: PORT, webDir: path.join(__dirname, "..", "..", "web"), dataDir: path.join(T, "data"), mediaRoots: [M], mpv: "/nonexistent", retroarch: "/nonexistent", version: "test", voisins: false, kioskKey: "cle-de-l-ecran",
+    os: { passFile: PASSF, run: fakeRun, which: (x) => (x === "smbd" ? "/usr/sbin/smbd" : "") } });
   await S.start(); await wait(300);
   for (let i = 0; i < 50 && !S.lib.t; i++) await wait(100);
 
@@ -111,6 +118,21 @@ function stream(host, tok) {
   check((await req(`/api/saves/${game.id}/srm/0?profil=Tom&at=20`, { raw: Buffer.from("A MOI"), tok: gt })).json.ok, "invité : garde ses propres sauvegardes");
   check((await req(`/api/saves/${game.id}/srm/0?profil=Tom`, { tok })).buf.toString() === "SAUVE-DE-TOM", "… à part : celle de Tom n'est pas écrasée");
   check(!gs.ev.some((e) => e.type === "pair" || e.type === "key"), "invité : ne reçoit ni code d'appairage ni texte tapé");
+  check(await refused(`/api/jeux/bios/${game.id}/scph5501.bin`) && await refused(`/api/jeux/bios/${game.id}`), "invité : ne télécharge pas les BIOS des consoles de la maison");
+  check((await req(`/api/jeux/bios/${game.id}/scph5501.bin`, { tok })).status === 404, "… la famille, si (ici : pas de BIOS pour ce jeu → 404, pas 403)");
+  check((await req(`/api/jeux/cht/${game.id}`, { tok: gt })).status === 200, "invité : les codes de triche restent permis (jouer)");
+
+  // ---------- 9. Rembobine OS : mot de passe et SSH seulement sur la TV ----------
+  const shPhone = (await req("/api/share", { tok })).json;
+  check(shPhone && shPhone.installed && !shPhone.pass && shPhone.passTv && !JSON.stringify(shPhone).includes("MDP-DE-REMBOBINE-OS"), "téléphone relié : le mot de passe de Rembobine OS n'est PAS envoyé");
+  check((await local("/api/share")).json.pass === "MDP-DE-REMBOBINE-OS", "écran de la TV : le mot de passe est affiché");
+  sysRuns.length = 0;
+  const sshPhone = (await req("/api/dev", { body: { action: "ssh", on: true }, tok })).json;
+  check(sshPhone && sshPhone.ok === false && sshPhone.tv && !sysRuns.some((c) => /ssh/.test(c)), "téléphone relié : n'allume pas SSH (rien n'est lancé)");
+  const shareOn = (await req("/api/share", { body: { on: true }, tok })).json;
+  check(shareOn && shareOn.ok === false && !sysRuns.some((c) => /smbd/.test(c)), "téléphone relié : n'allume pas le partage réseau");
+  check((await local("/api/dev", { body: { action: "ssh", on: true } })).json.ok === true && sysRuns.some((c) => /enable --now ssh/.test(c)), "écran de la TV : SSH s'allume");
+  check(await refused("/api/share") && await refused("/api/dev"), "invité : ni partage ni SSH");
 
   // ---------- 5. fichiers piégés ----------
   const adv = lib.items.find((x) => x.kind === "game" && /Aventure/.test(x.title));
@@ -140,6 +162,7 @@ function stream(host, tok) {
   const big = await req("/api/cards", { raw: Buffer.alloc(3 * 1024 * 1024, 32), tok }).catch(() => ({ status: 0 }));
   check(big.status === 0 || big.status === 200, "corps de 3 Mo : coupé sans bloquer le serveur");
   check((await req("/api/info")).status === 200, "le serveur répond toujours");
+  check((await req("/media/%E0%A4%A")).status === 400, "adresse mal formée : réponse 400 (pas d'« erreur interne » dans le journal)");
   S.transcodes = 4;
   check((await req(`/media/${film.id}?mode=transcode`, { tok })).status === 503, "trop de conversions vidéo en même temps : refusé poliment");
   S.transcodes = 0;
@@ -147,9 +170,27 @@ function stream(host, tok) {
   // brute force : après 10 erreurs, tout est bloqué (même un bon code), et la TV est prévenue
   await local("/api/pair/request", { body: { name: "X" } });
   for (let i = 0; i < 12; i++) { if (!S.pairing) { S.guard.lastReq = 0; await local("/api/pair/request", { body: { name: "X" } }); } await req("/api/pair", { body: { code: S.pairing && S.pairing.code === "0000" ? "1111" : "0000" } }); }
-  check(S.guard.until > Date.now(), "10 erreurs : appairage bloqué");
+  const gl = S.guard.ips.get(lan.address);
+  check(gl && gl.until > Date.now(), "10 erreurs : appairage bloqué pour cette adresse");
   check(/Trop d'essais/.test((await req("/api/pair/request", { body: {} })).json.err || "") && /Trop d'essais/.test((await req("/api/pair", { body: { invite: "AB12CD" } })).json.err || ""), "bloqué aussi pour les invitations, même avec le bon code");
   check(tv.ev.some((e) => e.type === "alert" && /essayé beaucoup de codes/.test(e.msg)), "la TV prévient qu'on a essayé beaucoup de codes");
+  S.guard.lastReq = 0; await local("/api/pair/request", { body: { name: "Tablette" } });
+  const tab = await local("/api/pair", { body: { code: S.pairing && S.pairing.code, name: "Tablette" } });
+  check(tab.json && tab.json.ok && tab.json.token, "… les AUTRES appareils de la maison peuvent toujours se relier (blocage par adresse, plus global)");
+
+  // ---------- 10. réseaux, format des demandes, appareils oubliés ----------
+  const { localNet } = require("./serveur");
+  check(["192.168.1.20", "10.0.0.5", "172.20.1.1", "100.101.102.103", "127.0.0.1", "::1", "fe80::1", "::ffff:192.168.0.9"].every(localNet), "réseaux de la maison, cette machine et Tailscale : acceptés");
+  check(!["8.8.8.8", "172.32.0.1", "100.128.0.1", "1.2.3.4", "2001:4860::8888", "::ffff:8.8.8.8", ""].some(localNet), "adresses d'internet : refusées");
+  S.guard.lastReq = 0; S.guard.ips.clear(); await local("/api/pair/request", { body: { name: "X" } });
+  const form = await req("/api/pair", { raw: "code=" + (S.pairing && S.pairing.code), headers: { "Content-Type": "application/x-www-form-urlencoded" } });
+  const txt = await req("/api/pair", { raw: JSON.stringify({ code: S.pairing && S.pairing.code }), headers: { "Content-Type": "text/plain" } });
+  check(form.status === 415 && txt.status === 415 && !!S.pairing, "appairage : formulaire ou texte d'un site web refusés (JSON seulement), sans compter d'erreur");
+  check((await req("/api/pair/request", { raw: "{}", headers: { "Content-Type": "text/plain" } })).status === 415, "demande de code : JSON seulement");
+  const oldTok = "jeton-tres-ancien", sha2 = (x) => crypto.createHash("sha256").update(x).digest("hex");
+  S.cfg.tokens.push({ hash: sha2(oldTok), name: "Vieux téléphone", t: Date.now() - 200 * 86400000, seen: Date.now() - 100 * 86400000 });
+  check((await req("/api/library", { tok: oldTok })).status === 401 && !S.cfg.tokens.some((x) => x.name === "Vieux téléphone"), "appareil pas vu depuis 90 jours : oublié (à relier de nouveau)");
+  check((await req("/api/library", { tok })).status === 200, "… un appareil vu récemment reste relié");
   tv.close(); phone.close(); gs.close();
   await S.stop();
 

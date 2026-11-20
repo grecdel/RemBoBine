@@ -225,6 +225,7 @@ function createJeux(o) {
     // --- fiche de jeu : BIOS, triche, aperçu ---
     // l'émulateur intégré nomme le BIOS d'après la fin de l'adresse : /api/jeux/bios/<jeu>/scph5501.bin
     if ((m = /^\/api\/jeux\/bios\/([^/]+)(?:\/[^/]*)?$/.exec(p))) {
+      if (W && W.guest) return h.send(res, 403, { ok: false, err: "Réservé à la maison (accès invité)." });   // un BIOS ne sort pas de la maison
       const it = game(m[1]); if (!it || !it.pub.bios) return h.send(res, 404, { ok: false });
       const f = biosFind(it.pub.bios.key, o.roots, it.file); if (!f) return h.send(res, 404, { ok: false, err: "BIOS absent" });
       return h.sendFile(req, res, f, "application/octet-stream");

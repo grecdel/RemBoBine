@@ -13,8 +13,16 @@ V=$(cat VERSION); BN=${BUILD_NUMBER:-0}; BDATE=${BUILD_DATE:-$(date -u +%Y-%m-%d
 DEPOT=${RBB_DEPOT:-${GITHUB_REPOSITORY:-grecdel/Rembobine}}
 echo "$DEPOT" | grep -Eq '^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$' || DEPOT=grecdel/Rembobine
 mkdir -p "$OUT" "$DL"
+# Electron : chaque archive est comparée à la liste d'empreintes publiée avec la version (SHASUMS256.txt) ;
+# une archive abîmée ou remplacée arrête la fabrication
+EU="https://github.com/electron/electron/releases/download/v$EV"
+curl -fsSL -o "$DL/electron-$EV-SHASUMS256.txt" "$EU/SHASUMS256.txt"
 for p in linux-x64 linux-arm64 win32-x64; do
-  [ -f "$DL/electron-$p.zip" ] || curl -sSL -o "$DL/electron-$p.zip" "https://github.com/electron/electron/releases/download/v$EV/electron-v$EV-$p.zip"
+  [ -f "$DL/electron-$p.zip" ] || curl -fsSL -o "$DL/electron-$p.zip" "$EU/electron-v$EV-$p.zip"
+  h=$(grep -E "^[0-9a-f]{64} [ *]electron-v$EV-$p\.zip\s*$" "$DL/electron-$EV-SHASUMS256.txt" | cut -c1-64)
+  if [ -z "$h" ] || ! echo "$h  $DL/electron-$p.zip" | sha256sum -c --quiet -; then
+    echo "::error::Electron $EV ($p) : empreinte absente ou différente — archive refusée"; rm -f "$DL/electron-$p.zip"; exit 1
+  fi
 done
 # copie d'un fichier du module : obligatoire, sauf avec RBB_SANS_MODULE=1
 cpm() { if [ "${RBB_SANS_MODULE:-0}" = 1 ] && [ ! -e "$1" ]; then return 0; fi; cp "$1" "$2"; }

@@ -49,8 +49,9 @@ function createServer(opt = {}) {
     // clé de l'écran de cette machine : l'application de bureau l'ajoute à ses propres demandes (main.js),
     // pour qu'une page web ouverte dans un navigateur du même PC ne passe pas pour « la TV elle-même »
     kioskKey: opt.kioskKey || crypto.randomBytes(24).toString("hex"),
-    // essais de codes (appairage, invitations) : bloqué de plus en plus longtemps après trop d'erreurs
-    guard: { fails: 0, locks: 0, until: 0, lastReq: 0 },
+    // essais de codes (appairage, invitations) : chaque adresse est bloquée de plus en plus longtemps après trop
+    // d'erreurs (ips : adresse → { fails, locks, until }) ; les autres appareils de la maison ne sont pas gênés
+    guard: { ips: new Map(), lastReq: 0 },
     transcodes: 0
   };
   // ménage des salons : sans nouvelles depuis 20 s, on considère la personne partie
@@ -184,21 +185,34 @@ function createServer(opt = {}) {
     const hash = sha(t);
     const rec = S.cfg.tokens.find((x) => safeEq(x.hash, hash));
     if (rec && rec.until && rec.until < Date.now()) return null;   // invitation expirée
-    if (rec) { rec.seen = Date.now(); return rec; }
-    return null;
+    if (!rec) return null;
+    // un appareil relié qui ne s'est pas montré depuis 90 jours (téléphone perdu, vendu, oublié) est oublié :
+    // il faudra le relier de nouveau avec le code affiché sur la TV
+    const now = Date.now(), last = rec.seen || rec.t || 0;
+    if (!rec.until && last && now - last > DEVICE_TTL) { S.cfg.tokens = S.cfg.tokens.filter((x) => x !== rec); saveCfg(); log("info", `appareil oublié (pas vu depuis 90 jours) : ${rec.name || "?"}`); return null; }
+    const old = rec.seen || 0; rec.seen = now; if (now - old > 86400000) saveCfg();   // « vu » gardé au plus une fois par jour
+    return rec;
   }
   const authed = (req, url) => !!who(req, url);
   // force brute : 3 essais par code, un nouveau code toutes les 10 s au plus, et après 10 erreurs (codes ou invitations)
-  // tout est bloqué 5 min, puis 10, 20, 40… (24 h au plus) ; la TV est prévenue
+  // L'ADRESSE qui se trompe est bloquée 5 min, puis 10, 20, 40… (24 h au plus) ; la TV est prévenue. Les autres
+  // appareils de la maison peuvent toujours se relier (avant : un seul site piégé bloquait tout le monde 24 h).
   const G = S.guard;
-  const locked = () => (Date.now() < G.until ? Math.ceil((G.until - Date.now()) / 60000) : 0);
-  function failed(what) {
-    if (++G.fails < 10) return;
-    G.fails = 0; G.locks++; G.until = Date.now() + Math.min(24 * 3600000, 5 * 60000 * 2 ** (G.locks - 1)); S.pairing = null;
-    const min = Math.round((G.until - Date.now()) / 60000);
-    log("warn", `trop d'essais (${what}) : appairage et invitations bloqués ${min} min`);
-    emitTv({ type: "alert", msg: `Quelqu'un a essayé beaucoup de codes (${what}). Par sécurité, l'appairage et les invitations sont bloqués pendant ${min} min.` });
+  const ipOf = (req) => String((req.socket && req.socket.remoteAddress) || "?").replace(/^::ffff:/i, "");
+  const guardOf = (req) => { const k = ipOf(req); let g = G.ips.get(k); if (!g) { if (G.ips.size > 500) G.ips.clear(); g = { fails: 0, locks: 0, until: 0 }; G.ips.set(k, g); } return g; };
+  const locked = (req) => { const g = G.ips.get(ipOf(req)); return g && Date.now() < g.until ? Math.ceil((g.until - Date.now()) / 60000) : 0; };
+  function failed(what, req) {
+    const g = guardOf(req);
+    if (++g.fails < 10) return;
+    g.fails = 0; g.locks++; g.until = Date.now() + Math.min(24 * 3600000, 5 * 60000 * 2 ** (g.locks - 1)); S.pairing = null;
+    const min = Math.round((g.until - Date.now()) / 60000);
+    log("warn", `trop d'essais (${what}) depuis ${ipOf(req)} : appairage et invitations bloqués ${min} min pour cette adresse`);
+    emitTv({ type: "alert", msg: `Quelqu'un a essayé beaucoup de codes (${what}) depuis l'adresse ${ipOf(req)}. Par sécurité, cette adresse ne peut plus se relier pendant ${min} min.` });
   }
+  const succeeded = (req) => { G.ips.delete(ipOf(req)); };
+  // les demandes d'appairage arrivent en JSON (comme l'envoie la page Rembobine) : un formulaire ou un texte envoyé
+  // par un autre site web (sans autorisation préalable du navigateur) est refusé
+  const isJson = (req) => /^application\/json\b/i.test(String(req.headers["content-type"] || ""));
   function newPairCode(who) {
     const code = String(crypto.randomInt(0, 10000)).padStart(4, "0");
     S.pairing = { code, who: String(who || "un appareil").slice(0, 40), until: Date.now() + 120000, tries: 0 };
@@ -451,7 +465,7 @@ function createServer(opt = {}) {
 
   async function route(req, res) {
     const url = new URL(req.url, "http://x");
-    const p = decodeURIComponent(url.pathname);
+    let p; try { p = decodeURIComponent(url.pathname); } catch (_) { return send(res, 400, { ok: false, err: "adresse mal formée" }); }
     cors(req, res);
     if (req.method === "OPTIONS") { res.writeHead(204); return res.end(); }
 
@@ -462,32 +476,33 @@ function createServer(opt = {}) {
     // textes des licences des logiciels livrés avec Rembobine (page « Crédits et licences »)
     if (p === "/api/licences" || p.startsWith("/licences/")) { const r = OSR.licences(req, res, p); if (r !== false) return r; }
     if (TEL.openRoute(p, req, res, send)) return;
+    if ((p === "/api/pair/request" || p === "/api/pair") && req.method === "POST" && !isJson(req)) return send(res, 415, { ok: false, err: "Demande refusée (format)." });
     if (p === "/api/pair/request" && req.method === "POST") {
-      const b = await body(req), L = locked(); if (L) return send(res, 200, { ok: false, err: `Trop d'essais : réessaie dans ${L} min.` });
+      const b = await body(req), L = locked(req); if (L) return send(res, 200, { ok: false, err: `Trop d'essais : réessaie dans ${L} min.` });
       if (Date.now() - G.lastReq < 10000 && S.pairing && Date.now() < S.pairing.until) return send(res, 200, { ok: true, again: true });   // le code affiché reste valable
       G.lastReq = Date.now(); newPairCode(b.name); return send(res, 200, { ok: true });
     }
     if (p === "/api/pair" && req.method === "POST" && (await peekBody(req)).invite) {
       // un ami à distance, avec le code d'invitation d'une séance : accès « invité » (regarder, jouer), pendant 2 jours
-      const L = locked(); if (L) return send(res, 200, { ok: false, err: `Trop d'essais : réessaie dans ${L} min.` });
+      const L = locked(req); if (L) return send(res, 200, { ok: false, err: `Trop d'essais : réessaie dans ${L} min.` });
       const b = await body(req), code = String(b.invite || "").trim().toUpperCase(), inv = (S.cfg.invites || []).find((x) => safeEq(x.code, code) && x.until > Date.now());
-      if (!inv) { S.badInvite = (S.badInvite || 0) + 1; failed("invitation"); await new Promise((r) => setTimeout(r, 400)); return send(res, 200, { ok: false, err: "Code d'invitation inconnu ou expiré." }); }
-      G.fails = 0;
+      if (!inv) { S.badInvite = (S.badInvite || 0) + 1; failed("invitation", req); await new Promise((r) => setTimeout(r, 400)); return send(res, 200, { ok: false, err: "Code d'invitation inconnu ou expiré." }); }
+      succeeded(req);
       const token = crypto.randomBytes(24).toString("base64url"), name = String(b.name || "Invité").slice(0, 40);
       S.cfg.tokens.push({ hash: sha(token), name, t: Date.now(), guest: true, until: inv.until, invite: code }); saveCfg();
       emit({ type: "party", msg: `${name} a rejoint la séance.` });
       return send(res, 200, { ok: true, token, guest: true });
     }
     if (p === "/api/pair" && req.method === "POST") {
-      const L = locked(); if (L) return send(res, 200, { ok: false, err: `Trop d'essais : réessaie dans ${L} min.` });
+      const L = locked(req); if (L) return send(res, 200, { ok: false, err: `Trop d'essais : réessaie dans ${L} min.` });
       const b = await body(req), P = S.pairing;
       if (!P || Date.now() > P.until) return send(res, 200, { ok: false, err: "Demande un nouveau code sur la TV." });
       if (!safeEq(String(b.code || "").trim(), P.code)) {
-        failed("code d'appairage");
+        failed("code d'appairage", req);
         if (++P.tries >= 3 && S.pairing === P) S.pairing = null;   // 3 essais par code
         return send(res, 200, { ok: false, err: S.pairing ? "Code incorrect." : "Code incorrect. Trop d'essais : demande un nouveau code." });
       }
-      G.fails = 0; G.locks = 0;
+      succeeded(req);
       const token = crypto.randomBytes(24).toString("base64url");
       S.cfg.tokens.push({ hash: sha(token), name: String(b.name || P.who).slice(0, 40), t: Date.now() }); saveCfg(); S.pairing = null;
       emit({ type: "paired", who: String(b.name || P.who).slice(0, 40), msg: `Nouvel appareil relié : ${String(b.name || P.who).slice(0, 40)}.` });
@@ -875,7 +890,9 @@ function createServer(opt = {}) {
     return started;
   }
 
-  const server = http.createServer((req, res) => { route(req, res).catch((e) => { log("error", e.stack || e.message); try { send(res, 500, { ok: false, err: "erreur interne" }); } catch (_) {} }); });
+  // le serveur ne répond qu'aux appareils de la maison : réseaux privés, cette machine, Tailscale (amis invités)
+  // et le réseau local de chacune de ses cartes réseau ; tout le reste (internet) est coupé tout de suite
+  const server = http.createServer((req, res) => { if (!localNet(req.socket.remoteAddress)) { res.writeHead(403); return res.end(); } route(req, res).catch((e) => { log("error", e.stack || e.message); try { send(res, 500, { ok: false, err: "erreur interne" }); } catch (_) {} }); });
   S.server = server;
   S.start = async () => {
     // la bibliothèque gardée, relue AVANT d'écouter : la page l'a tout de suite, l'analyse suit en arrière-plan
@@ -916,13 +933,37 @@ function readJson(f, def) { try { return { ...def, ...JSON.parse(fs.readFileSync
 function writeJson(f, v) { try { fs.writeFileSync(f + ".tmp", JSON.stringify(v, null, 1)); fs.renameSync(f + ".tmp", f); } catch (_) {} }
 function sha(s) { return crypto.createHash("sha256").update(String(s)).digest("hex"); }
 // ce qu'un invité (ami d'une séance, accès 2 jours) a le droit de faire : regarder, écouter, jouer, être dans la séance
-const GUEST_READ = /^\/api\/(stream|library|scan|now|probe\/[^/]+|intro\/[^/]+|prepare|captures\/[^/]+|seances|pad|jeux\/.+|saves\/.+|lyrics\/.+|eq|cards|party|poke|health\/ui|emulators|posters\/.+|system|storage|smart|fiche-plus\/[^/]+)$/;
+// (jamais les BIOS des consoles : ils viennent des consoles de la maison et ne doivent pas en sortir)
+const GUEST_READ = /^\/api\/(stream|library|scan|now|probe\/[^/]+|intro\/[^/]+|prepare|captures\/[^/]+|seances|pad|jeux\/(?!bios\/).+|saves\/.+|lyrics\/.+|eq|cards|party|poke|health\/ui|emulators|posters\/.+|system|storage|smart|fiche-plus\/[^/]+)$/;
 const GUEST_WRITE = /^\/api\/(room|pad|pad\/in|prepare|saves\/.+|jeux\/scores\/[^/]+|crash|poke)$/;
 function guestAllowed(p, method) {
   if (!p.startsWith("/api/")) return true;   // médias, sous-titres, vignettes, page : comme tout appareil relié
   if (method === "GET" || method === "HEAD") return GUEST_READ.test(p);
   if (method === "POST" || method === "PUT" || method === "DELETE") return GUEST_WRITE.test(p);
   return false;
+}
+// ---------- réseaux acceptés ----------
+const DEVICE_TTL = 90 * 86400000;   // appareils reliés oubliés après 90 jours sans nouvelles
+const ip4n = (a) => { const p = String(a).split(".").map(Number); return p.length === 4 && p.every((x) => Number.isInteger(x) && x >= 0 && x < 256) ? ((p[0] << 24) >>> 0) + (p[1] << 16) + (p[2] << 8) + p[3] : -1; };
+const in4 = (n, base, bits) => bits === 0 || (n >>> (32 - bits)) === (ip4n(base) >>> (32 - bits));
+// réseaux privés (RFC 1918), cette machine, « lien local », Tailscale (100.64.0.0/10)
+const NETS4 = [["127.0.0.0", 8], ["10.0.0.0", 8], ["172.16.0.0", 12], ["192.168.0.0", 16], ["169.254.0.0", 16], ["100.64.0.0", 10]];
+let ifCache = { t: 0, nets: [] };
+function ownNets() {   // le réseau de chaque carte de cette machine (adresse + masque), relu toutes les 30 s
+  if (Date.now() - ifCache.t > 30000) {
+    const nets = [];
+    try { for (const a of Object.values(os.networkInterfaces()).flat()) if (a && a.family === "IPv4" && a.netmask) { const m = ip4n(a.netmask); if (m >= 0) nets.push([ip4n(a.address), m]); } } catch (_) {}
+    ifCache = { t: Date.now(), nets };
+  }
+  return ifCache.nets;
+}
+function localNet(addr) {
+  let a = String(addr || "").toLowerCase(); if (!a) return false;
+  if (a.startsWith("::ffff:") && a.includes(".")) a = a.slice(7);
+  const n = ip4n(a);
+  if (n >= 0) return NETS4.some(([b, bits]) => in4(n, b, bits)) || ownNets().some(([x, m]) => ((n & m) >>> 0) === ((x & m) >>> 0));
+  // IPv6 : cette machine, lien local (fe80::/10), adresses privées (fc00::/7), Tailscale (fd7a:115c:a1e0::/48)
+  return a === "::1" || /^fe[89ab]/.test(a) || /^f[cd]/.test(a);
 }
 // demande adressée à un nom de cette machine (une page piégée qui fait pointer son propre nom sur 127.0.0.1 est refusée)
 function localHost(host) { return !host || /^(localhost|127\.0\.0\.1|\[::1\])(:\d+)?$/i.test(String(host)); }
@@ -937,4 +978,4 @@ function sameMachinePage(req, port) {
 function safeEq(a, b) { const x = Buffer.from(String(a)), y = Buffer.from(String(b)); return x.length === y.length && crypto.timingSafeEqual(x, y); }
 function which(prog) { try { const r = spawnSync(process.platform === "win32" ? "where" : "which", [prog], { encoding: "utf8" }); return r.status === 0 ? r.stdout.split(/\r?\n/)[0].trim() : ""; } catch (_) { return ""; } }
 
-module.exports = { createServer };
+module.exports = { createServer, localNet };

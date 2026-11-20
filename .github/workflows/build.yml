@@ -145,8 +145,8 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 45
     permissions: { contents: write }
-    env:
-      GH_TOKEN: ${{ github.token }}
+    # (le jeton GitHub, qui peut écrire dans le dépôt, n'est donné qu'aux étapes qui en ont besoin :
+    #  pas pendant les téléchargements d'EmulatorJS, de pdf.js ni d'Electron)
     steps:
       - uses: actions/checkout@v4
       - name: Masquer
@@ -173,6 +173,9 @@ jobs:
       - run: ci/emulateurs.sh build
       - run: ci/pdfjs.sh build
       - run: ci/emulateurs_natifs.sh build/natifs
+        env:
+          # (questions à l'API de GitHub : dernières versions des émulateurs, sans la limite de 60 demandes par heure)
+          GH_TOKEN: ${{ github.token }}
       - run: ci/build_desktop.sh
         env:
           # clé privée qui signe les mises à jour (voir outils/maj/creer_cle.js) ; jamais dans le dépôt
@@ -180,6 +183,8 @@ jobs:
           # dépôt où l'appli cherchera ses mises à jour (écrit dans son build.json)
           RBB_DEPOT: ${{ needs.preparer.outputs.depot }}
       - run: gh release upload "$ETAPE" build/dist/Rembobine-Linux-PC.tar.gz build/dist/Rembobine-RaspberryPi.tar.gz build/dist/Rembobine-Windows.zip --clobber
+        env:
+          GH_TOKEN: ${{ github.token }}
 
   essai:
     # l'appli Linux fabriquée démarre-t-elle vraiment ? (si non : la fabrication échoue et rien n'est publié)
