@@ -121,41 +121,42 @@ public class RembobineActivity extends Activity {
 
 			@Override
 			public void onPageFinished(WebView v, String url) {
-				// le pont n'est jamais donné à une autre page que celle de l'appli
+				// le pont n'est jamais donné à une autre page que celle de l'appli ; la clé reste enfermée dans les
+				// fonctions de window.gamebox (jamais posée sur window : un cadre d'un autre site ne la voit pas)
 				if (!ours(url == null ? null : Uri.parse(url))) return;
 				// le même « pont » que l'application de bureau : window.gamebox
 				v.evaluateJavascript(
-					"window.gamebox = { app: true, android: true," +
-					" info: function () { var b = {}; try { b = JSON.parse(GbxAndroid.majEtat()) || {}; } catch (e) {} return Promise.resolve({ platform: 'android', build: b.current || '' }); }," +
+					"(function (K) { window.gamebox = { app: true, android: true," +
+					" info: function () { var b = {}; try { b = JSON.parse(GbxAndroid.majEtat(K)) || {}; } catch (e) {} return Promise.resolve({ platform: 'android', build: b.current || '' }); }," +
 					// mises à jour de l'appli depuis l'appli (MiseAJour.java) : etat() → version, dernière vérification,
 					// progression ; verifier() ; installer() (télécharge, vérifie, ouvre l'installateur d'Android). Les
 					// résultats arrivent par window.rbbMajAndroid({ type: 'check', last } | { type: 'prog', prog })
-					" maj: { etat: function () { try { return JSON.parse(GbxAndroid.majEtat()); } catch (e) { return null; } }," +
-					"  verifier: function () { GbxAndroid.majVerifier(); }, installer: function () { GbxAndroid.majInstaller(); } }," +
-					" launch3D: function (a, m) { return new Promise(function (r) { window.__gbx3dDone = r; GbxAndroid.launch3D(JSON.stringify(a || []), m ? JSON.stringify(m) : ''); }); }," +
+					" maj: { etat: function () { try { return JSON.parse(GbxAndroid.majEtat(K)); } catch (e) { return null; } }," +
+					"  verifier: function () { GbxAndroid.majVerifier(K); }, installer: function () { GbxAndroid.majInstaller(K); } }," +
+					" launch3D: function (a, m) { return new Promise(function (r) { window.__gbx3dDone = r; GbxAndroid.launch3D(K, JSON.stringify(a || []), m ? JSON.stringify(m) : ''); }); }," +
 					" playExternal: function () { return Promise.resolve({ ok: false, err: 'android' }); }," +
 					// NFC du téléphone : nfc() → 'absent' | 'off' | 'ok' ; nfcWatch(true/false) ; nfcWrite(texte) arme l'écriture de la prochaine puce.
 					// Chaque puce touchée appelle window.rbbPhoneTag({ uid, data, written, err }).
-					" nfc: function () { return GbxAndroid.nfcState(); }," +
-					" nfcWatch: function (on) { GbxAndroid.nfcWatch(!!on); }," +
-					" nfcWrite: function (t) { GbxAndroid.nfcWrite(t == null ? '' : String(t)); }," +
-					" nfcSettings: function () { GbxAndroid.nfcSettings(); }," +
+					" nfc: function () { return GbxAndroid.nfcState(K); }," +
+					" nfcWatch: function (on) { GbxAndroid.nfcWatch(K, !!on); }," +
+					" nfcWrite: function (t) { GbxAndroid.nfcWrite(K, t == null ? '' : String(t)); }," +
+					" nfcSettings: function () { GbxAndroid.nfcSettings(K); }," +
 					// télécommande : raccourci sur l'écran d'accueil, écran en portrait pendant qu'elle est ouverte
-					" pinRemote: function () { GbxAndroid.pinRemote(); }," +
+					" pinRemote: function () { GbxAndroid.pinRemote(K); }," +
 					// films hors-ligne : list() → JSON, save(adresse, fichier, infos) télécharge (progression : window.rbbOfflineProgress), del(fichier)
-					" offline: { list: function () { try { return JSON.parse(GbxAndroid.offlineList()); } catch (e) { return []; } }," +
-					"  save: function (u, f, m) { GbxAndroid.offlineSave(String(u), String(f), JSON.stringify(m || {})); }, del: function (f) { GbxAndroid.offlineDelete(String(f)); } }," +
-					" orient: function (o) { GbxAndroid.orient(String(o || '')); }," +
+					" offline: { list: function () { try { return JSON.parse(GbxAndroid.offlineList(K)); } catch (e) { return []; } }," +
+					"  save: function (u, f, m) { GbxAndroid.offlineSave(K, String(u), String(f), JSON.stringify(m || {})); }, del: function (f) { GbxAndroid.offlineDelete(K, String(f)); } }," +
+					" orient: function (o) { GbxAndroid.orient(K, String(o || '')); }," +
 					// téléphone ↔ TV sans la page : widget, écran verrouillé, volume (voir Maison.java)
-					" remember: function (b, t, n) { GbxAndroid.remember(String(b || ''), String(t || ''), String(n || '')); }," +
-					" nowPlaying: function (o) { GbxAndroid.nowPlaying(JSON.stringify(o || {})); }," +
-					" lockControls: function (on) { GbxAndroid.lockControls(!!on); }," +
-					" volKeys: function (on) { GbxAndroid.volKeys(!!on); }," +
-					" pinWidget: function () { return GbxAndroid.pinWidget(); }," +
+					" remember: function (b, t, n) { GbxAndroid.remember(K, String(b || ''), String(t || ''), String(n || '')); }," +
+					" nowPlaying: function (o) { GbxAndroid.nowPlaying(K, JSON.stringify(o || {})); }," +
+					" lockControls: function (on) { GbxAndroid.lockControls(K, !!on); }," +
+					" volKeys: function (on) { GbxAndroid.volKeys(K, !!on); }," +
+					" pinWidget: function () { return GbxAndroid.pinWidget(K); }," +
 					// les Rembobine de la maison (réponse UDP), puis window.rbbFound([{ name, url }])
-					" discover: function () { GbxAndroid.discover(); }," +
+					" discover: function () { GbxAndroid.discover(K); }," +
 					// commande vocale : le service de reconnaissance d'Android, puis window.rbbVoice(texte)
-					" voice: function () { return GbxAndroid.voice(); } };", null);
+					" voice: function () { return GbxAndroid.voice(K); } }; })(" + JSONObject.quote(cle) + ");", null);
 				if (openRemote) { openRemote = false; v.evaluateJavascript("setTimeout(function () { window.rbbRemoteOpen && window.rbbRemoteOpen(); }, 900);", null); }
 			}
 		});
@@ -193,6 +194,21 @@ public class RembobineActivity extends Activity {
 
 	// la page affichée est-elle celle de l'appli ? (le pont GbxAndroid ne répond qu'à elle)
 	private volatile boolean pageOk = true;
+	// Android donne le pont « GbxAndroid » à TOUS les cadres de la page, y compris ceux des bandes-annonces
+	// (YouTube, Dailymotion, Vimeo et leurs publicités). Chaque appel doit donc porter cette clé secrète, tirée au
+	// hasard à chaque ouverture de l'appli et placée seulement dans la page de l'appli (cadre principal, voir
+	// onPageFinished) : un cadre d'un autre site ne peut pas la lire, ses appels sont ignorés.
+	private final String cle = nouvelleCle();
+	private static String nouvelleCle() {
+		byte[] b = new byte[24];
+		new java.security.SecureRandom().nextBytes(b);
+		StringBuilder h = new StringBuilder();
+		for (byte x : b) h.append(String.format("%02x", x & 0xff));
+		return h.toString();
+	}
+	private boolean ok(String k) {
+		return pageOk && k != null && java.security.MessageDigest.isEqual(cle.getBytes(StandardCharsets.UTF_8), k.getBytes(StandardCharsets.UTF_8));
+	}
 	private static boolean ours(Uri u) {
 		return u != null && "file".equals(u.getScheme()) && u.getPath() != null && u.getPath().startsWith("/android_res/raw/") && !u.getPath().contains("..");
 	}
@@ -276,9 +292,9 @@ public class RembobineActivity extends Activity {
 
 	private class Bridge {
 		@JavascriptInterface
-		public String offlineList() {
+		public String offlineList(String k) {
 			JSONArray out = new JSONArray();
-			if (!pageOk) return out.toString();
+			if (!ok(k)) return out.toString();
 			java.io.File[] l = offlineDir().listFiles();
 			if (l != null) for (java.io.File f : l) {
 				if (!f.getName().matches(OFFLINE_NAME)) continue;
@@ -301,16 +317,16 @@ public class RembobineActivity extends Activity {
 		}
 
 		@JavascriptInterface
-		public void offlineDelete(String name) {
-			if (!pageOk || name == null || !name.matches(OFFLINE_NAME)) return;
+		public void offlineDelete(String k, String name) {
+			if (!ok(k) || name == null || !name.matches(OFFLINE_NAME)) return;
 			new java.io.File(offlineDir(), name).delete();
 			new java.io.File(offlineDir(), name + ".json").delete();
 		}
 
 		// téléchargement en arrière-plan ; la page suit la progression (window.rbbOfflineProgress)
 		@JavascriptInterface
-		public void offlineSave(final String url, final String name, final String meta) {
-			if (!pageOk || name == null || !name.matches(OFFLINE_NAME) || url == null || !url.matches("^https?://.*")) return;
+		public void offlineSave(String k, final String url, final String name, final String meta) {
+			if (!ok(k) || name == null || !name.matches(OFFLINE_NAME) || url == null || !url.matches("^https?://.*")) return;
 			new Thread(new Runnable() {
 				public void run() {
 					java.io.File part = new java.io.File(offlineDir(), name + ".part"), dest = new java.io.File(offlineDir(), name);
@@ -351,7 +367,8 @@ public class RembobineActivity extends Activity {
 		}
 
 		@JavascriptInterface
-		public void orient(final String o) {
+		public void orient(String k, final String o) {
+			if (!ok(k)) return;
 			runOnUiThread(new Runnable() {
 				public void run() {
 					// « portrait » (télécommande), « landscape » (manette) ; sinon l'écran tourne librement (réglage du téléphone respecté)
@@ -361,8 +378,8 @@ public class RembobineActivity extends Activity {
 		}
 
 		@JavascriptInterface
-		public void pinRemote() {
-			if (!pageOk || android.os.Build.VERSION.SDK_INT < 26) return;
+		public void pinRemote(String k) {
+			if (!ok(k) || android.os.Build.VERSION.SDK_INT < 26) return;
 			runOnUiThread(new Runnable() {
 				public void run() {
 					try {
@@ -384,14 +401,14 @@ public class RembobineActivity extends Activity {
 		}
 
 		@JavascriptInterface
-		public void remember(String base, String tok, String name) {
-			if (!pageOk || base == null || !(base.isEmpty() || base.matches("^https?://\\S{3,200}$"))) return;
+		public void remember(String k, String base, String tok, String name) {
+			if (!ok(k) || base == null || !(base.isEmpty() || base.matches("^https?://\\S{3,200}$"))) return;
 			Maison.remember(RembobineActivity.this, base, tok, name);
 		}
 
 		@JavascriptInterface
-		public void nowPlaying(String json) {
-			if (!pageOk) return;
+		public void nowPlaying(String k, String json) {
+			if (!ok(k)) return;
 			try {
 				JSONObject o = new JSONObject(json);
 				final String title = o.optString("title", ""), kind = o.optString("kind", "");
@@ -403,14 +420,14 @@ public class RembobineActivity extends Activity {
 		}
 
 		@JavascriptInterface
-		public void lockControls(boolean on) { if (pageOk) Maison.setLock(RembobineActivity.this, on); }
+		public void lockControls(String k, boolean on) { if (ok(k)) Maison.setLock(RembobineActivity.this, on); }
 
 		@JavascriptInterface
-		public void volKeys(boolean on) { volKeys = on && pageOk; }
+		public void volKeys(String k, boolean on) { volKeys = on && ok(k); }
 
 		@JavascriptInterface
-		public String pinWidget() {
-			if (!pageOk) return "non";
+		public String pinWidget(String k) {
+			if (!ok(k)) return "non";
 			if (Build.VERSION.SDK_INT < 26) return "ancien";
 			try {
 				android.appwidget.AppWidgetManager m = android.appwidget.AppWidgetManager.getInstance(RembobineActivity.this);
@@ -423,8 +440,8 @@ public class RembobineActivity extends Activity {
 		}
 
 		@JavascriptInterface
-		public void discover() {
-			if (!pageOk) return;
+		public void discover(String k) {
+			if (!ok(k)) return;
 			new Thread(new Runnable() {
 				public void run() {
 					JSONArray found = new JSONArray();
@@ -464,8 +481,8 @@ public class RembobineActivity extends Activity {
 		}
 
 		@JavascriptInterface
-		public String voice() {
-			if (!pageOk) return "absent";
+		public String voice(String k) {
+			if (!ok(k)) return "absent";
 			try {
 				Intent i = new Intent(android.speech.RecognizerIntent.ACTION_RECOGNIZE_SPEECH);
 				i.putExtra(android.speech.RecognizerIntent.EXTRA_LANGUAGE_MODEL, android.speech.RecognizerIntent.LANGUAGE_MODEL_FREE_FORM);
@@ -480,14 +497,15 @@ public class RembobineActivity extends Activity {
 		}
 
 		@JavascriptInterface
-		public String nfcState() {
+		public String nfcState(String k) {
+			if (!ok(k)) return "absent";
 			if (nfc == null) return "absent";
 			return nfc.isEnabled() ? "ok" : "off";
 		}
 
 		@JavascriptInterface
-		public void nfcWatch(final boolean on) {
-			if (!pageOk) return;
+		public void nfcWatch(String k, final boolean on) {
+			if (!ok(k)) return;
 			runOnUiThread(new Runnable() {
 				public void run() {
 					nfcOn = on;
@@ -498,13 +516,14 @@ public class RembobineActivity extends Activity {
 		}
 
 		@JavascriptInterface
-		public void nfcWrite(String text) {
-			if (!pageOk) return;
+		public void nfcWrite(String k, String text) {
+			if (!ok(k)) return;
 			nfcToWrite = (text == null || text.isEmpty()) ? null : text;
 		}
 
 		@JavascriptInterface
-		public void nfcSettings() {
+		public void nfcSettings(String k) {
+			if (!ok(k)) return;
 			runOnUiThread(new Runnable() {
 				public void run() {
 					try {
@@ -518,8 +537,8 @@ public class RembobineActivity extends Activity {
 
 		// ---------- mises à jour de l'appli (voir MiseAJour.java) ----------
 		@JavascriptInterface
-		public String majEtat() {
-			if (!pageOk) return "{}";
+		public String majEtat(String k) {
+			if (!ok(k)) return "{}";
 			try {
 				JSONObject v = MiseAJour.maVersion(RembobineActivity.this), o = new JSONObject();
 				o.put("current", v.optString("label", ""));
@@ -536,8 +555,8 @@ public class RembobineActivity extends Activity {
 		}
 
 		@JavascriptInterface
-		public void majVerifier() {
-			if (!pageOk) return;
+		public void majVerifier(String k) {
+			if (!ok(k)) return;
 			new Thread(new Runnable() {
 				public void run() {
 					majVerifierMaintenant();
@@ -548,8 +567,8 @@ public class RembobineActivity extends Activity {
 		}
 
 		@JavascriptInterface
-		public void majInstaller() {
-			if (!pageOk || majBusy) return;
+		public void majInstaller(String k) {
+			if (!ok(k) || majBusy) return;
 			majBusy = true;
 			new Thread(new Runnable() {
 				public void run() {
@@ -584,7 +603,8 @@ public class RembobineActivity extends Activity {
 		}
 
 		@JavascriptInterface
-		public void launch3D(final String json, final String maison) {
+		public void launch3D(String k, final String json, final String maison) {
+			if (!ok(k)) return;
 			// la progression du module gardée par le serveur de la maison : il prend la plus récente
 			// (le module lit et écrit dans le dossier de l'appli, son « user:// »)
 			if (maison != null && maison.startsWith("{") && maison.length() < 1500000) {
