@@ -1,0 +1,4 @@
+#!/bin/sh
+# Lance Rembobine. Sur Raspberry Pi : ./rembobine --kiosk (plein écran, pour la télé)
+DIR="$(cd "$(dirname "$(readlink -f "$0")")" && pwd)"
+exec "$DIR/rembobine-bin" --no-sandbox "$@"

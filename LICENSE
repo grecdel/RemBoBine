@@ -1,0 +1,65 @@
+Rembobine
+Copyright (c) 2026 grecdel. Tous droits réservés. / All rights reserved.
+
+=============================================================================
+FRANÇAIS
+=============================================================================
+
+Le code source de Rembobine est rendu public pour pouvoir être LU et étudié.
+Il n'est PAS sous licence libre.
+
+Sans l'autorisation écrite préalable de grecdel, il est interdit de :
+  - copier tout ou partie de ce code, de ses images, de ses textes ou de ses sons ;
+  - le modifier, l'adapter, le traduire ou en faire une œuvre dérivée ;
+  - le redistribuer, le publier, le vendre, le louer ou le mettre à disposition
+    de quelque manière que ce soit, gratuitement ou non.
+
+Il est permis de :
+  - lire et consulter ce code sur le site où il est publié ;
+  - télécharger et utiliser, pour un usage personnel et privé, les versions
+    de Rembobine publiées par grecdel (page « Releases » du dépôt).
+
+Logiciels tiers : Rembobine est livré avec des logiciels écrits par d'autres
+(par exemple EmulatorJS et ses cœurs libretro, PCSX2, RPCS3, xemu, Xenia,
+PPSSPP, FFmpeg, mpv, Electron/Chromium, Godot, SDL2, et, dans l'image
+Rembobine OS, Raspberry Pi OS, RetroArch, Samba, Tailscale…). Chacun garde
+SA PROPRE LICENCE, qui s'applique à lui seul et que la présente licence ne
+modifie pas. La liste complète, avec la licence et l'adresse du code source
+de chacun, est dans l'application : Paramètres → À propos → « Crédits et
+licences ». Les textes de ces licences sont livrés dans le dossier
+« licences » de l'application.
+
+Rembobine est fourni « tel quel », sans aucune garantie. Pour toute demande
+d'autorisation : ouvrir un ticket (« issue ») sur le dépôt GitHub de
+Rembobine.
+
+=============================================================================
+ENGLISH
+=============================================================================
+
+The source code of Rembobine is made public so that it can be READ and
+studied. It is NOT open-source or free software.
+
+Without the prior written permission of grecdel, you may not:
+  - copy all or part of this code, its images, texts or sounds;
+  - modify, adapt, translate it or create derivative works from it;
+  - redistribute, publish, sell, rent or otherwise make it available,
+    whether free of charge or not.
+
+You may:
+  - read and view this code on the site where it is published;
+  - download and use, for personal and private purposes, the releases of
+    Rembobine published by grecdel (the repository's "Releases" page).
+
+Third-party software: Rembobine ships with software written by others
+(for example EmulatorJS and its libretro cores, PCSX2, RPCS3, xemu, Xenia,
+PPSSPP, FFmpeg, mpv, Electron/Chromium, Godot, SDL2 and, in the Rembobine OS
+image, Raspberry Pi OS, RetroArch, Samba, Tailscale…). Each of them keeps
+ITS OWN LICENSE, which applies to it alone and is not changed by this
+license. The full list, with each license and the address of each source
+code, is in the application: Paramètres → À propos → "Crédits et licences".
+The texts of these licenses are shipped in the application's "licences"
+folder.
+
+Rembobine is provided "as is", without warranty of any kind. To ask for
+permission: open an issue on the Rembobine GitHub repository.

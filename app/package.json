@@ -1,0 +1,9 @@
+{
+  "name": "rembobine",
+  "productName": "Rembobine",
+  "version": "1.0.0",
+  "description": "Rembobine : ta médiathèque (films, séries, jeux, musique)",
+  "main": "main.js",
+  "author": "Rembobine",
+  "license": "UNLICENSED"
+}

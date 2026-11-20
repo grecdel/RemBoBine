@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Thème de l'écran Rembobine : noir, plein écran (l'enseigne néon « REMBOBINE » de la page fait l'accueil) -->
+<resources>
+    <style name="RbbTheme" parent="@android:style/Theme.Black.NoTitleBar.Fullscreen">
+        <item name="android:windowBackground">@android:color/black</item>
+    </style>
+</resources>

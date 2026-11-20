@@ -1,0 +1,46 @@
+# Essais rapides, sans fabriquer toute l'application. Se lance quand on envoie sur la branche « essai-emulateurs ».
+name: Essais (émulateurs natifs, distributions Linux)
+on:
+  push:
+    branches: [essai-emulateurs]
+jobs:
+  emulateurs:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v4
+      - run: ci/emulateurs_natifs.sh build/natifs
+      - name: Taille et essai des outils livrés
+        run: |
+          for d in build/natifs/*/*; do echo "$d = $(du -sh "$d" | cut -f1)"; done
+          f=$(find build/natifs/linux-x64/ffmpeg -type f -name ffmpeg | head -1); echo "ffmpeg : $f"; "$f" -version | head -1; "$(dirname "$f")/ffprobe" -version | head -1
+          x=$(find build/natifs/linux-x64/xenia -type f -name xenia_canary | head -1); echo "xenia : $x"; LD_LIBRARY_PATH="$(dirname "$x")" ldd "$x" | grep -E 'not found|vulkan|gtk|SDL' 
+  distros:
+    # Rembobine (version publiée) démarre-t-il sur chaque distribution, avec seulement les paquets indiqués dans LISEZ-MOI ?
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v4
+      - run: gh release download v1.0.0 -p Rembobine-Linux-PC.tar.gz && mkdir r && tar xzf Rembobine-Linux-PC.tar.gz -C r
+      - run: bash ci/emulateurs_natifs.sh nat >/dev/null 2>&1; x=$(find nat/linux-x64/xenia -type f -name xenia_canary | head -1); echo "XENIA=$PWD/$(dirname "$x")" >> "$GITHUB_ENV"
+      - name: Essai sur chaque distribution
+        run: |
+          essai() {  # image, commande d'installation des bibliothèques
+            echo "===== $1"
+            docker run --rm -v "$PWD/r/Rembobine-Linux-x64:/rbb:ro" -v "$XENIA:/xenia:ro" "$1" sh -c "$2 >/tmp/inst.log 2>&1 || { tail -5 /tmp/inst.log; exit 3; }
+              m=\$(LD_LIBRARY_PATH=/xenia ldd /xenia/xenia_canary 2>&1 | grep -E 'not found|GLIBC'); [ -z \"\$m\" ] && echo 'Xenia (Xbox 360) : tout est là ✔' || echo \"Xenia (Xbox 360) : manque \$m\"
+              cp -r /rbb /opt/rembobine && cd /opt/rembobine
+              xvfb-run -a ./rembobine --no-sandbox >/tmp/app.log 2>&1 &
+              for i in \$(seq 1 40); do sleep 1; if curl -s http://127.0.0.1:8080/api/info | grep -q api; then echo 'RÉSULTAT : Rembobine démarre ✔'; exit 0; fi; done
+              echo 'RÉSULTAT : ne démarre pas ✘'; exit 1" && echo "OK $1" || echo "ÉCHEC $1"
+          }
+          essai ubuntu:24.04 "apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y libnss3 libgtk-3-0t64 libgbm1 libasound2t64 libxss1 libsecret-1-0 libnotify4 libpulse0 libvulkan1 xvfb xauth curl"
+          essai ubuntu:22.04 "apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y libnss3 libgtk-3-0 libgbm1 libasound2 libxss1 libsecret-1-0 libnotify4 libpulse0 libvulkan1 xvfb xauth curl"
+          essai debian:12 "apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y libnss3 libgtk-3-0 libgbm1 libasound2 libxss1 libsecret-1-0 libnotify4 libpulse0 libvulkan1 xvfb xauth curl"
+          essai fedora:41 "dnf install -y nss gtk3 mesa-libgbm alsa-lib libXScrnSaver libsecret libnotify pulseaudio-libs vulkan-loader xorg-x11-server-Xvfb xorg-x11-xauth which curl"
+          essai opensuse/tumbleweed "zypper -n install mozilla-nss libgtk-3-0 libgbm1 libasound2 libXss1 libsecret-1-0 libnotify4 libpulse0 libvulkan1 xvfb-run curl"
+          essai archlinux:latest "pacman -Sy --noconfirm nss gtk3 mesa alsa-lib libxss libsecret libnotify libpulse vulkan-icd-loader xorg-server-xvfb xorg-xauth curl"

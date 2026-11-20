@@ -1,0 +1,418 @@
+# Fabrique toutes les versions de Rembobine à chaque envoi sur « main » (ou à la main, onglet Actions).
+# Les fichiers passent d'une étape à l'autre par une version provisoire « fabrication-<n° de run> »
+# (pas par les « Artifacts », dont le quota de stockage se remplit vite), supprimée à la fin.
+# Le module facultatif est récupéré avec les secrets RBB_MODULE_DEPOT et RBB_MODULE_JETON (voir ci/module.sh) ;
+# ses étapes n'affichent ici que des résumés. Ces deux secrets ne sont donnés QU'AUX étapes qui appellent ci/module.sh
+# (et au checkout du module) : jamais à une étape qui installe ou lance du code téléchargé (npm, pip, Godot, apt…).
+name: Fabrication de Rembobine
+
+on:
+  push:
+    branches: [main]
+    tags: ["v*"]
+  workflow_dispatch:
+
+# un nouvel envoi annule la fabrication précédente encore en cours
+concurrency:
+  group: fabrication-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  ELECTRON_VERSION: "33.2.1"
+  ETAPE: fabrication-${{ github.run_id }}
+  # numéro de fabrication (1.0.0+<n>) gravé dans l'appli et publié dans build.json ; le tag reste v$(cat VERSION)
+  BUILD_NUMBER: ${{ github.run_number }}
+
+permissions: {}
+
+jobs:
+  preparer:
+    name: Préparer la version provisoire
+    if: github.repository == 'grecdel/Rembobine'
+    runs-on: ubuntu-24.04
+    permissions: { contents: write }
+    outputs:
+      depot: ${{ steps.depot.outputs.depot }}
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v4
+        with: { fetch-depth: 100, fetch-tags: false }   # sans les étiquettes : leurs noms seraient écrits dans le journal
+      - name: Vérifier les réglages du module
+        env:
+          RBB_MODULE_DEPOT: ${{ secrets.RBB_MODULE_DEPOT }}
+          RBB_MODULE_JETON: ${{ secrets.RBB_MODULE_JETON }}
+        run: bash ci/module.sh verifier
+      - run: gh release create "$ETAPE" --prerelease --target "$GITHUB_SHA" --title "Fabrication en cours (provisoire)" --notes "Fichiers intermédiaires, supprimés à la fin de la fabrication."
+      # où les applis cherchent leurs mises à jour (champ « depot » de build.json) : le dépôt PUBLIC des versions si la
+      # variable RBB_DEPOT_VERSIONS ET le secret RBB_VERSIONS_TOKEN existent (voir LISEZ-MOI.md, « Mises à jour »),
+      # sinon ce dépôt-ci (sans rien de réglé, rien ne change)
+      - name: Dépôt des versions
+        id: depot
+        env:
+          DV: ${{ vars.RBB_DEPOT_VERSIONS }}
+          TOK: ${{ secrets.RBB_VERSIONS_TOKEN }}
+        run: |
+          D="$GITHUB_REPOSITORY"
+          if [ -n "$DV" ] && [ -n "$TOK" ] && echo "$DV" | grep -Eq '^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$'; then D="$DV"
+          elif [ -n "$DV" ]; then echo "::warning::RBB_DEPOT_VERSIONS est réglé mais pas le secret RBB_VERSIONS_TOKEN (ou nom incorrect) : les versions restent dans $GITHUB_REPOSITORY."; fi
+          echo "depot=$D" >> "$GITHUB_OUTPUT"; echo "Les applis chercheront leurs mises à jour dans : $D"
+      - uses: actions/checkout@v4
+        with:
+          repository: ${{ secrets.RBB_MODULE_DEPOT }}
+          token: ${{ secrets.RBB_MODULE_JETON }}
+          ref: main
+          path: .module
+          persist-credentials: false
+      - name: Contrôle des fichiers publics
+        env:
+          RBB_MODULE_DEPOT: ${{ secrets.RBB_MODULE_DEPOT }}
+          RBB_MODULE_JETON: ${{ secrets.RBB_MODULE_JETON }}
+          # commit d'avant l'envoi : chaque commit de l'envoi est relu (message, lignes ajoutées)
+          AVANT: ${{ github.event.before }}
+        run: |
+          bash ci/module.sh masquer
+          bash ci/module.sh poser
+          bash ci/module.sh garde "$AVANT" || { bash ci/module.sh journal garde; exit 1; }
+
+  module:
+    name: Module (bureau)
+    needs: preparer
+    runs-on: ubuntu-24.04
+    permissions: { contents: read }
+    timeout-minutes: 80
+    steps:
+      - uses: actions/checkout@v4
+      - name: Masquer
+        run: bash ci/module.sh masquer
+        env:
+          RBB_MODULE_DEPOT: ${{ secrets.RBB_MODULE_DEPOT }}
+          RBB_MODULE_JETON: ${{ secrets.RBB_MODULE_JETON }}
+      - uses: actions/checkout@v4
+        with:
+          repository: ${{ secrets.RBB_MODULE_DEPOT }}
+          token: ${{ secrets.RBB_MODULE_JETON }}
+          ref: main
+          path: .module
+          persist-credentials: false
+      - run: bash ci/module.sh poser
+      - name: Fabriquer le module
+        run: bash ci/module/fabriquer.sh bureau
+      - name: Livrer le module
+        if: ${{ !cancelled() }}
+        run: bash ci/module.sh livrer bureau
+        env:
+          RBB_MODULE_DEPOT: ${{ secrets.RBB_MODULE_DEPOT }}
+          RBB_MODULE_JETON: ${{ secrets.RBB_MODULE_JETON }}
+
+  apercus:
+    # en parallèle du job « module » ; facultatif : s'il échoue, l'appli est fabriquée sans ces images
+    name: Module (images)
+    needs: preparer
+    runs-on: ubuntu-24.04
+    permissions: { contents: read }
+    timeout-minutes: 75
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+      - name: Masquer
+        run: bash ci/module.sh masquer
+        env:
+          RBB_MODULE_DEPOT: ${{ secrets.RBB_MODULE_DEPOT }}
+          RBB_MODULE_JETON: ${{ secrets.RBB_MODULE_JETON }}
+      - uses: actions/checkout@v4
+        with:
+          repository: ${{ secrets.RBB_MODULE_DEPOT }}
+          token: ${{ secrets.RBB_MODULE_JETON }}
+          ref: main
+          path: .module
+          persist-credentials: false
+      - run: bash ci/module.sh poser
+      - name: Images du module
+        timeout-minutes: 70
+        run: bash ci/module/fabriquer.sh images
+      - name: Livrer les images
+        if: ${{ !cancelled() }}
+        run: bash ci/module.sh livrer images
+        env:
+          RBB_MODULE_DEPOT: ${{ secrets.RBB_MODULE_DEPOT }}
+          RBB_MODULE_JETON: ${{ secrets.RBB_MODULE_JETON }}
+
+  bureau:
+    name: Applications de bureau (Linux, Raspberry Pi, Windows)
+    needs: [preparer, module, apercus]
+    if: ${{ !cancelled() && needs.module.result == 'success' }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    permissions: { contents: write }
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Masquer
+        run: bash ci/module.sh masquer
+        env:
+          RBB_MODULE_DEPOT: ${{ secrets.RBB_MODULE_DEPOT }}
+          RBB_MODULE_JETON: ${{ secrets.RBB_MODULE_JETON }}
+      - uses: actions/checkout@v4
+        with:
+          repository: ${{ secrets.RBB_MODULE_DEPOT }}
+          token: ${{ secrets.RBB_MODULE_JETON }}
+          ref: main
+          path: .module
+          persist-credentials: false
+      - run: bash ci/module.sh poser
+      - name: Recevoir le module
+        run: |
+          bash ci/module.sh recevoir module-bureau.tar.gz && tar xzf build/module-bureau.tar.gz -C build && rm -f build/module-bureau.tar.gz
+          # images du module (facultatives : absentes si leur job a échoué)
+          bash ci/module.sh recevoir module-images.tar.gz && tar xzf build/module-images.tar.gz -C build/godot && rm -f build/module-images.tar.gz || echo "appli fabriquée sans les images du module"
+        env:
+          RBB_MODULE_DEPOT: ${{ secrets.RBB_MODULE_DEPOT }}
+          RBB_MODULE_JETON: ${{ secrets.RBB_MODULE_JETON }}
+      - run: ci/emulateurs.sh build
+      - run: ci/pdfjs.sh build
+      - run: ci/emulateurs_natifs.sh build/natifs
+      - run: ci/build_desktop.sh
+        env:
+          # clé privée qui signe les mises à jour (voir outils/maj/creer_cle.js) ; jamais dans le dépôt
+          RBB_UPDATE_KEY: ${{ secrets.RBB_UPDATE_KEY }}
+          # dépôt où l'appli cherchera ses mises à jour (écrit dans son build.json)
+          RBB_DEPOT: ${{ needs.preparer.outputs.depot }}
+      - run: gh release upload "$ETAPE" build/dist/Rembobine-Linux-PC.tar.gz build/dist/Rembobine-RaspberryPi.tar.gz build/dist/Rembobine-Windows.zip --clobber
+
+  essai:
+    # l'appli Linux fabriquée démarre-t-elle vraiment ? (si non : la fabrication échoue et rien n'est publié)
+    name: Essai de bout en bout (appli Linux fabriquée)
+    needs: bureau
+    runs-on: ubuntu-24.04
+    permissions: { contents: read }
+    timeout-minutes: 45
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Masquer
+        run: bash ci/module.sh masquer
+        env:
+          RBB_MODULE_DEPOT: ${{ secrets.RBB_MODULE_DEPOT }}
+          RBB_MODULE_JETON: ${{ secrets.RBB_MODULE_JETON }}
+      # (la machine de GitHub n'a parfois que quelques Go de libre : run 68, disque plein pendant l'essai. On enlève
+      #  les outils préinstallés dont la fabrication ne se sert pas, et l'archive une fois décompressée.)
+      - name: Faire de la place sur le disque
+        run: |
+          df -h / | tail -1
+          sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc /usr/local/.ghcup /opt/hostedtoolcache/CodeQL /usr/local/share/boost /usr/share/swift || true
+          sudo docker image prune -af >/dev/null 2>&1 || true
+          df -h / | tail -1
+      - run: gh release download "$ETAPE" -p Rembobine-Linux-PC.tar.gz -D build/essai && tar xzf build/essai/Rembobine-Linux-PC.tar.gz -C build/essai && rm -f build/essai/Rembobine-Linux-PC.tar.gz && df -h / | tail -1
+      - name: Outils de l'essai (écran virtuel, ffmpeg, Playwright)
+        run: |
+          sudo apt-get update -q
+          sudo apt-get install -y -q --no-install-recommends xvfb xauth ffmpeg imagemagick libnss3 libgbm1 libasound2t64 libxss1 libsecret-1-0 libnotify4 libgtk-3-0t64 libgl1-mesa-dri
+          mkdir -p /tmp/pw && cd /tmp/pw && npm init -y >/dev/null && npm install --no-save --silent playwright@1.49.1 && npx playwright install --with-deps chromium
+      - name: Essai
+        run: NODE_PATH=/tmp/pw/node_modules bash ci/essai_bout_en_bout.sh build/essai/Rembobine-Linux-x64 build/essai/captures
+      - uses: actions/checkout@v4
+        with:
+          repository: ${{ secrets.RBB_MODULE_DEPOT }}
+          token: ${{ secrets.RBB_MODULE_JETON }}
+          ref: main
+          path: .module
+          persist-credentials: false
+      - run: bash ci/module.sh poser
+      - name: Essai du module (appli fabriquée)
+        run: NODE_PATH=/tmp/pw/node_modules bash ci/module/fabriquer.sh essai build/essai/Rembobine-Linux-x64 build/essai/captures
+      # en cas d'échec : journaux et captures envoyés dans le dépôt du module (rien à l'écran)
+      - name: Journaux de l'essai (en cas d'échec)
+        if: failure()
+        run: bash ci/module.sh journal essai build/essai/captures
+        env:
+          RBB_MODULE_DEPOT: ${{ secrets.RBB_MODULE_DEPOT }}
+          RBB_MODULE_JETON: ${{ secrets.RBB_MODULE_JETON }}
+
+  android:
+    name: Application Android (APK)
+    needs: preparer
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    permissions: { contents: write }
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Masquer
+        run: bash ci/module.sh masquer
+        env:
+          RBB_MODULE_DEPOT: ${{ secrets.RBB_MODULE_DEPOT }}
+          RBB_MODULE_JETON: ${{ secrets.RBB_MODULE_JETON }}
+      - uses: actions/setup-java@v4
+        with: { distribution: temurin, java-version: "17" }
+      - uses: actions/checkout@v4
+        with:
+          repository: ${{ secrets.RBB_MODULE_DEPOT }}
+          token: ${{ secrets.RBB_MODULE_JETON }}
+          ref: main
+          path: .module
+          persist-credentials: false
+      - run: bash ci/module.sh poser
+      - name: Fabriquer l'APK
+        env:
+          # dépôt où l'appli Android cherchera ses mises à jour (écrit dans res/raw/rbb_build.json)
+          RBB_DEPOT: ${{ needs.preparer.outputs.depot }}
+        run: bash ci/module/fabriquer.sh android
+      - name: Journal du module
+        if: ${{ !cancelled() }}
+        run: bash ci/module.sh livrer android
+        env:
+          RBB_MODULE_DEPOT: ${{ secrets.RBB_MODULE_DEPOT }}
+          RBB_MODULE_JETON: ${{ secrets.RBB_MODULE_JETON }}
+      - name: Contrôler l'APK
+        run: |
+          # l'émulateur intégré doit être dans l'APK (sinon il passerait par internet)
+          unzip -l build/android/Rembobine-non-signe.apk | grep -q "assets/ejs/data/loader.js" || { echo "::error::émulateur absent de l'APK"; exit 1; }
+          # le lecteur de manuels (pdf.js) aussi
+          unzip -l build/android/Rembobine-non-signe.apk | grep -q "assets/pdfjs/pdf.worker.min.js" || { echo "::error::lecteur de PDF absent de l'APK"; exit 1; }
+      - name: Signer l'APK
+        env:
+          RBB_SIGNING_KEY: ${{ secrets.RBB_SIGNING_KEY }}
+        run: |
+          pip install --quiet cryptography
+          BT=$(ls -d $ANDROID_SDK_ROOT/build-tools/* | sort -V | tail -1)
+          $BT/zipalign -f -p 4 build/android/Rembobine-non-signe.apk build/android/aligne.apk
+          if [ -n "$RBB_SIGNING_KEY" ]; then
+            printf '%s\n' "$RBB_SIGNING_KEY" > key.pem
+          else
+            # pas encore de clé : APK d'essai signé avec une clé jetable (à désinstaller avant la vraie version)
+            echo "::warning::Secret RBB_SIGNING_KEY absent : APK d'essai signé avec une clé jetable."
+            openssl genpkey -algorithm RSA -pkeyopt rsa_keygen_bits:2048 -out key.pem 2>/dev/null
+          fi
+          python3 ci/make_cert.py key.pem cert.der
+          openssl pkcs8 -topk8 -nocrypt -in key.pem -outform DER -out key.pk8
+          $BT/apksigner sign --key key.pk8 --cert cert.der --out build/android/Rembobine.apk build/android/aligne.apk
+          rm -f key.pem key.pk8
+          $BT/apksigner verify --print-certs build/android/Rembobine.apk | head -3
+      - run: gh release upload "$ETAPE" build/android/Rembobine.apk --clobber
+
+  os:
+    name: Rembobine OS (image Raspberry Pi)
+    needs: bureau
+    # (Ubuntu 24.04 fixé : sur 26.04, « qemu-user-static » n'existe plus)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 150
+    permissions: { contents: write }
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v4
+      - run: mkdir -p build/bureau && gh release download "$ETAPE" -p Rembobine-RaspberryPi.tar.gz -D build/bureau
+      - name: Outils (émulation ARM, partitions)
+        run: |
+          sudo apt-get update -q
+          sudo apt-get install -y -q --no-install-recommends qemu-user-static binfmt-support parted xz-utils e2fsprogs \
+            || sudo apt-get install -y -q --no-install-recommends qemu-user qemu-user-binfmt parted xz-utils e2fsprogs
+      - name: Fabriquer l'image
+        run: |
+          mkdir -p build/os && tar xzf build/bureau/Rembobine-RaspberryPi.tar.gz -C build/os
+          bash ci/build_os.sh build/os/Rembobine-Linux-arm64 build/Rembobine-OS-RaspberryPi.img
+      - name: Compresser
+        run: xz -T0 -6 -v build/Rembobine-OS-RaspberryPi.img && ls -la build/*.xz
+      - run: gh release upload "$ETAPE" build/Rembobine-OS-RaspberryPi.img.xz --clobber
+
+  publier:
+    name: Publier la version
+    # chaque envoi sur main met à jour la version indiquée dans le fichier VERSION (ex. 1.0.0 → Release v1.0.0)
+    if: github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v')
+    needs: [preparer, bureau, android, os, essai]
+    runs-on: ubuntu-24.04
+    permissions: { contents: write }
+    # deux fabrications (par exemple main et une étiquette v*) ne publient jamais en même temps : sinon build.json
+    # et les fichiers de la version pourraient venir de deux fabrications différentes
+    concurrency:
+      group: publier-version
+      cancel-in-progress: false
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v4
+      - run: mkdir -p sortie && gh release download "$ETAPE" -D sortie -p "Rembobine*"
+      # build.json : numéro de fabrication, date, nom/taille/empreinte de chaque fichier (lu par les mises à jour automatiques)
+      - run: python3 ci/build_json.py sortie sortie/build.json && cat sortie/build.json
+        env:
+          RBB_DEPOT: ${{ needs.preparer.outputs.depot }}
+      - name: Numéro de version
+        id: v
+        run: echo "tag=v$(cat VERSION)" >> "$GITHUB_OUTPUT"
+      # build.json est retiré d'abord (la version existe déjà) et remis en dernier, une fois les gros fichiers remplacés :
+      # sinon une appli pourrait lire le NOUVEAU build.json pendant que l'APK ou l'archive est encore l'ancien fichier
+      - name: Retirer l'ancien build.json
+        env:
+          TAG: ${{ steps.v.outputs.tag }}
+        run: gh release delete-asset "$TAG" build.json --yes 2>/dev/null || true
+      # l'étiquette suit toujours le commit publié (une étiquette existante n'est jamais déplacée par l'action ci-dessous)
+      - name: Étiquette de version sur ce commit
+        env:
+          TAG: ${{ steps.v.outputs.tag }}
+        run: git push --force origin "$GITHUB_SHA:refs/tags/$TAG"
+      - uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.v.outputs.tag }}
+          target_commitish: ${{ github.sha }}
+          name: Rembobine ${{ steps.v.outputs.tag }}
+          make_latest: true
+          body_path: NOTES.md
+          files: |
+            sortie/Rembobine.apk
+            sortie/Rembobine-Linux-PC.tar.gz
+            sortie/Rembobine-RaspberryPi.tar.gz
+            sortie/Rembobine-Windows.zip
+            sortie/Rembobine-OS-RaspberryPi.img.xz
+      - name: Envoyer build.json en dernier
+        env:
+          TAG: ${{ steps.v.outputs.tag }}
+        run: gh release upload "$TAG" sortie/build.json --clobber
+      # Facultatif : les mêmes fichiers dans la version v1.0.0 d'un dépôt PUBLIC de versions (variable RBB_DEPOT_VERSIONS,
+      # secret RBB_VERSIONS_TOKEN : un jeton qui n'a le droit d'écrire QUE dans ce dépôt-là ; jamais dans l'appli).
+      # build.json est retiré d'abord et remis en dernier : une appli ne voit jamais un build.json qui annonce des
+      # fichiers pas encore envoyés.
+      - name: Recopier la version dans le dépôt public des versions (facultatif)
+        if: needs.preparer.outputs.depot != github.repository
+        env:
+          GH_TOKEN: ${{ secrets.RBB_VERSIONS_TOKEN }}
+          DEPOT: ${{ needs.preparer.outputs.depot }}
+          TAG: ${{ steps.v.outputs.tag }}
+        run: |
+          if ! gh release view "$TAG" -R "$DEPOT" >/dev/null 2>&1; then
+            gh release create "$TAG" -R "$DEPOT" --title "Rembobine $TAG" --notes-file NOTES.md --latest
+          else
+            gh release edit "$TAG" -R "$DEPOT" --title "Rembobine $TAG" --notes-file NOTES.md --latest
+          fi
+          gh release delete-asset "$TAG" build.json -R "$DEPOT" --yes 2>/dev/null || true
+          gh release upload "$TAG" -R "$DEPOT" --clobber sortie/Rembobine.apk sortie/Rembobine-Linux-PC.tar.gz sortie/Rembobine-RaspberryPi.tar.gz sortie/Rembobine-Windows.zip sortie/Rembobine-OS-RaspberryPi.img.xz
+          gh release upload "$TAG" -R "$DEPOT" --clobber sortie/build.json
+          echo "Version recopiée dans https://github.com/$DEPOT/releases/tag/$TAG"
+
+  nettoyer:
+    name: Supprimer les versions provisoires
+    if: always() && github.repository == 'grecdel/Rembobine'
+    needs: [publier]
+    runs-on: ubuntu-24.04
+    permissions: { contents: write }
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v4
+      - run: gh release delete "$ETAPE" --yes --cleanup-tag || true
+      - name: Anciennes préversions
+        if: github.ref == 'refs/heads/main'
+        run: |
+          for t in $(gh api "repos/$GITHUB_REPOSITORY/releases?per_page=100" -q '.[] | select(.prerelease) | .tag_name'); do
+            [ "$t" = "$ETAPE" ] || gh release delete "$t" --yes --cleanup-tag || true
+          done
+      - name: Espace provisoire du module
+        env:
+          RBB_MODULE_DEPOT: ${{ secrets.RBB_MODULE_DEPOT }}
+          RBB_MODULE_JETON: ${{ secrets.RBB_MODULE_JETON }}
+        run: |
+          bash ci/module.sh masquer
+          bash ci/module.sh nettoyer || true

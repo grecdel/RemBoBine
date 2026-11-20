@@ -1,0 +1,81 @@
+#!/bin/bash
+# Fabrique les paquets de bureau : Linux (PC), Raspberry Pi (arm64) et Windows.
+# Utilise : ELECTRON_VERSION, BUILD_NUMBER (numéro de fabrication, GitHub : run_number), et les exports du module dans build/godot/.
+# RBB_SANS_MODULE=1 : fabrique sans le module (dépôt public seul) ; sinon il est exigé, comme avant.
+set -e
+cd "$(dirname "$0")/.."
+ROOT=$(pwd); OUT=$ROOT/build/dist; G=$ROOT/build/godot; DL=$ROOT/build/dl
+EV=${ELECTRON_VERSION:-33.2.1}
+# numéro de fabrication gravé dans l'appli (lu par le serveur : /api/info, « À propos », mises à jour automatiques)
+V=$(cat VERSION); BN=${BUILD_NUMBER:-0}; BDATE=${BUILD_DATE:-$(date -u +%Y-%m-%dT%H:%M:%SZ)}
+# dépôt où l'appli cherche ses mises à jour (champ « depot » de build.json) : RBB_DEPOT (fabrication : le dépôt PUBLIC
+# des versions s'il est réglé, sinon le dépôt de la fabrication) ; un nom mal formé retombe sur grecdel/Rembobine
+DEPOT=${RBB_DEPOT:-${GITHUB_REPOSITORY:-grecdel/Rembobine}}
+echo "$DEPOT" | grep -Eq '^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$' || DEPOT=grecdel/Rembobine
+mkdir -p "$OUT" "$DL"
+for p in linux-x64 linux-arm64 win32-x64; do
+  [ -f "$DL/electron-$p.zip" ] || curl -sSL -o "$DL/electron-$p.zip" "https://github.com/electron/electron/releases/download/v$EV/electron-v$EV-$p.zip"
+done
+# copie d'un fichier du module : obligatoire, sauf avec RBB_SANS_MODULE=1
+cpm() { if [ "${RBB_SANS_MODULE:-0}" = 1 ] && [ ! -e "$1" ]; then return 0; fi; cp "$1" "$2"; }
+mkapp() {
+  mkdir -p "$1/app" "$1/gamebox3d"
+  cp app/main.js app/monde3d.js app/monde3d_web.js app/preload.js app/preload3d.js app/package.json app/icon.png "$1/app/"
+  # l'interface de lecture des films (script pour mpv)
+  mkdir -p "$1/app/lecteur"; cp app/lecteur/*.lua "$1/app/lecteur/"
+  # le serveur de la maison : tous ses fichiers, sauf les tests
+  mkdir -p "$1/app/serveur"; for f in app/serveur/*.js; do case "$f" in */test_*) ;; *) cp "$f" "$1/app/serveur/" ;; esac; done
+  printf '{"version":"%s","build":%s,"label":"%s+%s","date":"%s","commit":"%s","depot":"%s"}\n' "$V" "$BN" "$V" "$BN" "$BDATE" "${GITHUB_SHA:-local}" "$DEPOT" > "$1/app/build.json"
+  mkdir -p "$1/app/web"; cp web/index.html "$1/app/web/index.html"
+  # l'aide intégrée suit le LISEZ-MOI (lisible sans internet)
+  python3 outils/aide/embarquer_aide.py "$1/app/web/index.html"
+  # le module facultatif (s'il est posé) complète la page
+  python3 outils/ext.py "$1/app/web/index.html"
+  # l'émulateur intégré, sans internet (préparé par ci/emulateurs.sh build)
+  if [ -d build/ejs ]; then cp -r build/ejs "$1/app/web/ejs"; fi
+  # le lecteur de manuels PDF (pdf.js), sans internet (préparé par ci/pdfjs.sh build)
+  if [ -d build/pdfjs ]; then cp -r build/pdfjs "$1/app/web/pdfjs"; fi
+  # images du module (facultatives)
+  if [ -d "$G/apercus3d" ]; then cp -r "$G/apercus3d" "$1/app/web/apercus3d"; fi
+  sed -i "s/\"version\": \"[^\"]*\"/\"version\": \"$(cat VERSION)\"/" "$1/app/package.json"
+  rm -f "$1/default_app.asar"
+}
+# allègement d'Electron (sans perte de fonction) : les traductions des menus internes de Chromium ne servent qu'en
+# français et en anglais (les autres langues retombent sur l'anglais) → 3 fichiers gardés sur 55 (-38 Mo) ;
+# et le dossier d'outils de fabrication « clang_x64_v8_arm64 » (programme pour PC, inutile sur le Raspberry, -11 Mo)
+slim() {
+  if [ -d "$1/locales" ]; then find "$1/locales" -name '*.pak' ! -name 'fr.pak' ! -name 'en-US.pak' ! -name 'en-GB.pak' -delete; fi
+  rm -rf "$1/clang_x64_v8_arm64"
+}
+for arch in x64 arm64; do
+  d="$OUT/Rembobine-Linux-$arch"; rm -rf "$d"; mkdir -p "$d"; unzip -q "$DL/electron-linux-$arch.zip" -d "$d"
+  mv "$d/electron" "$d/rembobine-bin"
+  slim "$d"
+  mkapp "$d/resources"
+  # PC : le module DANS la fenêtre du logiciel (sa version Web, app/monde3d_web.js) ; le Raspberry garde le programme séparé
+  if [ $arch = x64 ] && [ -d "$G/web" ]; then mkdir -p "$d/resources/gamebox3d-web"; cp "$G"/web/rembobine3d.* "$d/resources/gamebox3d-web/"; fi
+  if [ $arch = x64 ]; then cpm "$G/Rembobine-3D.x86_64" "$d/resources/gamebox3d/"; else cpm "$G/Rembobine-3D.arm64" "$d/resources/gamebox3d/"; fi
+  # les vrais émulateurs des consoles récentes (PC seulement : le Raspberry n'est pas assez puissant)
+  if [ $arch = x64 ] && [ -d build/natifs/linux-x64 ]; then mkdir -p "$d/resources/emulateurs"; cp -a build/natifs/linux-x64/. "$d/resources/emulateurs/"; fi
+  # Raspberry : seulement les outils (ffmpeg, mpv), les consoles lourdes n'y tournent pas
+  if [ $arch = arm64 ] && [ -d build/natifs/linux-arm64 ]; then mkdir -p "$d/resources/emulateurs"; cp -a build/natifs/linux-arm64/. "$d/resources/emulateurs/"; fi
+  if [ "${RBB_SANS_MODULE:-0}" = 1 ]; then chmod +x "$d/resources/gamebox3d/"* 2>/dev/null || true; else chmod +x "$d/resources/gamebox3d/"*; fi
+  cp app/icon.png "$d/rembobine.png"; cp app/linux/* "$d/"; cp LISEZ-MOI.md LICENSE "$d/"
+  chmod +x "$d/rembobine" "$d/installer.sh" "$d/desinstaller.sh"
+  bash ci/licences.sh "$d" "linux-$arch"
+  # signature des mises à jour (secret RBB_UPDATE_KEY) : en tout dernier, quand plus aucun fichier ne change
+  node ci/signer_maj.js "$d"
+done
+(cd "$OUT" && tar czf Rembobine-Linux-PC.tar.gz -C . Rembobine-Linux-x64 && tar czf Rembobine-RaspberryPi.tar.gz Rembobine-Linux-arm64)
+d="$OUT/Rembobine-Windows"; rm -rf "$d"; mkdir -p "$d"; unzip -q "$DL/electron-win32-x64.zip" -d "$d"
+mv "$d/electron.exe" "$d/Rembobine.exe"
+slim "$d"
+mkapp "$d/resources"
+if [ -d "$G/web" ]; then mkdir -p "$d/resources/gamebox3d-web"; cp "$G"/web/rembobine3d.* "$d/resources/gamebox3d-web/"; fi
+cpm "$G/Rembobine-3D.exe" "$d/resources/gamebox3d/"; cp LISEZ-MOI.md LICENSE "$d/"
+if [ -d build/natifs/win-x64 ]; then mkdir -p "$d/resources/emulateurs"; cp -a build/natifs/win-x64/. "$d/resources/emulateurs/"; fi
+bash ci/licences.sh "$d" win-x64
+# signature des mises à jour, comme pour Linux (vérifiée par l'appli avant d'échanger les dossiers)
+node ci/signer_maj.js "$d"
+(cd "$OUT" && zip -qr Rembobine-Windows.zip Rembobine-Windows)
+ls -la "$OUT"

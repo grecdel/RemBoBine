@@ -1,0 +1,81 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Ajouts de Rembobine au manifeste Godot (fusionnés à la compilation) :
+     - le logiciel Rembobine (RembobineActivity) devient l'écran de démarrage ;
+     - le module (GodotApp) tourne dans son propre processus et n'apparaît plus dans les applications. -->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
+
+    <uses-permission android:name="android.permission.INTERNET" />
+    <!-- cartouches NFC (télécommande) : facultatif, l'appli s'installe aussi sans NFC -->
+    <uses-permission android:name="android.permission.NFC" />
+    <uses-feature android:name="android.hardware.nfc" android:required="false" />
+    <!-- commandes de la TV sur l'écran verrouillé (notification média), Android 13 et plus -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <!-- mise à jour de l'appli depuis l'appli (MiseAJour.java) : l'installateur d'Android s'ouvre, l'utilisateur confirme -->
+    <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
+
+    <!-- le serveur de la maison parle en http (réseau local, ou Tailscale) : à autoriser explicitement depuis Android 9 -->
+    <application android:usesCleartextTraffic="true">
+        <activity
+            android:name="com.godot.game.GodotApp"
+            android:process=":monde3d"
+            android:exported="false"
+            tools:replace="android:exported">
+            <intent-filter tools:node="removeAll" />
+        </activity>
+
+        <activity
+            android:name="fr.rembobine.app.RembobineActivity"
+            android:label="Rembobine"
+            android:exported="true"
+            android:launchMode="singleTask"
+            android:theme="@style/RbbTheme"
+            android:screenOrientation="fullUser"
+            android:configChanges="orientation|keyboardHidden|screenSize|smallestScreenSize|screenLayout|uiMode|density|keyboard|navigation"
+            android:hardwareAccelerated="true">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+                <category android:name="android.intent.category.LEANBACK_LAUNCHER" />
+            </intent-filter>
+            <!-- le module rend la main sans se fermer (lien rembobine-retour://monde3d) ;
+                 sans catégorie BROWSABLE : aucun site web ne peut l'utiliser -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:scheme="rembobine-retour" />
+            </intent-filter>
+        </activity>
+
+        <!-- widget de l'écran d'accueil (titre en cours, pause/lecture, volume) et boutons de la notification média -->
+        <receiver
+            android:name="fr.rembobine.app.RembobineWidget"
+            android:label="Rembobine (TV)"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data android:name="android.appwidget.provider" android:resource="@xml/rbb_widget_info" />
+        </receiver>
+        <receiver
+            android:name="fr.rembobine.app.RemoteReceiver"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="fr.rembobine.app.TELECOMMANDE" />
+            </intent-filter>
+        </receiver>
+
+        <!-- mise à jour de l'appli : la nouvelle version téléchargée et vérifiée (cache/maj/Rembobine.apk) est confiée à
+             l'installateur d'Android par ce FileProvider (seulement ce dossier ; non exporté, accès accordé au cas par cas).
+             Sa classe est la nôtre (MajFichiers.java, un FileProvider d'AndroidX sans rien de plus) : la bibliothèque de
+             Godot déclare déjà « androidx.core.content.FileProvider », et deux providers de même nom de classe font
+             échouer la fusion des manifestes (plus d'APK). -->
+        <provider
+            android:name="fr.rembobine.app.MajFichiers"
+            android:authorities="fr.rembobine.app.maj"
+            android:exported="false"
+            android:grantUriPermissions="true">
+            <meta-data android:name="android.support.FILE_PROVIDER_PATHS" android:resource="@xml/rbb_maj_chemins" />
+        </provider>
+    </application>
+</manifest>

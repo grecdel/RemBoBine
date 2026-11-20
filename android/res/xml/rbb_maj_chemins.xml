@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Ce que le FileProvider des mises à jour (android/release/AndroidManifest.xml) peut confier à l'installateur
+     d'Android : le seul dossier cache/maj, où MiseAJour.java range Rembobine.apk après l'avoir vérifié. -->
+<paths>
+    <cache-path name="maj" path="maj/" />
+</paths>

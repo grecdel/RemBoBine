@@ -1,0 +1,12 @@
+build/
+# fichiers Python compilés
+__pycache__/
+# le module facultatif (posé par la fabrication, ou installé par outils/module.sh) et son mémo
+/.module/
+/.module.git/
+CLAUDE.local.md
+*.key
+*.pem
+*.pk8
+*.keystore
+*.jks
