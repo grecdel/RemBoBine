@@ -16,6 +16,9 @@ cp "$ROOT/LICENSE" "$L/Rembobine-LICENSE.txt"
 # 1 bis. polices embarquées dans la page (SIL Open Font License 1.1)
 [ -f "$ROOT/ci/licences/Polices-OFL.txt" ] && cp "$ROOT/ci/licences/Polices-OFL.txt" "$L/Polices-OFL.txt"
 
+# 1 ter. sons d'ambiance enregistrés libres (feu, eau, vent : CC0, liste et adresses de chaque fichier), s'ils sont livrés
+[ -f "$ROOT/godot/son/CREDITS-sons.md" ] && cp "$ROOT/godot/son/CREDITS-sons.md" "$L/Sons-libres-CREDITS.txt"
+
 # 2. Electron et Chromium (fournis dans l'archive officielle d'Electron)
 [ -f "$APP/LICENSE" ] && cp "$APP/LICENSE" "$L/Electron-LICENSE.txt"
 [ -f "$APP/LICENSES.chromium.html" ] && cp "$APP/LICENSES.chromium.html" "$L/Chromium-LICENSES.html"
