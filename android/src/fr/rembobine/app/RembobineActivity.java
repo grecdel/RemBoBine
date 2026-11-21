@@ -156,7 +156,9 @@ public class RembobineActivity extends Activity {
 					// les Rembobine de la maison (réponse UDP), puis window.rbbFound([{ name, url }])
 					" discover: function () { GbxAndroid.discover(K); }," +
 					// commande vocale : le service de reconnaissance d'Android, puis window.rbbVoice(texte)
-					" voice: function () { return GbxAndroid.voice(K); } }; })(" + JSONObject.quote(cle) + ");", null);
+					" voice: function () { return GbxAndroid.voice(K); }," +
+					// « Lecteur par défaut » (Paramètres) : les réglages d'Android des applis par défaut
+					" defaultApps: function () { GbxAndroid.defaultApps(K); } }; })(" + JSONObject.quote(cle) + ");", null);
 				if (openRemote) { openRemote = false; v.evaluateJavascript("setTimeout(function () { window.rbbRemoteOpen && window.rbbRemoteOpen(); }, 900);", null); }
 			}
 		});
@@ -494,6 +496,21 @@ public class RembobineActivity extends Activity {
 			} catch (Exception e) {
 				return "absent";
 			}
+		}
+
+		// « Lecteur par défaut » : Android choisit lui-même (« Toujours » quand on ouvre un fichier) ; on ouvre seulement
+		// ses réglages d'applis par défaut (sinon la fiche de Rembobine, rubrique « Ouvrir par défaut »)
+		@JavascriptInterface
+		public void defaultApps(String k) {
+			if (!ok(k)) return;
+			runOnUiThread(new Runnable() {
+				public void run() {
+					try { startActivity(new Intent(android.provider.Settings.ACTION_MANAGE_DEFAULT_APPS_SETTINGS)); }
+					catch (Exception e) {
+						try { startActivity(new Intent(android.provider.Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:" + getPackageName()))); } catch (Exception ignored) {}
+					}
+				}
+			});
 		}
 
 		@JavascriptInterface

@@ -28,6 +28,7 @@ local o = {
     prefs = "",          -- fichier où retenir la langue, les sous-titres et leur taille
     police = "DM Sans",  -- (si elle manque, la police sans empattement du système)
     essai = "",          -- essais automatiques : « fixe » = barre toujours affichée
+    seul = "",           -- « 1 » : Rembobine ouvert en lecteur seul (« Ouvrir avec ») → bouton discret « Ouvrir Rembobine »
 }
 options.read_options(o, "rembobine")
 
@@ -230,6 +231,8 @@ local function pause() return mp.get_property_bool("pause") == true end
 --  Les actions
 -- =====================================================================
 local function quitter() mp.commandv("quit") end   -- (lancé avec --save-position-on-quit : la reprise est retenue)
+-- lecteur seul : quitter en demandant la médiathèque complète (code de sortie 42, lu par l'application)
+local function ouvrir_rembobine() mp.commandv("quit", "42") end
 local function bascule_pause() mp.set_property_bool("pause", not pause()); montrer() end
 local function saut(s) mp.commandv("seek", s, "relative+exact"); montrer(2.5) end
 local function chapitre(d)
@@ -480,6 +483,14 @@ dessiner = function()
             bx = bx + d[4] + 14
         end
         texte(out, x, by + 58, 7, 19, "C3C6CE", false, "En quittant, Rembobine retient où tu en es : tu pourras reprendre plus tard.")
+        if o.seul == "1" then   -- discret, sous les gros boutons
+            local lib = "Ouvrir Rembobine"
+            local lw = large(lib, 18, false) + 36
+            local on = actif("p-complet", "pause", 4)
+            forme(out, x, by + 92, rrect(lw, 36, 18), on and "2B2E38" or C.fond, on and 20 or 120, 1, on and C.blanc or "4A4D57", on and 0 or 60)
+            texte(out, x + lw / 2, by + 110, 5, 18, on and C.blanc or "C3C6CE", false, lib)
+            zone(x, by + 92, x + lw, by + 128, "p-complet", ouvrir_rembobine)
+        end
     end
 
     -- la barre d'avancement
@@ -645,12 +656,12 @@ end)
 -- =====================================================================
 local function rangs()   -- les rangées de boutons qu'on peut parcourir au clavier, de haut en bas
     local r = { { "haut", 1 } }
-    if pause() and not S.menu then r[#r + 1] = { "pause", 3 } end
+    if pause() and not S.menu then r[#r + 1] = { "pause", o.seul == "1" and 4 or 3 } end
     r[#r + 1] = { "barre", S.n_barre or 5 }
     return r
 end
 local function activer_focus()
-    local noms = { haut = { "retour" }, pause = { "p-reprendre", "p-debut", "p-quitter" } }
+    local noms = { haut = { "retour" }, pause = { "p-reprendre", "p-debut", "p-quitter", "p-complet" } }
     local f = S.focus
     if not f then return end
     if f.rang ~= "barre" then

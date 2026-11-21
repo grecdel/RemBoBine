@@ -392,7 +392,9 @@ function createMaj(o) {
     try {
       fs.mkdirSync(apps, { recursive: true });
       fs.writeFileSync(path.join(apps, "rembobine.desktop"), ["[Desktop Entry]", "Type=Application", "Name=Rembobine", "Comment=Ta médiathèque : films, séries, jeux et musique",
-        `Exec=${path.join(base, "rembobine")} %U`, `Icon=${path.join(base, "rembobine.png")}`, "Terminal=false", "Categories=AudioVideo;Video;Game;", ""].join("\n"));
+        `Exec=${path.join(base, "rembobine")} %U`, `Icon=${path.join(base, "rembobine.png")}`, "Terminal=false", "Categories=AudioVideo;Video;Game;",
+        // « Ouvrir avec Rembobine » (sans devenir le lecteur par défaut), comme installer.sh
+        ...(() => { try { return [require("../seul").ligneMime()]; } catch (_) { return []; } })(), ""].join("\n"));
     } catch (_) {}
   }
   async function installInstallation(archive, why) {

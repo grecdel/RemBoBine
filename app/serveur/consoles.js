@@ -178,6 +178,8 @@ function emuEnv(cmd) {
   return env;
 }
 
+// le programme lancé, pour savoir quand il se ferme (lecteur seul) ; caché : la réponse du serveur reste du simple JSON
+function avecProc(r, p) { Object.defineProperty(r, "proc", { value: p, enumerable: false }); return r; }
 function launch(sys, file, roots, log) {
   const c = CONSOLES[sys]; if (!c) return { ok: false, err: "Console inconnue." };
   const arm = process.arch === "arm64" || process.arch === "arm";
@@ -189,14 +191,14 @@ function launch(sys, file, roots, log) {
     const e = findEmu(id, roots.slice(0, 1).map((r) => path.join(r, "Emulateurs")));
     if (!e) continue;
     const target = sys === "ps3" ? ps3Target(file) : file;
-    try { const p = spawn(e.cmd, [...e.pre, ...EMU[id].args(target)], { stdio: "ignore", detached: false, env: emuEnv(e.cmd) }); p.on("error", (er) => log && log("error", `${EMU[id].nom} : ${er.message}`)); }
+    let p; try { p = spawn(e.cmd, [...e.pre, ...EMU[id].args(target)], { stdio: "ignore", detached: false, env: emuEnv(e.cmd) }); p.on("error", (er) => log && log("error", `${EMU[id].nom} : ${er.message}`)); }
     catch (er) { return { ok: false, err: String(er) }; }
     log && log("info", `jeu lancé avec ${EMU[id].nom} : ${path.basename(file)}`);
-    return { ok: true, emu: EMU[id].nom };
+    return avecProc({ ok: true, emu: EMU[id].nom }, p);
   }
   // sinon, un cœur RetroArch quand il existe (PSP, GameCube, Wii)
   const ra = which("retroarch"), core = ra && retroCore(c.retro);
-  if (core) { try { spawn(ra, ["-f", "-L", core, file], { stdio: "ignore" }); } catch (er) { return { ok: false, err: String(er) }; } return { ok: true, emu: "RetroArch" }; }
+  if (core) { let p; try { p = spawn(ra, ["-f", "-L", core, file], { stdio: "ignore" }); } catch (er) { return { ok: false, err: String(er) }; } return avecProc({ ok: true, emu: "RetroArch" }, p); }
   if (lourd && arm) return { ok: false, err: `${lourd[0].toUpperCase() + lourd.slice(1)} demande un PC puissant : le Raspberry Pi n'est pas assez rapide. Lance ce jeu depuis Rembobine sur un PC.` };
   if (sys === "x360" && arm) return { ok: false, err: "La Xbox 360 demande un PC puissant (émulateur Xenia)." };
   if (sys === "x360" && !WIN && !glibcOk(2, 38)) return { ok: false, err: "La Xbox 360 (Xenia) demande un Linux plus récent : Ubuntu 24.04, Linux Mint 22, Debian 13, Fedora, openSUSE Tumbleweed ou Arch. Sur ce système trop ancien, joue-y depuis Rembobine sur Windows." };

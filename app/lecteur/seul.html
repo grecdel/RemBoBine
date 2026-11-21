@@ -1,0 +1,288 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self' rbbseul: https://rembobine.app https://cdn.emulatorjs.org blob: data:; script-src 'self' 'unsafe-inline' 'unsafe-eval' rbbseul: https://rembobine.app https://cdn.emulatorjs.org blob:; style-src 'self' 'unsafe-inline' rbbseul: https://rembobine.app https://cdn.emulatorjs.org; media-src rbbseul: https://rembobine.app blob: data:; img-src rbbseul: https://rembobine.app https://cdn.emulatorjs.org blob: data:; worker-src blob: rbbseul: https://rembobine.app https://cdn.emulatorjs.org; frame-src 'self' about: blob:">
+<title>Rembobine</title>
+<!-- Rembobine en « lecteur seul » : un fichier ouvert depuis « Ouvrir avec » (vidéo, musique, jeu), sans la médiathèque.
+     Rien d'autre de la marque que le « R » en néon rouge (même dessin et même grésillement que celui du menu de l'appli). -->
+<style>
+  :root { --bg: #08090c; --surface: #15171d; --line: #2a2d36; --fg: #f3f1ed; --muted: #a2a5b0; --accent: #ff4a3d; --ink: #10100f;
+    --font: "DM Sans", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; color-scheme: dark; }
+  * { box-sizing: border-box; }
+  [hidden] { display: none !important; }
+  html, body { margin: 0; height: 100%; background: var(--bg); color: var(--fg); font-family: var(--font); overflow: hidden; -webkit-font-smoothing: antialiased; }
+  button { font: inherit; color: inherit; cursor: pointer; }
+  button:focus-visible, input:focus-visible { outline: 3px solid #fff; outline-offset: 2px; }
+
+  /* le « R » en néon rouge (même tube, même halo que la barre de l'appli) */
+  .neonR { display: block; width: 1.6em; height: 1.6em; overflow: visible; filter: drop-shadow(0 0 1.5px #ff3a2e) drop-shadow(0 0 6px rgba(255,26,20,.7)) drop-shadow(0 0 14px rgba(220,0,0,.4)); }
+  .neonR .nr-halo { stroke: rgba(255,50,40,.28); stroke-width: 6.5; }
+  .neonR .nr-tube { stroke: #ff3b2f; stroke-width: 3.3; }
+  .neonR .nr-core { stroke: #ffe8e2; stroke-width: 1.25; }
+  @keyframes nrOn { 0% { opacity: .1 } 7% { opacity: 1 } 12% { opacity: .2 } 19% { opacity: 1 } 26% { opacity: .45 } 31%, 100% { opacity: 1 } }
+  /* petit grésillement de temps en temps, comme un vrai tube */
+  @keyframes nrGr { 0%, 100% { opacity: 1 } 10% { opacity: .35 } 16% { opacity: 1 } 40% { opacity: .7 } 46% { opacity: 1 } }
+  #r { position: fixed; top: 18px; left: 20px; z-index: 50; font-size: 24px; pointer-events: none; transition: opacity .6s; }
+  #r .neonR { animation: nrOn 1.1s linear 1 both; }
+  #r.gr .neonR { animation: nrGr .9s steps(1) 1; }
+  #r.charge .neonR { animation: nrOn 1.1s linear 1 both, nrGr 1.6s steps(1) 1.4s infinite; }
+  body.jeu #r { opacity: .55; font-size: 18px; top: 12px; left: 14px; }
+  body.calme #r { opacity: 0; }
+  @media (prefers-reduced-motion: reduce) { #r .neonR, #r.gr .neonR, #r.charge .neonR { animation: none; } }
+
+  /* boutons discrets du coin (« Ouvrir Rembobine », quitter) */
+  #coin { position: fixed; top: 12px; right: 14px; z-index: 60; display: flex; gap: 8px; transition: opacity .5s; }
+  body.calme #coin { opacity: 0; }
+  .discret { background: rgba(10,11,14,.55); border: 1px solid #ffffff26; border-radius: 16px; padding: 5px 12px; font-size: 13px; color: #d9dbe2; }
+  .discret:hover, .discret:focus-visible { background: rgba(30,32,40,.9); color: #fff; }
+
+  .centre { position: fixed; inset: 0; display: grid; place-items: center; text-align: center; padding: 24px; }
+  .msg { max-width: 560px; color: var(--muted); font-size: 16px; line-height: 1.5; }
+  .msg b { display: block; color: var(--fg); font-size: 22px; margin-bottom: 6px; }
+  .row { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; margin-top: 18px; }
+  .btn { background: var(--surface); border: 1px solid var(--line); border-radius: 22px; padding: 9px 18px; font-size: 15px; }
+  .btn.hot { background: var(--accent); color: var(--ink); border-color: var(--accent); font-weight: 700; }
+
+  /* vidéo (quand le lecteur mpv n'est pas là : le lecteur intégré) */
+  #video { position: fixed; inset: 0; width: 100%; height: 100%; background: #000; }
+
+  /* musique */
+  #musique { position: fixed; inset: 0; display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(260px, .9fr); gap: 0; }
+  #mGauche { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 64px 48px 40px; min-width: 0; }
+  #pochette { width: min(42vh, 340px); aspect-ratio: 1; border-radius: 10px; background: #111318 center/cover no-repeat; box-shadow: 0 24px 60px #000c, 0 0 0 1px #ffffff10; position: relative; overflow: hidden; }
+  #pochette.vide::before { content: ""; position: absolute; inset: 14%; border-radius: 50%; background: radial-gradient(circle, #1b1d24 0 9%, #ff4a3d 9.5% 15%, #15161b 15.5% 16.5%, #0c0d10 17% 100%); box-shadow: inset 0 0 0 1px #ffffff12; }
+  #pochette.vide::after { content: ""; position: absolute; inset: 14%; border-radius: 50%; background: repeating-radial-gradient(circle, transparent 0 3px, #ffffff07 3px 4px); }
+  #pochette.tourne::before, #pochette.tourne::after { animation: tourne 4s linear infinite; }
+  @keyframes tourne { to { transform: rotate(360deg); } }
+  #mTitre { font-size: clamp(22px, 3.2vw, 34px); font-weight: 700; margin: 26px 0 4px; text-align: center; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  #mSous { color: var(--muted); font-size: 16px; text-align: center; min-height: 1.4em; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  #mBarre { width: min(520px, 100%); margin-top: 26px; }
+  #mProg { -webkit-appearance: none; appearance: none; width: 100%; height: 6px; border-radius: 3px; background: linear-gradient(90deg, var(--accent) var(--p, 0%), #ffffff2e var(--p, 0%)); outline: none; margin: 0; }
+  #mProg::-webkit-slider-thumb { -webkit-appearance: none; width: 16px; height: 16px; border-radius: 50%; background: #fff; box-shadow: 0 0 0 4px #ff4a3d66; }
+  #mTemps { display: flex; justify-content: space-between; color: var(--muted); font-size: 13px; margin-top: 8px; font-variant-numeric: tabular-nums; }
+  #mCmd { display: flex; align-items: center; gap: 16px; margin-top: 16px; }
+  .rond { width: 48px; height: 48px; border-radius: 50%; background: var(--surface); border: 1px solid var(--line); display: grid; place-items: center; padding: 0; }
+  .rond.gros { width: 66px; height: 66px; background: var(--accent); border-color: var(--accent); color: var(--ink); }
+  .rond svg { width: 22px; height: 22px; fill: currentColor; }
+  .rond.gros svg { width: 28px; height: 28px; }
+  #mDroite { border-left: 1px solid #ffffff12; background: #0c0d11; display: flex; flex-direction: column; min-height: 0; padding-top: 58px; }
+  #mDroite h2 { font-size: 13px; letter-spacing: .14em; text-transform: uppercase; color: var(--muted); margin: 0 22px 10px; font-weight: 600; }
+  #mListe { list-style: none; margin: 0; padding: 0 10px 20px; overflow: auto; flex: 1; }
+  #mListe li button { display: flex; gap: 12px; align-items: baseline; width: 100%; text-align: left; background: none; border: 0; border-radius: 8px; padding: 9px 12px; color: #d4d6dd; font-size: 15px; }
+  #mListe li button:hover { background: #ffffff0a; }
+  #mListe li span.n { color: #6f727c; font-variant-numeric: tabular-nums; min-width: 1.6em; font-size: 13px; }
+  #mListe li.on button { background: #ff4a3d1f; color: #fff; font-weight: 600; }
+  #mListe li.on span.n { color: var(--accent); }
+  @media (max-width: 760px) { #musique { grid-template-columns: 1fr; grid-template-rows: auto 1fr; overflow: auto; } #mDroite { padding-top: 10px; border-left: 0; } #mGauche { padding: 64px 16px 16px; } }
+
+  /* jeu */
+  #jeu { position: fixed; inset: 0; background: #000; }
+  #jeu iframe { border: 0; width: 100%; height: 100%; display: block; }
+
+  /* la question de la fin, discrète, en bas */
+  #fin { position: fixed; left: 50%; bottom: 28px; transform: translateX(-50%); z-index: 80; width: min(520px, calc(100vw - 32px));
+    background: rgba(21,23,29,.97); border: 1px solid var(--line); border-radius: 16px; padding: 18px 20px 16px; box-shadow: 0 18px 50px #000b; }
+  #fin p { margin: 0 0 4px; font-size: 17px; font-weight: 600; }
+  #fin small { color: var(--muted); font-size: 13px; display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  #fin .row { justify-content: flex-start; margin-top: 14px; }
+  #fin label { display: flex; gap: 8px; align-items: center; color: var(--muted); font-size: 13px; margin-top: 12px; }
+  #fin .bas { display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; }
+  #fin .bas a { color: #c9cbd3; font-size: 13px; text-decoration: underline; cursor: pointer; margin-top: 12px; }
+  #fin .compte { position: absolute; left: 20px; right: 20px; bottom: 6px; height: 2px; border-radius: 1px; background: #ffffff14; overflow: hidden; }
+  #fin .compte i { display: block; height: 100%; width: 100%; background: #ffffff3a; transform-origin: left; animation: compte var(--d, 20s) linear 1 forwards; }
+  @keyframes compte { to { transform: scaleX(0); } }
+</style>
+</head>
+<body>
+<div id="r" class="charge" aria-hidden="true"><svg class="neonR" viewBox="0 0 32 32" aria-hidden="true" focusable="false"><g fill="none" stroke-linecap="round" stroke-linejoin="round"><path class="nr-halo" d="M10.5 25.5V6.5h6.6a5.4 5.4 0 0 1 0 10.8h-6.6M16.4 17.3l6.6 8.2"/><path class="nr-tube" d="M10.5 25.5V6.5h6.6a5.4 5.4 0 0 1 0 10.8h-6.6M16.4 17.3l6.6 8.2"/><path class="nr-core" d="M10.5 25.5V6.5h6.6a5.4 5.4 0 0 1 0 10.8h-6.6M16.4 17.3l6.6 8.2"/></g></svg></div>
+<div id="coin" hidden><button class="discret" type="button" id="bComplet">Ouvrir Rembobine</button><button class="discret" type="button" id="bQuitter" aria-label="Fermer">✕</button></div>
+
+<div id="message" class="centre" hidden><div class="msg"><b id="msgT"></b><span id="msgD"></span><div class="row" id="msgB"></div></div></div>
+
+<video id="video" hidden playsinline></video>
+
+<main id="musique" hidden>
+  <section id="mGauche">
+    <div id="pochette" class="vide" role="img" aria-label="Pochette"></div>
+    <div id="mTitre"></div>
+    <div id="mSous"></div>
+    <div id="mBarre"><input type="range" id="mProg" min="0" max="1000" value="0" aria-label="Avancement"><div id="mTemps"><span id="mPos">0:00</span><span id="mDur">0:00</span></div></div>
+    <div id="mCmd">
+      <button class="rond" type="button" id="mPrec" aria-label="Morceau précédent"><svg viewBox="0 0 24 24"><path d="M6 5h2v14H6zM20 5v14L9 12z"/></svg></button>
+      <button class="rond gros" type="button" id="mLire" aria-label="Pause"><svg viewBox="0 0 24 24" id="mIco"><path d="M7 5h4v14H7zM13 5h4v14h-4z"/></svg></button>
+      <button class="rond" type="button" id="mSuiv" aria-label="Morceau suivant"><svg viewBox="0 0 24 24"><path d="M16 5h2v14h-2zM4 5v14l11-7z"/></svg></button>
+    </div>
+  </section>
+  <section id="mDroite"><h2 id="mAlbum">À la suite</h2><ol id="mListe"></ol></section>
+  <audio id="audio" preload="auto"></audio>
+</main>
+
+<div id="jeu" hidden></div>
+
+<div id="fin" hidden role="dialog" aria-labelledby="finQ">
+  <p id="finQ">Ajouter ce dossier à ta bibliothèque ?</p>
+  <small id="finD"></small>
+  <div class="row"><button class="btn hot" type="button" id="finOui">Ajouter</button><button class="btn" type="button" id="finNon">Pas maintenant</button></div>
+  <div class="bas"><label><input type="checkbox" id="finJamais"> Ne plus demander</label><a id="finComplet" tabindex="0" role="button">Ouvrir Rembobine</a></div>
+  <div class="compte" aria-hidden="true"><i></i></div>
+</div>
+
+<script>
+"use strict";
+(async () => {
+  const $ = (id) => document.getElementById(id);
+  // le pont : app/preload_seul.js sur PC (déjà là) ; LecteurActivity.java sur Android (posé à la fin du chargement)
+  const B = window.rbbSeul || await new Promise((r) => { document.addEventListener("rbbseul", () => r(window.rbbSeul), { once: true }); setTimeout(() => r(window.rbbSeul), 4000); });
+  const fmt = (s) => { s = Math.max(0, Math.floor(Number(s) || 0)); const h = Math.floor(s / 3600), m = Math.floor(s / 60) % 60, x = s % 60; return (h ? h + ":" + String(m).padStart(2, "0") : m) + ":" + String(x).padStart(2, "0"); };
+  const R = $("r");
+  // le néon grésille de temps en temps (jamais si les animations sont réduites)
+  const gr = () => { R.classList.remove("gr"); void R.offsetWidth; R.classList.add("gr"); };
+  (function vie() { setTimeout(() => { if (!document.hidden) gr(); vie(); }, 7000 + Math.random() * 16000); })();
+  const charge = (on) => R.classList.toggle("charge", !!on);
+  // le coin se fait oublier quand on ne bouge plus (jeu, vidéo)
+  let calmeT = 0; const reveil = () => { document.body.classList.remove("calme"); clearTimeout(calmeT); if (document.body.dataset.calme) calmeT = setTimeout(() => document.body.classList.add("calme"), 3000); };
+  addEventListener("mousemove", reveil); addEventListener("keydown", reveil);
+
+  function message(t, d, boutons) {
+    $("message").hidden = false; $("msgT").textContent = t || ""; $("msgD").textContent = d || "";
+    const b = $("msgB"); b.innerHTML = "";
+    for (const [txt, fn, hot] of boutons || []) { const x = document.createElement("button"); x.className = "btn" + (hot ? " hot" : ""); x.type = "button"; x.textContent = txt; x.onclick = fn; b.appendChild(x); }
+    const f = b.querySelector("button"); if (f) f.focus();
+  }
+  if (!B) { charge(false); message("Rien à ouvrir", "Cette page s'ouvre avec un fichier (« Ouvrir avec Rembobine »)."); return; }
+  const I = await B.info();
+  if (I.titre) document.title = I.titre;
+  let fini = false, arret = null;
+  const complet = () => { fini = true; try { arret && arret(); } catch (_) {} B.complet(); };
+  $("bComplet").onclick = complet;
+  $("bQuitter").onclick = () => terminer();
+  $("finComplet").onclick = complet;
+  $("finComplet").onkeydown = (e) => { if (e.key === "Enter" || e.key === " ") complet(); };
+
+  // ---------- la fin : petite question « Ajouter ce dossier ? » (jamais forcée), puis on ferme ----------
+  let finT = 0;
+  function terminer() {
+    if (fini) return; fini = true;
+    try { arret && arret(); } catch (_) {}
+    if (!I.demander) { B.fin({}); return; }
+    const d = 20; $("fin").style.setProperty("--d", d + "s"); $("fin").hidden = false; $("finD").textContent = I.dossier || "";
+    $("finOui").focus();
+    const rep = (ajouter) => { clearTimeout(finT); B.fin({ ajouter, jamais: $("finJamais").checked }); };
+    $("finOui").onclick = () => rep(true); $("finNon").onclick = () => rep(false);
+    finT = setTimeout(() => rep(false), d * 1000);
+    $("fin").addEventListener("keydown", (e) => { if (e.key === "Escape") rep(false); });
+  }
+  // la croix de la fenêtre : la question d'abord (une seule fois)
+  if (B.onFermer) B.onFermer(() => { if (!fini) terminer(); else B.fin({}); });
+  addEventListener("keydown", (e) => { if (e.key === "Escape" && !fini && I.genre !== "jeu" && $("fin").hidden) { e.preventDefault(); terminer(); } });
+
+  // ---------- vidéo ----------
+  if (I.genre === "video") {
+    if (I.mpv) {
+      // le lecteur Rembobine (mpv) prend tout l'écran ; ici, le R grésille dans son coin le temps qu'il s'ouvre
+      const r = await B.video();
+      charge(false);
+      if (r && r.complet) return complet();
+      if (r && r.ok) return terminer();
+      // mpv n'a pas pu s'ouvrir : le lecteur intégré, si ce format le permet
+    }
+    return videoIntegree();
+  }
+  function videoIntegree() {
+    const v = $("video"); v.hidden = false; v.controls = true; v.src = I.media;
+    for (const s of I.sous || []) { if (!/\.(srt|vtt)$/i.test(s.nom)) continue;
+      fetch(s.url).then((r) => r.text()).then((t) => { const vtt = /^WEBVTT/.test(t) ? t : "WEBVTT\n\n" + t.replace(/\r/g, "").replace(/(\d\d:\d\d:\d\d),(\d\d\d)/g, "$1.$2");
+        const tr = document.createElement("track"); tr.kind = "subtitles"; tr.label = s.langue || "Sous-titres"; tr.srclang = s.langue || "fr"; tr.src = URL.createObjectURL(new Blob([vtt], { type: "text/vtt" })); v.appendChild(tr); }).catch(() => {}); }
+    $("coin").hidden = false; document.body.dataset.calme = "1"; reveil();
+    v.addEventListener("loadedmetadata", () => { charge(false); if (I.reprise && I.reprise.pos) { v.currentTime = I.reprise.pos; } v.play().catch(() => {}); }, { once: true });
+    v.addEventListener("error", () => { charge(false); v.hidden = true; message("Cette vidéo ne se lit pas ici", I.mpv === false && I.android ? "Ce format n'est pas lu par le téléphone." : "Le lecteur vidéo de Rembobine est introuvable sur cet ordinateur, et ce format ne se lit pas sans lui.", [["Fermer", () => terminer(), true], ["Ouvrir Rembobine", complet]]); });
+    let last = 0; v.addEventListener("timeupdate", () => { const t = Date.now(); if (t - last > 3000) { last = t; B.pos(v.currentTime, v.duration || 0); } });
+    v.addEventListener("ended", () => { B.pos(0, v.duration || 0); terminer(); });
+    arret = () => { try { B.pos(v.ended ? 0 : v.currentTime, v.duration || 0); v.pause(); } catch (_) {} };
+    addEventListener("keydown", (e) => { if (e.key === " " && document.activeElement !== v) { e.preventDefault(); v.paused ? v.play() : v.pause(); } });
+  }
+
+  // ---------- musique : le dossier à la suite ----------
+  if (I.genre === "musique") {
+    charge(false); $("musique").hidden = false; $("coin").hidden = false;
+    const a = $("audio"), P = I.pistes || [];
+    let i = Math.max(0, I.index || 0);
+    $("mAlbum").textContent = I.album ? I.album : "À la suite";
+    if (I.pochette) { const p = $("pochette"); p.classList.remove("vide"); p.style.backgroundImage = `url("${I.pochette}")`; }
+    const liste = $("mListe");
+    P.forEach((t, k) => { const li = document.createElement("li"); const b = document.createElement("button"); b.type = "button";
+      b.innerHTML = `<span class="n">${k + 1}</span><span></span>`; b.lastChild.textContent = t.titre; b.onclick = () => jouer(k); li.appendChild(b); liste.appendChild(li); });
+    const ico = (play) => { $("mIco").innerHTML = play ? '<path d="M8 5v14l11-7z"/>' : '<path d="M7 5h4v14H7zM13 5h4v14h-4z"/>'; $("mLire").setAttribute("aria-label", play ? "Lecture" : "Pause"); };
+    function jouer(k) {
+      if (k < 0 || k >= P.length) return;
+      i = k; const t = P[i];
+      a.src = t.url; a.play().catch(() => {});
+      $("mTitre").textContent = t.titre; $("mSous").textContent = [I.artiste, I.album].filter(Boolean).join(" · ");
+      document.title = t.titre;
+      [...liste.children].forEach((li, n) => li.classList.toggle("on", n === i));
+      const on = liste.children[i]; if (on) on.scrollIntoView({ block: "nearest" });
+      try { navigator.mediaSession.metadata = new MediaMetadata({ title: t.titre, artist: I.artiste || "", album: I.album || "" }); } catch (_) {}
+    }
+    a.addEventListener("play", () => { ico(false); $("pochette").classList.add("tourne"); });
+    a.addEventListener("pause", () => { ico(true); $("pochette").classList.remove("tourne"); });
+    a.addEventListener("timeupdate", () => { const d = a.duration || 0; $("mPos").textContent = fmt(a.currentTime); $("mDur").textContent = fmt(d);
+      if (d && !$("mProg").matches(":active")) { const p = Math.round(1000 * a.currentTime / d); $("mProg").value = p; $("mProg").style.setProperty("--p", p / 10 + "%"); } });
+    $("mProg").addEventListener("input", (e) => { const d = a.duration || 0; if (d) a.currentTime = d * e.target.value / 1000; e.target.style.setProperty("--p", e.target.value / 10 + "%"); });
+    // un morceau illisible ici (format rare) : on passe au suivant
+    a.addEventListener("error", () => { if (i + 1 < P.length) jouer(i + 1); else message("Ce morceau ne se lit pas ici", "Son format n'est pas reconnu par le lecteur de musique.", [["Fermer", () => terminer(), true]]); });
+    a.addEventListener("ended", () => { if (i + 1 < P.length) jouer(i + 1); else terminer(); });
+    const pp = () => (a.paused ? a.play().catch(() => {}) : a.pause());
+    $("mLire").onclick = pp; $("mPrec").onclick = () => (a.currentTime > 4 ? (a.currentTime = 0) : jouer(i - 1)); $("mSuiv").onclick = () => jouer(i + 1);
+    try { navigator.mediaSession.setActionHandler("previoustrack", () => jouer(i - 1)); navigator.mediaSession.setActionHandler("nexttrack", () => jouer(i + 1)); } catch (_) {}
+    addEventListener("keydown", (e) => {
+      if (e.target && e.target.tagName === "INPUT" && e.target.type === "checkbox") return;
+      if (e.key === " " && !(e.target && e.target.tagName === "BUTTON")) { e.preventDefault(); pp(); }
+      else if (e.key === "ArrowRight") a.currentTime = Math.min((a.duration || 0) - 0.5, a.currentTime + 10);
+      else if (e.key === "ArrowLeft") a.currentTime = Math.max(0, a.currentTime - 10);
+      else if (e.key === "PageDown" || e.key === "MediaTrackNext") jouer(i + 1);
+      else if (e.key === "PageUp" || e.key === "MediaTrackPrevious") jouer(i - 1);
+    });
+    arret = () => { try { a.pause(); } catch (_) {} };
+    jouer(i);
+    $("mLire").focus();
+    return;
+  }
+
+  // ---------- jeu ----------
+  if (I.genre === "jeu") {
+    const E = I.emu || {};
+    if (E.type === "aucun" || (E.bios && E.bios.requis && !E.bios.ok)) {
+      charge(false);
+      return message("Ce jeu ne peut pas démarrer", E.err || `Il manque le ${E.bios.txt}. Dépose-le dans le dossier BIOS de Rembobine (il vient de ta console) : Rembobine ne télécharge jamais de BIOS.`,
+        [["Fermer", () => terminer(), true], ["Ouvrir Rembobine", complet]]);
+    }
+    if (E.type === "console") {
+      // un vrai émulateur (PCSX2, Dolphin, RPCS3…) s'ouvre en plein écran ; on attend qu'il se ferme
+      message(I.titre || "", `${E.nom} : ouverture avec ${E.emuNom || "son émulateur"}…`);
+      const r = await B.console();
+      charge(false);
+      if (!r || !r.ok) return message("Ce jeu ne peut pas démarrer", (r && r.err) || "L'émulateur n'a pas pu s'ouvrir.", [["Fermer", () => terminer(), true], ["Ouvrir Rembobine", complet]]);
+      return terminer();
+    }
+    // l'émulateur intégré (EmulatorJS), embarqué dans l'appli
+    document.body.classList.add("jeu"); document.body.dataset.calme = "1";
+    $("coin").hidden = false; $("bQuitter").textContent = "✕ Quitter"; $("bQuitter").setAttribute("aria-label", "Quitter le jeu");
+    const cfg = { EJS_player: "#game", EJS_core: E.core, EJS_gameUrl: I.media, EJS_gameName: I.titre, EJS_pathtodata: I.ejs, EJS_startOnLoaded: true, EJS_color: "#e0182d", EJS_backgroundColor: "#000" };
+    if (I.ejsLocal) cfg.EJS_DEBUG_XX = true;   // version embarquée : fichiers non compressés
+    if (E.bios && E.bios.url) cfg.EJS_biosUrl = E.bios.url;
+    const esc = (s) => JSON.stringify(s).replace(/</g, "\\u003c");
+    const doc = `<!doctype html><html><head><meta charset="utf-8"><style>html,body{margin:0;height:100%;background:#000;overflow:hidden}#wrap{width:100vw;height:100vh}</style></head><body><div id="wrap"><div id="game"></div></div><script>${Object.entries(cfg).map(([k, v]) => `window.${k}=${esc(v)};`).join("")}window.EJS_ready=function(){parent.postMessage("rbb-jeu-pret","*")};<\/script><script src="${I.ejs}loader.js" onerror="document.body.innerHTML='<p style=&quot;color:#fff;font:16px system-ui;padding:60px 24px&quot;>L\\'émulateur n\\'a pas pu se charger.</p>'"><\/script></body></html>`;
+    const f = document.createElement("iframe"); f.title = "Jeu"; f.allow = "autoplay; fullscreen; gamepad"; f.srcdoc = doc; $("jeu").appendChild(f); $("jeu").hidden = false;
+    addEventListener("message", (e) => { if (e.data === "rbb-jeu-pret") { charge(false); reveil(); try { f.focus(); } catch (_) {} } });
+    setTimeout(() => { charge(false); reveil(); }, 6000);
+    arret = () => { try { $("jeu").innerHTML = ""; } catch (_) {} };
+    return;
+  }
+  charge(false);
+  message("Format inconnu", "Rembobine ne sait pas ouvrir ce fichier.", [["Fermer", () => B.fin({}), true]]);
+})();
+</script>
+</body>
+</html>

@@ -34,9 +34,9 @@ done
 cpm() { if [ "${RBB_SANS_MODULE:-0}" = 1 ] && [ ! -e "$1" ]; then return 0; fi; cp "$1" "$2"; }
 mkapp() {
   mkdir -p "$1/app" "$1/gamebox3d"
-  cp app/main.js app/monde3d.js app/monde3d_web.js app/preload.js app/preload3d.js app/package.json app/icon.png "$1/app/"
-  # l'interface de lecture des films (script pour mpv)
-  mkdir -p "$1/app/lecteur"; cp app/lecteur/*.lua "$1/app/lecteur/"
+  cp app/main.js app/monde3d.js app/monde3d_web.js app/preload.js app/preload3d.js app/seul.js app/seul_main.js app/preload_seul.js app/package.json app/icon.png "$1/app/"
+  # l'interface de lecture des films (script pour mpv) et le lecteur seul (« Ouvrir avec Rembobine »)
+  mkdir -p "$1/app/lecteur"; cp app/lecteur/*.lua app/lecteur/seul.html "$1/app/lecteur/"
   # le serveur de la maison : tous ses fichiers, sauf les tests
   mkdir -p "$1/app/serveur"; for f in app/serveur/*.js; do case "$f" in */test_*) ;; *) cp "$f" "$1/app/serveur/" ;; esac; done
   printf '{"version":"%s","build":%s,"label":"%s+%s","date":"%s","commit":"%s","depot":"%s"}\n' "$V" "$BN" "$V" "$BN" "$BDATE" "${GITHUB_SHA:-local}" "$DEPOT" > "$1/app/build.json"

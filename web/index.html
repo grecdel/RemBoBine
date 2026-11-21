@@ -21331,6 +21331,62 @@ ${keys}
     } catch (e) { console.warn(e); }
   }
 
+  /* ================= Lecteur par défaut (Paramètres › Système) ================= */
+  // Rembobine s'inscrit dans « Ouvrir avec » (clic droit sur un fichier) sans prendre la place de personne. Ici, et
+  // seulement si on le demande, il devient le lecteur ouvert d'office par un double-clic : vidéos, musique, jeux,
+  // chacun à part. Linux : xdg-mime (l'ancien lecteur est retenu, « Ne plus l'utiliser par défaut » le remet) ;
+  // Windows : la page « Applications par défaut » de Windows (depuis Windows 10, l'utilisateur seul choisit) ;
+  // Android : le choix « Toujours » du système. Raspberry / TV (plein écran) : rien.
+  {
+    const LD_GENRES = [["video", "Vidéos", "mkv, mp4, avi, mov, webm…"], ["musique", "Musique", "mp3, flac, ogg, opus, m4a, wav…"], ["jeu", "Jeux", "ROM des consoles (nes, sfc, gba, md, n64…) et disques (iso, chd, rvz…)"]];
+    const LD = { etat: null, busy: "" };
+    try {
+      const sys = SETTINGS.find(s => s.id === "system");
+      if (sys && !sys.fields.some(f => f.id === "lecteurDefaut")) {
+        const at = sys.fields.findIndex(f => f.type === "heading" && f.label === "Configuration");
+        sys.fields.splice(at < 0 ? sys.fields.length : at, 0, { type: "heading", label: "Lecteur par défaut" }, { type: "custom", id: "lecteurDefaut" });
+      }
+    } catch (_) {}
+    const ldApi = () => window.gamebox && window.gamebox.lecteurDefaut;
+    function ldHtml() {
+      const G = window.gamebox || {}, api = ldApi(), e = LD.etat;
+      const intro = `<p class="note" style="margin-top:0">Rembobine est déjà proposé dans <b>« Ouvrir avec »</b> (clic droit sur une vidéo, une musique ou un jeu) : le fichier s'ouvre tout seul, en lecteur simple, sans la médiathèque, et reprend où tu t'étais arrêté. Ici, tu peux aussi en faire le lecteur <b>par défaut</b> (celui qui s'ouvre d'un double-clic), pour chaque sorte de fichier séparément. Rien ne change tant que tu ne le demandes pas.</p>`;
+      if (G.android) return `<div id="ldBox">${intro}<p class="note">Sur Android : ouvre un fichier depuis l'application <b>Fichiers</b> (ou ton gestionnaire), choisis <b>Rembobine</b>, puis <b>Toujours</b>. Pour revenir en arrière : Réglages d'Android → Applications → Rembobine → <b>Ouvrir par défaut</b> → Effacer les choix.</p>${G.defaultApps ? `<div class="row-btns"><button class="btn" type="button" data-ld="android">Ouvrir les réglages d'Android</button></div>` : ""}</div>`;
+      if (!api) return `<div id="ldBox">${intro}<p class="note">Ce réglage se fait dans l'application Rembobine installée sur l'ordinateur (Linux ou Windows).</p></div>`;
+      if (!e) return `<div id="ldBox">${intro}<p class="note">Un instant…</p></div>`;
+      if (!e.possible) {
+        const why = e.why === "installer" ? "Installe d'abord Rembobine avec <code>./installer.sh</code> (il crée le raccourci du menu des applications, nécessaire pour « Ouvrir avec »)." : e.why === "xdg" ? "L'outil <code>xdg-mime</code> manque sur ce système (paquet <code>xdg-utils</code>)." : e.why === "raspberry" || e.why === "kiosque" ? "Sur le Raspberry et la télé, Rembobine est déjà tout l'écran : rien à régler ici." : "Pas disponible sur ce système.";
+        return `<div id="ldBox">${intro}<p class="note">${why}</p></div>`;
+      }
+      if (e.windows) return `<div id="ldBox">${intro}
+        ${LD_GENRES.map(([g, l, x]) => `<div class="frow"><div class="fl"><label>${esc(l)}</label><span class="help">${esc(x)}</span></div><div class="fc"><button class="btn" type="button" data-ld="${g}" data-on="1">Choisir dans Windows</button></div></div>`).join("")}
+        <p class="note"><b>Mode d'emploi (Windows 10 et 11)</b> : Windows ne laisse aucune appli se mettre par défaut toute seule, c'est toi qui choisis. Le bouton ouvre <b>Paramètres → Applications → Applications par défaut</b> sur Rembobine : clique sur chaque type de fichier (.mkv, .mp4, .mp3…) et choisis <b>Rembobine</b>. Sur Windows 10, cherche Rembobine dans la liste, puis <b>Choisir les applications par défaut par type de fichier</b>. Pour revenir en arrière : même page, choisis l'ancien lecteur.</p></div>`;
+      const st = e.etat || {};
+      return `<div id="ldBox">${intro}${LD_GENRES.map(([g, l, x]) => `<div class="frow"><div class="fl"><label>${esc(l)}</label><span class="help">${esc(x)} — ${st[g] ? "<b>Rembobine est le lecteur par défaut.</b>" : "un autre lecteur (ou aucun) s'ouvre au double-clic."}</span></div><div class="fc"><button class="btn${st[g] ? "" : " hot"}" type="button" data-ld="${g}" data-on="${st[g] ? "0" : "1"}"${LD.busy === g ? " disabled" : ""}>${st[g] ? "Ne plus l'utiliser par défaut" : "Faire de Rembobine le lecteur par défaut"}</button></div></div>`).join("")}
+        <p class="note">« Ne plus l'utiliser par défaut » remet le lecteur d'avant (Rembobine l'a retenu).</p></div>`;
+    }
+    function ldPaint() {
+      const box = document.getElementById("ldBox"); if (!box) return;
+      const api = ldApi();
+      if (api && !LD.etat) { api.etat().then(e => { LD.etat = e || { possible: false }; const b = document.getElementById("ldBox"); if (b) b.outerHTML = ldHtml(); }).catch(() => {}); }
+    }
+    customHtml = ((f) => function (id) { if (id === "lecteurDefaut") return ldHtml(); return f.apply(this, arguments); })(customHtml);
+    const _ldRS = renderSettings; renderSettings = function () { const r = _ldRS.apply(this, arguments); try { ldPaint(); } catch (_) {} return r; };
+    document.addEventListener("click", async (ev) => {
+      const b = ev.target.closest && ev.target.closest("[data-ld]"); if (!b) return;
+      const g = b.dataset.ld;
+      if (g === "android") { try { window.gamebox.defaultApps(); } catch (_) {} return; }
+      const api = ldApi(); if (!api) return;
+      LD.busy = g; b.disabled = true;
+      let r = null; try { r = await api.faire(g, b.dataset.on === "1"); } catch (_) {}
+      LD.busy = "";
+      if (r && r.windows) toast("Les Paramètres de Windows s'ouvrent : choisis Rembobine pour chaque type de fichier.");
+      else if (r && r.ok) { toast(b.dataset.on === "1" ? "Rembobine ouvre maintenant ces fichiers d'un double-clic." : "L'ancien lecteur est revenu."); if (r.etat && LD.etat) LD.etat.etat = r.etat; }
+      else toast((r && r.err) || "Le lecteur par défaut n'a pas pu être changé.");
+      const box = document.getElementById("ldBox"); if (box) box.outerHTML = ldHtml();
+    });
+  }
+
   /* ================= Jingle de démarrage ================= */
   // « Rembobinage » (composé avec Pulse) : une cassette qui rembobine, un accord chaleureux, une petite cloche (5 s,
   // Ogg Opus, fondu de fin déjà dans le fichier). Joué une fois par lancement de l'appli (PC, TV, Android), pendant

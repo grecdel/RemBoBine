@@ -47,6 +47,155 @@
             </intent-filter>
         </activity>
 
+        <!-- « Ouvrir avec Rembobine » depuis une autre appli (Fichiers, téléchargements…) : le lecteur seul (vidéo, musique,
+             jeu de l'émulateur intégré). Android propose Rembobine dans sa liste ; « Toujours » en fait le lecteur par
+             défaut, seulement si l'utilisateur le choisit. Pas de MAIN/LAUNCHER ici : l'appli démarre toujours sur RembobineActivity. -->
+        <activity
+            android:name="fr.rembobine.app.LecteurActivity"
+            android:label="Rembobine"
+            android:exported="true"
+            android:launchMode="singleTask"
+            android:taskAffinity="fr.rembobine.app.lecteur"
+            android:excludeFromRecents="true"
+            android:theme="@style/RbbTheme"
+            android:screenOrientation="fullUser"
+            android:configChanges="orientation|keyboardHidden|screenSize|smallestScreenSize|screenLayout|uiMode|density|keyboard|navigation"
+            android:hardwareAccelerated="true">
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:scheme="content" />
+                <data android:scheme="file" />
+                <data android:mimeType="video/*" />
+                <data android:mimeType="audio/*" />
+                <data android:mimeType="application/x-nes-rom" />
+                <data android:mimeType="application/x-snes-rom" />
+                <data android:mimeType="application/x-gameboy-rom" />
+                <data android:mimeType="application/x-gameboy-color-rom" />
+                <data android:mimeType="application/x-gba-rom" />
+                <data android:mimeType="application/x-genesis-rom" />
+                <data android:mimeType="application/x-sms-rom" />
+                <data android:mimeType="application/x-gamegear-rom" />
+                <data android:mimeType="application/x-n64-rom" />
+                <data android:mimeType="application/x-nintendo-ds-rom" />
+                <data android:mimeType="application/x-pc-engine-rom" />
+                <data android:mimeType="application/x-atari-2600-rom" />
+                <data android:mimeType="application/x-atari-7800-rom" />
+                <data android:mimeType="application/x-virtual-boy-rom" />
+                <data android:mimeType="application/x-neo-geo-pocket-rom" />
+                <data android:mimeType="application/x-wonderswan-rom" />
+                <data android:mimeType="application/x-genesis-32x-rom" />
+            </intent-filter>
+            <!-- les ROM que le système ne connaît pas (type « application/octet-stream » ou inconnu) : reconnues à leur extension -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:scheme="content" />
+                <data android:scheme="file" />
+                <data android:host="*" />
+                <data android:mimeType="*/*" />
+                <data android:pathPattern=".*\\.nes" />
+                <data android:pathPattern=".*\\..*\\.nes" />
+                <data android:pathPattern=".*\\..*\\..*\\.nes" />
+                <data android:pathPattern=".*\\.fds" />
+                <data android:pathPattern=".*\\..*\\.fds" />
+                <data android:pathPattern=".*\\..*\\..*\\.fds" />
+                <data android:pathPattern=".*\\.sfc" />
+                <data android:pathPattern=".*\\..*\\.sfc" />
+                <data android:pathPattern=".*\\..*\\..*\\.sfc" />
+                <data android:pathPattern=".*\\.smc" />
+                <data android:pathPattern=".*\\..*\\.smc" />
+                <data android:pathPattern=".*\\..*\\..*\\.smc" />
+                <data android:pathPattern=".*\\.gba" />
+                <data android:pathPattern=".*\\..*\\.gba" />
+                <data android:pathPattern=".*\\..*\\..*\\.gba" />
+                <data android:pathPattern=".*\\.gb" />
+                <data android:pathPattern=".*\\..*\\.gb" />
+                <data android:pathPattern=".*\\..*\\..*\\.gb" />
+                <data android:pathPattern=".*\\.gbc" />
+                <data android:pathPattern=".*\\..*\\.gbc" />
+                <data android:pathPattern=".*\\..*\\..*\\.gbc" />
+                <data android:pathPattern=".*\\.md" />
+                <data android:pathPattern=".*\\..*\\.md" />
+                <data android:pathPattern=".*\\..*\\..*\\.md" />
+                <data android:pathPattern=".*\\.gen" />
+                <data android:pathPattern=".*\\..*\\.gen" />
+                <data android:pathPattern=".*\\..*\\..*\\.gen" />
+                <data android:pathPattern=".*\\.smd" />
+                <data android:pathPattern=".*\\..*\\.smd" />
+                <data android:pathPattern=".*\\..*\\..*\\.smd" />
+                <data android:pathPattern=".*\\.sms" />
+                <data android:pathPattern=".*\\..*\\.sms" />
+                <data android:pathPattern=".*\\..*\\..*\\.sms" />
+                <data android:pathPattern=".*\\.gg" />
+                <data android:pathPattern=".*\\..*\\.gg" />
+                <data android:pathPattern=".*\\..*\\..*\\.gg" />
+                <data android:pathPattern=".*\\.n64" />
+                <data android:pathPattern=".*\\..*\\.n64" />
+                <data android:pathPattern=".*\\..*\\..*\\.n64" />
+                <data android:pathPattern=".*\\.z64" />
+                <data android:pathPattern=".*\\..*\\.z64" />
+                <data android:pathPattern=".*\\..*\\..*\\.z64" />
+                <data android:pathPattern=".*\\.v64" />
+                <data android:pathPattern=".*\\..*\\.v64" />
+                <data android:pathPattern=".*\\..*\\..*\\.v64" />
+                <data android:pathPattern=".*\\.nds" />
+                <data android:pathPattern=".*\\..*\\.nds" />
+                <data android:pathPattern=".*\\..*\\..*\\.nds" />
+                <data android:pathPattern=".*\\.pce" />
+                <data android:pathPattern=".*\\..*\\.pce" />
+                <data android:pathPattern=".*\\..*\\..*\\.pce" />
+                <data android:pathPattern=".*\\.a26" />
+                <data android:pathPattern=".*\\..*\\.a26" />
+                <data android:pathPattern=".*\\..*\\..*\\.a26" />
+                <data android:pathPattern=".*\\.a78" />
+                <data android:pathPattern=".*\\..*\\.a78" />
+                <data android:pathPattern=".*\\..*\\..*\\.a78" />
+                <data android:pathPattern=".*\\.vb" />
+                <data android:pathPattern=".*\\..*\\.vb" />
+                <data android:pathPattern=".*\\..*\\..*\\.vb" />
+                <data android:pathPattern=".*\\.vboy" />
+                <data android:pathPattern=".*\\..*\\.vboy" />
+                <data android:pathPattern=".*\\..*\\..*\\.vboy" />
+                <data android:pathPattern=".*\\.ngp" />
+                <data android:pathPattern=".*\\..*\\.ngp" />
+                <data android:pathPattern=".*\\..*\\..*\\.ngp" />
+                <data android:pathPattern=".*\\.ngc" />
+                <data android:pathPattern=".*\\..*\\.ngc" />
+                <data android:pathPattern=".*\\..*\\..*\\.ngc" />
+                <data android:pathPattern=".*\\.ws" />
+                <data android:pathPattern=".*\\..*\\.ws" />
+                <data android:pathPattern=".*\\..*\\..*\\.ws" />
+                <data android:pathPattern=".*\\.wsc" />
+                <data android:pathPattern=".*\\..*\\.wsc" />
+                <data android:pathPattern=".*\\..*\\..*\\.wsc" />
+                <data android:pathPattern=".*\\.32x" />
+                <data android:pathPattern=".*\\..*\\.32x" />
+                <data android:pathPattern=".*\\..*\\..*\\.32x" />
+                <data android:pathPattern=".*\\.chd" />
+                <data android:pathPattern=".*\\..*\\.chd" />
+                <data android:pathPattern=".*\\..*\\..*\\.chd" />
+                <data android:pathPattern=".*\\.pbp" />
+                <data android:pathPattern=".*\\..*\\.pbp" />
+                <data android:pathPattern=".*\\..*\\..*\\.pbp" />
+                <data android:pathPattern=".*\\.d64" />
+                <data android:pathPattern=".*\\..*\\.d64" />
+                <data android:pathPattern=".*\\..*\\..*\\.d64" />
+                <data android:pathPattern=".*\\.t64" />
+                <data android:pathPattern=".*\\..*\\.t64" />
+                <data android:pathPattern=".*\\..*\\..*\\.t64" />
+                <data android:pathPattern=".*\\.tzx" />
+                <data android:pathPattern=".*\\..*\\.tzx" />
+                <data android:pathPattern=".*\\..*\\..*\\.tzx" />
+                <data android:pathPattern=".*\\.z80" />
+                <data android:pathPattern=".*\\..*\\.z80" />
+                <data android:pathPattern=".*\\..*\\..*\\.z80" />
+                <data android:pathPattern=".*\\.cdt" />
+                <data android:pathPattern=".*\\..*\\.cdt" />
+                <data android:pathPattern=".*\\..*\\..*\\.cdt" />
+            </intent-filter>
+        </activity>
+
         <!-- widget de l'écran d'accueil (titre en cours, pause/lecture, volume) et boutons de la notification média -->
         <receiver
             android:name="fr.rembobine.app.RembobineWidget"

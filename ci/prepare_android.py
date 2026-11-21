@@ -81,6 +81,8 @@ shutil.copytree(root / "android" / "res", build / "res", dirs_exist_ok=True)
 raw = build / "res" / "raw"
 raw.mkdir(parents=True, exist_ok=True)
 shutil.copy(root / "web" / "index.html", raw / "rembobine.html")
+# le lecteur seul (« Ouvrir avec Rembobine », LecteurActivity.java) : la même page que sur l'ordinateur
+shutil.copy(root / "app" / "lecteur" / "seul.html", raw / "rembobine_seul.html")
 # l'aide intégrée suit le LISEZ-MOI (lisible sans internet)
 subprocess.run([sys.executable, str(root / "outils" / "aide" / "embarquer_aide.py"), str(raw / "rembobine.html")], check=True)
 # le module facultatif (s'il est posé) complète la page

@@ -21,5 +21,7 @@ contextBridge.exposeInMainWorld("gamebox", {
   // o.startPct : où reprendre (en %) ; o.titre, o.sous, o.genre : ce qu'affiche l'interface de lecture ; le résultat
   // donne la position et la durée à la fermeture de mpv
   playExternal: (file, o) => { let p = ""; try { p = webUtils.getPathForFile(file); } catch (_) {} const t = (v) => (typeof v === "string" ? v.slice(0, 200) : ""); return ipcRenderer.invoke("gbx:mpv", p, o && typeof o === "object" ? { startPct: Number(o.startPct) || 0, titre: t(o.titre), sous: t(o.sous), genre: t(o.genre) } : undefined); },
+  // « Lecteur par défaut » (Paramètres) : etat() → { possible, plat, etat: { video, musique, jeu } } ; faire(genre, oui/non)
+  lecteurDefaut: { etat: () => ipcRenderer.invoke("gbx:defaut"), faire: (g, on) => ipcRenderer.invoke("gbx:defautFaire", String(g), !!on) },
   onMpvPos: (cb) => { if (typeof cb === "function") ipcRenderer.on("mpv:pos", (e, s) => cb({ pos: Number(s && s.pos) || 0, dur: Number(s && s.dur) || 0 })); }
 });

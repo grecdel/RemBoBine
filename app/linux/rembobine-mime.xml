@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Rembobine : formats de jeu sans type commun (pour « Ouvrir avec ») -->
+<mime-info xmlns="http://www.freedesktop.org/standards/shared-mime-info">
+  <mime-type type="application/x-rembobine-jeu">
+    <comment>Jeu (Rembobine)</comment>
+    <comment xml:lang="fr">Jeu (Rembobine)</comment>
+    <glob pattern="*.chd"/>
+    <glob pattern="*.pbp"/>
+    <glob pattern="*.rvz"/>
+    <glob pattern="*.cso"/>
+    <glob pattern="*.gcz"/>
+    <glob pattern="*.ciso"/>
+    <glob pattern="*.gcm"/>
+    <glob pattern="*.xiso"/>
+    <glob pattern="*.xex"/>
+    <glob pattern="*.vboy"/>
+    <glob pattern="*.v64"/>
+    <glob pattern="*.smd"/>
+    <glob pattern="*.32x"/>
+    <glob pattern="*.a78"/>
+    <glob pattern="*.d64"/>
+    <glob pattern="*.t64"/>
+    <glob pattern="*.tzx"/>
+    <glob pattern="*.z80"/>
+    <glob pattern="*.cdt"/>
+  </mime-type>
+</mime-info>

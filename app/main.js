@@ -3,7 +3,7 @@
 // Linux : thème sombre pour ce que dessine la fenêtre elle-même (avant que la page soit dessinée, par exemple au
 // retour de la 3D) ; sans lui, on voit un instant le fond clair du système. Avant tout le reste (GTK le lit au démarrage).
 if (process.platform === "linux" && !process.env.GTK_THEME) process.env.GTK_THEME = "Adwaita:dark";
-const { app, BrowserWindow, ipcMain } = require("electron");
+const { app, BrowserWindow, ipcMain, protocol } = require("electron");
 const path = require("path");
 const fs = require("fs");
 const os = require("os");
@@ -15,8 +15,30 @@ const BUILD_FILE = path.join(__dirname, "build.json");
 const BUILD = (() => { try { return JSON.parse(fs.readFileSync(BUILD_FILE, "utf8")); } catch (_) { return null; } })();
 let win = null;
 
-if (!app.requestSingleInstanceLock()) app.quit();
-app.on("second-instance", () => { if (win) { if (win.isMinimized()) win.restore(); win.show(); win.focus(); } });
+// « Lecteur seul » : Rembobine ouvert avec un fichier (« Ouvrir avec », double-clic) → seulement le lecteur, sans la
+// médiathèque (démarrage rapide : pas de serveur, pas de salon). Voir seul.js (logique) et seul_main.js (fenêtre).
+const SEUL = require("./seul");
+const fichierSeul = kiosk ? "" : SEUL.fichierDesArgs(process.argv, process.cwd());
+// l'adresse rbbseul:// (la page du lecteur seul et les fichiers ouverts) : à déclarer avant le démarrage d'Electron
+protocol.registerSchemesAsPrivileged([{ scheme: "rbbseul", privileges: { standard: true, secure: true, supportFetchAPI: true, stream: true, corsEnabled: true } }]);
+
+// Une seule Rembobine à la fois : un fichier ouvert pendant qu'elle tourne arrive dans la fenêtre déjà ouverte.
+if (!app.requestSingleInstanceLock({ fichier: fichierSeul })) app.quit();
+let pret = false, aOuvrir = "";
+app.on("second-instance", (e, argv, cwd, data) => {
+  const f = (data && typeof data.fichier === "string" && data.fichier && SEUL.genre(data.fichier) && fs.existsSync(data.fichier) ? data.fichier : "") || (kiosk ? "" : SEUL.fichierDesArgs(argv, cwd));
+  if (!pret) { aOuvrir = f || aOuvrir; return; }
+  ouvrirFichier(f);
+});
+// macOS : un fichier glissé sur l'icône, ou « Ouvrir avec »
+app.on("open-file", (e, f) => { e.preventDefault(); if (!SEUL.genre(f)) return; if (!pret) aOuvrir = f; else ouvrirFichier(f); });
+function ouvrirFichier(f) {
+  const r = SEUL.routeOuverture({ complet: !!win, seul: LS.ouvert() }, f);
+  if (r === "par-dessus") return LS.ouvrir(f, "dessus");
+  if (r === "remplacer" || r === "nouveau") return LS.ouvrir(f, "fenetre");
+  if (r === "ouvrir-complet") return demarrerComplet();
+  if (win) { if (win.isMinimized()) win.restore(); win.show(); win.focus(); }
+}
 
 function createWindow() {
   win = new BrowserWindow({
@@ -78,11 +100,12 @@ function which(prog) {
 
 // Le serveur de la maison (bibliothèque, lecture sur la TV, télécommande du téléphone), sur le port 8080.
 let serveur = null;
+const mediaRoots = () => [path.join(os.homedir(), "Rembobine")].concat((process.env.REMBOBINE_MEDIAS || "").split(path.delimiter).filter(Boolean));
 async function startServer() {
   try {
     const { createServer } = require("./serveur/serveur");
     const home = os.homedir();
-    const roots = [path.join(home, "Rembobine")].concat((process.env.REMBOBINE_MEDIAS || "").split(path.delimiter).filter(Boolean));
+    const roots = mediaRoots().concat(LS.dossiers().filter((d) => !mediaRoots().includes(d)));
     serveur = createServer({ port: Number(process.env.REMBOBINE_PORT) || 8080, webDir: path.join(__dirname, "web"), dataDir: path.join(app.getPath("userData"), "serveur"),
       mediaRoots: roots, version: app.getVersion(), watch: true,
       // Rembobine OS : mises à jour (dossier versionné à côté de l'exécutable), sauvegardes, licences livrées
@@ -151,7 +174,7 @@ function mpvUi(o, prefsDir) {
   const q = (v) => { v = String(v == null ? "" : v).replace(/[\r\n]+/g, " ").slice(0, 200); return `%${Buffer.byteLength(v)}%${v}`; };
   const g = /^(film|serie|album)$/.test(String(o && o.genre)) ? o.genre : "film";
   return ["--osc=no", "--osd-bar=no", "--osd-on-seek=no", `--script=${lua}`,
-    `--script-opts=rembobine-titre=${q(o && o.titre)},rembobine-sous=${q(o && o.sous)},rembobine-genre=${g},rembobine-prefs=${q(path.join(prefsDir, "lecteur-prefs.json"))}`];
+    `--script-opts=rembobine-titre=${q(o && o.titre)},rembobine-sous=${q(o && o.sous)},rembobine-genre=${g},rembobine-prefs=${q(path.join(prefsDir, "lecteur-prefs.json"))}${o && o.seul ? ",rembobine-seul=1" : ""}`];
 }
 let mpvAvecUi = false;
 function mpvSend(cmd) {
@@ -224,24 +247,103 @@ function mpvGet(prop) {
     c.on("error", () => { clearTimeout(t); resolve(null); });
   });
 }
-ipcMain.handle("gbx:mpv", (e, file, o) => new Promise((resolve) => {
-  if (typeof file !== "string" || !file || !fs.existsSync(file)) return resolve({ ok: false, err: "fichier" });
-  // mpv livré avec l'application d'abord (rien à installer), sinon celui de la machine
-  let mpv = ""; try { const O = require("./serveur/outils"); O.setDir(app.isPackaged ? path.join(process.resourcesPath, "emulateurs") : path.join(__dirname, "emulateurs")); mpv = O.tool("mpv"); } catch (_) { mpv = which("mpv"); }
-  if (!mpv) return resolve({ ok: false, err: "mpv" });
+function mpvBin() {
+  try { const O = require("./serveur/outils"); O.setDir(app.isPackaged ? path.join(process.resourcesPath, "emulateurs") : path.join(__dirname, "emulateurs")); return O.tool("mpv"); } catch (_) { return which("mpv"); }
+}
+// lancer mpv en plein écran avec l'interface de Rembobine ; .fin : promesse résolue à sa fermeture (position, durée)
+// o.startPct (en %) ou o.start (en secondes) : où reprendre ; o.seul : lecteur seul (bouton « Ouvrir Rembobine »,
+// sous-titres posés à côté reconnus même avec la langue dans le nom)
+function mpvJouer(file, o) {
+  const mpv = mpvBin();
+  if (!mpv) return { fin: Promise.resolve({ ok: false, err: "mpv" }), kill() {} };
   M3D.film();
   // reprise connue de la page (un autre appareil, par exemple) : mpv part de là ; sinon il reprend où il s'était arrêté
-  const pct = o && Number(o.startPct), start = pct >= 2 && pct < 95 ? [`--start=${pct.toFixed(1)}%`] : [];
+  const pct = o && Number(o.startPct), sec = o && Number(o.start);
+  const start = pct >= 2 && pct < 95 ? [`--start=${pct.toFixed(1)}%`] : sec > 0 ? [`--start=${sec.toFixed(1)}`] : [];
+  const seul = o && o.seul ? ["--sub-auto=fuzzy", "--force-window=immediate"] : [];
   const ui = mpvUi(o, app.getPath("userData")); mpvAvecUi = ui.length > 0;
-  const p = spawn(mpv, ["--fs", "--save-position-on-quit", ...start, `--input-ipc-server=${MPV_SOCK}`, `--input-conf=${mpvInputConf()}`, ...ui, "--", file], { stdio: "ignore", env: { ...process.env, APPIMAGE_EXTRACT_AND_RUN: "1" } });
-  mpvBusy++; let done = false; const end = () => { if (!done) { done = true; mpvBusy--; } };
-  // position et durée relevées toutes les 2 s, et rendues à la page à la fermeture de mpv (jauge « Reprendre » juste)
-  const seen = { pos: 0, dur: 0 };
-  const poll = setInterval(async () => { const pos = await mpvGet("time-pos"), dur = await mpvGet("duration"); if (Number(pos) >= 0) seen.pos = Number(pos); if (Number(dur) > 0) seen.dur = Number(dur);
-    if (seen.dur && win) { try { win.webContents.send("mpv:pos", seen); } catch (_) {} } }, 2000);
-  p.on("exit", (code) => { clearInterval(poll); end(); resolve({ ok: true, code, pos: seen.pos, dur: seen.dur, eof: !!(seen.dur && seen.pos > seen.dur - 20) }); });
-  p.on("error", (err) => { clearInterval(poll); end(); resolve({ ok: false, err: String(err) }); });
-}));
+  let p;
+  const fin = new Promise((resolve) => {
+    try { p = spawn(mpv, ["--fs", "--save-position-on-quit", ...start, ...seul, `--input-ipc-server=${MPV_SOCK}`, `--input-conf=${mpvInputConf()}`, ...ui, "--", file], { stdio: "ignore", env: { ...process.env, APPIMAGE_EXTRACT_AND_RUN: "1" } }); }
+    catch (err) { return resolve({ ok: false, err: String(err) }); }
+    mpvBusy++; let done = false; const end = () => { if (!done) { done = true; mpvBusy--; } };
+    // position et durée relevées toutes les 2 s, et rendues à la page à la fermeture de mpv (jauge « Reprendre » juste)
+    const seen = { pos: 0, dur: 0 };
+    const poll = setInterval(async () => { const pos = await mpvGet("time-pos"), dur = await mpvGet("duration"); if (Number(pos) >= 0) seen.pos = Number(pos); if (Number(dur) > 0) seen.dur = Number(dur);
+      if (seen.dur && win && !(o && o.seul)) { try { win.webContents.send("mpv:pos", seen); } catch (_) {} } }, 2000);
+    p.on("exit", (code) => { clearInterval(poll); end(); resolve({ ok: true, code, pos: seen.pos, dur: seen.dur, eof: !!(seen.dur && seen.pos > seen.dur - 20) }); });
+    p.on("error", (err) => { clearInterval(poll); end(); resolve({ ok: false, err: String(err) }); });
+  });
+  return { fin, kill: () => { try { p && p.kill(); } catch (_) {} } };
+}
+ipcMain.handle("gbx:mpv", (e, file, o) => {
+  if (typeof file !== "string" || !file || !fs.existsSync(file)) return { ok: false, err: "fichier" };
+  return mpvJouer(file, o).fin;
+});
+
+// ---------- le lecteur seul (seul_main.js) ----------
+const emusDir = () => (app.isPackaged ? path.join(process.resourcesPath, "emulateurs") : path.join(__dirname, "emulateurs"));
+const LS = require("./seul_main")({ app, electron: require("electron"),
+  mainWin: () => win, roots: () => mediaRoots(), mpvBin, mpvJouer, mpvSend, emusDir,
+  // l'émulateur intégré embarqué (dans l'appli fabriquée : web/ejs ; dans le dépôt : build/ejs de ci/emulateurs.sh)
+  ejsDir: () => [path.join(__dirname, "web", "ejs"), path.join(__dirname, "..", "build", "ejs")].find((d) => fs.existsSync(path.join(d, "data", "loader.js"))) || "",
+  ouvrirComplet: () => demarrerComplet(),
+  // « Ajouter ce dossier à ta bibliothèque » : retenu (lecteur-seul.json, lu au démarrage) et, si la médiathèque tourne, tout de suite
+  ajouterRacine: (d) => { if (serveur && Array.isArray(serveur.roots) && !serveur.roots.includes(d)) { serveur.roots.push(d); try { serveur.rescan(); } catch (_) {} } } });
+
+// ---------- « Ouvrir avec » et lecteur par défaut (Paramètres → Système → Lecteur par défaut) ----------
+const runSync = (cmd, args) => { try { return spawnSync(cmd, args, { encoding: "utf8", timeout: 8000 }); } catch (_) { return { status: 1, stdout: "" }; } };
+const desktopFile = () => path.join(os.homedir(), ".local", "share", "applications", SEUL.DESKTOP);
+// à chaque démarrage normal, sans rien changer aux choix de l'utilisateur : Windows → Rembobine inscrit dans « Ouvrir
+// avec » (HKEY_CURRENT_USER) ; Linux → le raccourci du menu annonce les types qu'il sait ouvrir (installations d'avant)
+function inscrireOuvrirAvec() {
+  if (kiosk || process.env.REMBOBINE_OUVRIR_AVEC === "0") return;
+  try {
+    if (process.platform === "win32" && app.isPackaged) {
+      const d = LS.mem.data(); if (d.inscrit === process.execPath) return;
+      const f = path.join(os.tmpdir(), `rembobine-ouvrir-avec-${process.pid}.reg`);
+      fs.writeFileSync(f, Buffer.concat([Buffer.from([0xff, 0xfe]), Buffer.from(SEUL.regWindows(process.execPath), "utf16le")]));
+      const p = spawn("reg", ["import", f], { stdio: "ignore", windowsHide: true });
+      p.on("exit", (code) => { try { fs.unlinkSync(f); } catch (_) {} if (code === 0) LS.mem.regler("inscrit", process.execPath); });
+      p.on("error", () => {});
+    }
+    if (process.platform === "linux") {
+      const f = desktopFile();
+      if (fs.existsSync(f)) {
+        const t = fs.readFileSync(f, "utf8");
+        if (!/^MimeType=/m.test(t) || !t.includes("application/x-rembobine-jeu")) fs.writeFileSync(f, t.replace(/^MimeType=.*\n?/m, "").replace(/\n*$/, "\n") + SEUL.ligneMime() + "\n");
+        const x = path.join(os.homedir(), ".local", "share", "mime", "packages", "rembobine.xml");
+        if (!fs.existsSync(x)) { fs.mkdirSync(path.dirname(x), { recursive: true }); fs.writeFileSync(x, SEUL.mimeXml());
+          for (const [c, a] of [["update-mime-database", [path.join(os.homedir(), ".local", "share", "mime")]], ["update-desktop-database", [path.dirname(f)]]]) { try { spawn(c, a, { stdio: "ignore" }).on("error", () => {}); } catch (_) {} } }
+      }
+    }
+  } catch (e) { console.error("ouvrir avec :", e.message); }
+}
+ipcMain.handle("gbx:defaut", () => {
+  const plat = process.platform, arm = process.arch === "arm64" || process.arch === "arm";
+  if (kiosk) return { possible: false, why: "kiosque" };
+  if (plat === "linux") {
+    if (arm) return { possible: false, why: "raspberry" };
+    if (!fs.existsSync(desktopFile())) return { possible: false, why: "installer", plat };
+    if (!which("xdg-mime")) return { possible: false, why: "xdg", plat };
+    return { possible: true, plat, etat: SEUL.etatLinux(runSync) };
+  }
+  if (plat === "win32") return { possible: true, plat, windows: true };
+  return { possible: false, plat };
+});
+ipcMain.handle("gbx:defautFaire", (e, genre, actif) => {
+  if (kiosk || !SEUL.MIME[genre]) return { ok: false };
+  if (process.platform === "win32") {
+    inscrireOuvrirAvec();
+    // depuis Windows 10, seul l'utilisateur choisit : on lui ouvre la bonne page des Paramètres de Windows
+    require("electron").shell.openExternal(SEUL.PAGE_DEFAUT_WINDOWS).catch(() => require("electron").shell.openExternal("ms-settings:defaultapps").catch(() => {}));
+    return { ok: true, windows: true };
+  }
+  if (process.platform !== "linux") return { ok: false };
+  inscrireOuvrirAvec();
+  const r = SEUL.defautLinux(genre, !!actif, { run: runSync, memoire: LS.mem, mimeapps: path.join(process.env.XDG_CONFIG_HOME || path.join(os.homedir(), ".config"), "mimeapps.list") });
+  return { ...r, etat: SEUL.etatLinux(runSync) };
+});
 
 // Cartouche NFC posée : on allume la télé et on la met sur Rembobine (HDMI-CEC, Raspberry Pi et PC Linux).
 // Sans outil CEC installé ou sans télé compatible, rien ne se passe.
@@ -278,10 +380,23 @@ app.whenReady().then(async () => {
   try { require("electron").nativeTheme.themeSource = "dark"; } catch (_) {}
   // permissions demandées par la page (micro pour la voix, plein écran, manettes…) : seulement pour la page de Rembobine elle-même
   const { session } = require("electron");
-  const ours = (u) => /^file:/i.test(String(u || "")) || /^https?:\/\/(127\.0\.0\.1|localhost)(:\d+)?\//i.test(String(u || ""));
+  const ours = (u) => /^file:/i.test(String(u || "")) || /^rbbseul:\/\/app\//i.test(String(u || "")) || /^https?:\/\/(127\.0\.0\.1|localhost)(:\d+)?\//i.test(String(u || ""));
   session.defaultSession.setPermissionRequestHandler((wc, perm, cb, details) => cb(ours((details && details.requestingUrl) || (wc && wc.getURL()))));
   session.defaultSession.setPermissionCheckHandler((wc, perm, origin) => ours(origin || (wc && wc.getURL())) || origin === "file://");
-  await startServer(); createWindow();
+  LS.protocole();
+  // ouvert avec un fichier : le lecteur seul, tout de suite (rien d'autre ne démarre) ; sinon Rembobine comme toujours
+  const f = fichierSeul || aOuvrir; aOuvrir = "";
+  if (f) { LS.ouvrir(f, "fenetre"); pret = true; return; }
+  await demarrerComplet();
+  pret = true;
+  if (aOuvrir) { const g = aOuvrir; aOuvrir = ""; ouvrirFichier(g); }
 });
-app.on("before-quit", () => { M3D.stop(); M3DW.stop(); if (serveur) serveur.stop().catch(() => {}); });
+// la médiathèque complète (démarrage normal, ou « Ouvrir Rembobine » depuis le lecteur seul)
+let complet = null;
+function demarrerComplet() {
+  if (complet) { if (win) { if (win.isMinimized()) win.restore(); win.show(); win.focus(); } return complet; }
+  complet = (async () => { await startServer(); createWindow(); setTimeout(inscrireOuvrirAvec, 15000); })();
+  return complet;
+}
+app.on("before-quit", () => { LS.stop(); M3D.stop(); M3DW.stop(); if (serveur) serveur.stop().catch(() => {}); });
 app.on("window-all-closed", () => app.quit());
