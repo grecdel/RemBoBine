@@ -13,11 +13,19 @@ const M = path.join(T, "m"); fs.mkdirSync(M);
 const { createInstaller } = require("./installer");
 const CS = require("./consoles");
 const BIG = Buffer.alloc(3 * 1024 * 1024, 1);
+const SHA = require("crypto").createHash("sha256").update(BIG).digest("hex"), FAUX = "0".repeat(64);
 const net = http.createServer((q, r) => {
   const p = decodeURIComponent(new URL(q.url, "http://x").pathname);
   const json = (o) => { r.writeHead(200, { "Content-Type": "application/json" }); r.end(JSON.stringify(o)); };
   const N = `http://127.0.0.1:${net.address().port}`;
-  if (p === "/gh/repos/PCSX2/pcsx2/releases/latest") return json({ tag_name: "v2.2.0", assets: [{ name: "pcsx2-v2.2.0-windows-x64-Qt.7z", browser_download_url: N + "/dl/w.7z" }, { name: "pcsx2-v2.2.0-linux-appimage-x64-Qt.AppImage", browser_download_url: N + "/dl/pcsx2.AppImage" }] });
+  if (p === "/gh/repos/PCSX2/pcsx2/releases/latest") return json({ tag_name: "v2.2.0", assets: [{ name: "pcsx2-v2.2.0-windows-x64-Qt.7z", browser_download_url: N + "/dl/w.7z" }, { name: "pcsx2-v2.2.0-linux-appimage-x64-Qt.AppImage", browser_download_url: N + "/dl/pcsx2.AppImage", digest: "sha256:" + SHA }] });
+  // fichier remplacé : l'empreinte donnée par GitHub ne correspond pas
+  if (p === "/gh2/repos/PCSX2/pcsx2/releases/latest") return json({ tag_name: "v2.2.1", assets: [{ name: "pcsx2-v2.2.1-linux-appimage-x64-Qt.AppImage", browser_download_url: N + "/dl/pcsx2.AppImage", digest: "sha256:" + FAUX }] });
+  // pas de « digest » : fichier d'empreintes publié par le projet à côté (bonne pour RPCS3, mauvaise pour xemu)
+  if (p === "/gh2/repos/RPCS3/rpcs3-binaries-linux/releases/latest") return json({ tag_name: "build-124", assets: [{ name: "rpcs3-v0.0.34-linux64.AppImage", browser_download_url: N + "/dl/rpcs3.AppImage" }, { name: "SHA256SUMS", browser_download_url: N + "/sums/bon" }] });
+  if (p === "/gh2/repos/xemu-project/xemu/releases/latest") return json({ tag_name: "v0.8.6", assets: [{ name: "xemu-v0.8.6-x86_64.AppImage", browser_download_url: N + "/dl/xemu.AppImage" }, { name: "xemu-v0.8.6-x86_64.AppImage.sha256", browser_download_url: N + "/sums/faux" }] });
+  if (p === "/sums/bon") { r.writeHead(200); return r.end(`${FAUX}  autre.AppImage\n${SHA} *rpcs3-v0.0.34-linux64.AppImage\n`); }
+  if (p === "/sums/faux") { r.writeHead(200); return r.end(FAUX + "\n"); }
   if (p === "/gh/repos/RPCS3/rpcs3-binaries-linux/releases/latest") return json({ tag_name: "build-123", assets: [{ name: "rpcs3-v0.0.33-linux64_aarch64.AppImage", browser_download_url: N + "/dl/arm" }, { name: "rpcs3-v0.0.33-linux64.AppImage", browser_download_url: N + "/dl/rpcs3.AppImage" }] });
   if (p === "/gh/repos/xemu-project/xemu/releases/latest") return json({ tag_name: "v0.8.5", assets: [{ name: "xemu-v0.8.5-x86_64.AppImage.sha256", browser_download_url: N + "/dl/sha" }] });
   if (p.startsWith("/dl/")) { r.writeHead(200, { "Content-Type": "application/octet-stream", "Content-Length": BIG.length }); return r.end(BIG); }
@@ -48,6 +56,17 @@ net.listen(0, async () => {
   IN.start("ps3sys"); const j5 = await until("ps3sys");
   check(j5.ok && /4\.9200/.test(j5.msg) && fs.statSync(path.join(M, "BIOS", "PS3UPDAT.PUP")).size === BIG.length, "système PS3 téléchargé chez Sony, dans le dossier BIOS");
   check(!fs.existsSync(path.join(M, "BIOS", "PS3UPDAT.PUP.part")), "aucun fichier à moitié téléchargé ne traîne");
+  // empreintes publiées : un fichier qui ne correspond pas est effacé et refusé (jamais rendu exécutable)
+  const M2 = path.join(T, "m2"); fs.mkdirSync(M2); const logs = [];
+  const IN2 = createInstaller({ roots: [M2], log: (l, m) => logs.push(m), bases: { github: N + "/gh2", sony: N + "/sony" } });
+  const until2 = async (id) => { for (let i = 0; i < 150; i++) { const j = IN2.jobs()[id]; if (j && j.done) return j; await wait(100); } return IN2.jobs()[id]; };
+  IN2.start("pcsx2"); const k1 = await until2("pcsx2");
+  check(!k1.ok && /empreinte/.test(k1.err) && !fs.existsSync(path.join(M2, "Emulateurs", "pcsx2.AppImage")) && !fs.existsSync(path.join(M2, "Emulateurs", "pcsx2.AppImage.part")), "empreinte de GitHub différente : fichier effacé, installation refusée");
+  IN2.start("rpcs3"); const k2 = await until2("rpcs3");
+  check(k2.ok && fs.existsSync(path.join(M2, "Emulateurs", "rpcs3.AppImage")) && logs.some((m) => /RPCS3.*empreinte vérifiée/.test(m)), "fichier d'empreintes publié par le projet : vérifié, installé");
+  IN2.start("xemu"); const k3 = await until2("xemu");
+  check(!k3.ok && !fs.existsSync(path.join(M2, "Emulateurs", "xemu.AppImage")), "fichier « .sha256 » publié qui ne correspond pas : refusé");
+  check(logs.length === 0 || !logs.some((m) => /PCSX2.*installé/.test(m)), "rien d'annoncé comme installé quand l'empreinte est fausse");
   net.close(); fs.rmSync(T, { recursive: true, force: true });
   console.log(`Installation : ${ok} OK, ${ko} échec(s)`);
   process.exit(ko ? 1 : 0);

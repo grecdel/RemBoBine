@@ -2,12 +2,15 @@
 // Les émulateurs s'installent dans Rembobine/Emulateurs (là où consoles.js les cherche) :
 //   Linux PC : AppImage officielle (dernière version publiée sur GitHub), ou Flatpak (Flathub) quand l'éditeur ne publie que ça ;
 //   Windows  : archive officielle décompressée avec « tar » (fourni avec Windows 10 et 11, sait lire zip et 7z).
+// Chaque fichier téléchargé est comparé à son empreinte SHA-256 publiée (celle que GitHub donne pour chaque fichier
+// d'une publication, sinon le fichier d'empreintes publié par le projet à côté) : différente = fichier effacé, refusé.
 // Aucun BIOS n'est téléchargé : ils appartiennent aux fabricants et viennent de ta console. Seule exception légale :
 // le système de la PS3 (PS3UPDAT.PUP), distribué gratuitement par Sony sur ses propres serveurs.
 "use strict";
 const fs = require("fs");
 const path = require("path");
 const os = require("os");
+const crypto = require("crypto");
 const { spawn, spawnSync } = require("child_process");
 
 const WIN = process.platform === "win32";
@@ -33,19 +36,41 @@ function createInstaller(o) {
 
   async function getJson(url) { const r = await F(url, { headers: { "User-Agent": UA, Accept: "application/vnd.github+json" } }); if (!r.ok) throw new Error(`réponse ${r.status}`); return r.json(); }
   // téléchargement avec progression, écrit à côté puis renommé (jamais de fichier à moitié)
-  async function download(url, dest, id, label) {
+  async function download(url, dest, id, label, expect = "") {
     const r = await F(url, { headers: { "User-Agent": UA }, redirect: "follow" }); if (!r.ok || !r.body) throw new Error(`téléchargement refusé (${r.status})`);
     const total = Number(r.headers.get("content-length")) || 0; let got = 0, last = 0;
     fs.mkdirSync(path.dirname(dest), { recursive: true });
-    const tmp = dest + ".part", out = fs.createWriteStream(tmp);
+    const tmp = dest + ".part", out = fs.createWriteStream(tmp), hash = crypto.createHash("sha256");
     const reader = r.body.getReader();
     for (;;) {
       const { done, value } = await reader.read(); if (done) break;
-      got += value.length; if (!out.write(Buffer.from(value))) await new Promise((res) => out.once("drain", res));
+      const buf = Buffer.from(value); hash.update(buf);
+      got += value.length; if (!out.write(buf)) await new Promise((res) => out.once("drain", res));
       const pct = total ? Math.floor(got / total * 90) : 0; if (pct - last >= 5) { last = pct; say(id, pct, `${label} : ${Math.round(got / 1048576)} Mo`); }
     }
     await new Promise((res, rej) => out.end((e) => (e ? rej(e) : res())));
+    const sha = hash.digest("hex");
+    // empreinte attendue connue : vérifiée AVANT que le fichier prenne son vrai nom (jamais lancé ni décompressé sinon)
+    if (expect && expect !== sha) { try { fs.unlinkSync(tmp); } catch (_) {} throw new Error(`${label} : le fichier reçu ne correspond pas à son empreinte publiée (fichier abîmé ou remplacé). Installation annulée.`); }
     fs.renameSync(tmp, dest); return got;
+  }
+  // empreinte SHA-256 publiée d'un fichier d'une publication GitHub : champ « digest » donné par GitHub,
+  // sinon un fichier d'empreintes publié à côté (« <nom>.sha256 », « SHA256SUMS », « checksums… ») ; "" si aucune
+  async function publishedSha(rel, asset) {
+    const d = /^sha256:([0-9a-f]{64})$/i.exec(String(asset.digest || "")); if (d) return d[1].toLowerCase();
+    const sums = (rel.assets || []).filter((a) => a !== asset && (a.name === asset.name + ".sha256" || /^(sha256sums?|checksums?)(\.sha256|\.txt)?$|\.sha256sum$/i.test(a.name)));
+    for (const a of sums) {
+      try {
+        const r = await F(a.browser_download_url, { headers: { "User-Agent": UA }, redirect: "follow" }); if (!r.ok) continue;
+        const txt = (await r.text()).slice(0, 65536);
+        for (const line of txt.split(/\r?\n/)) {
+          // « empreinte  nom » ; une empreinte seule n'est acceptée que dans « <nom>.sha256 » (un fichier pour ce fichier)
+          const m = /^([0-9a-f]{64})\s+\*?(\S.*?)\s*$/i.exec(line.trim()) || (a.name === asset.name + ".sha256" ? /^([0-9a-f]{64})$/i.exec(line.trim()) : null);
+          if (m && (!m[2] || path.basename(m[2]) === asset.name)) return m[1].toLowerCase();
+        }
+      } catch (_) {}
+    }
+    return "";
   }
   function run(cmd, args, ms = 900000) {
     return new Promise((resolve) => { let err = ""; const p = spawn(cmd, args, { stdio: ["ignore", "ignore", "pipe"] }); p.stderr.on("data", (d) => { if (err.length < 2000) err += d; });
@@ -72,19 +97,21 @@ function createInstaller(o) {
     const rel = await getJson(`${B.github}/repos/${repo}/releases/latest`);
     const asset = (rel.assets || []).find((a) => want.test(a.name) && !/arm|aarch64|debug|symbols|\.sig$|\.sha/i.test(a.name));
     if (!asset) throw new Error(`Pas de version de ${s.nom} pour cette machine dans la dernière publication (${rel.tag_name || "?"}).`);
+    const sha = await publishedSha(rel, asset);
+    if (!sha) log("warn", `${s.nom} ${rel.tag_name || ""} : aucune empreinte publiée, fichier vérifié seulement par HTTPS`);
     if (!WIN) {   // Linux : l'AppImage, nommée pour que consoles.js la trouve
       const dest = path.join(emuDir(), `${id}.AppImage`);
-      await download(asset.browser_download_url, dest, id, s.nom);
+      await download(asset.browser_download_url, dest, id, s.nom, sha);
       fs.chmodSync(dest, 0o755);
     } else {      // Windows : on décompresse l'archive dans Emulateurs/<id>
       const arc = path.join(emuDir(), asset.name);
-      await download(asset.browser_download_url, arc, id, s.nom);
+      await download(asset.browser_download_url, arc, id, s.nom, sha);
       say(id, 92, `${s.nom} : décompression`);
       const dir = path.join(emuDir(), id); fs.mkdirSync(dir, { recursive: true });
       const r = await run("tar", ["-xf", arc, "-C", dir]); try { fs.unlinkSync(arc); } catch (_) {}
       if (!r.ok) throw new Error(`Décompression impossible : ${r.err.slice(0, 200)}`);
     }
-    log("info", `${s.nom} ${rel.tag_name || ""} installé`);
+    log("info", `${s.nom} ${rel.tag_name || ""} installé${sha ? " (empreinte vérifiée)" : ""}`);
   }
 
   // le système de la PS3 : liste officielle de Sony → adresse du fichier PS3UPDAT.PUP
