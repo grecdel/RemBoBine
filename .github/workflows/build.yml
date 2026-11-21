@@ -411,8 +411,15 @@ jobs:
       - name: Anciennes préversions
         if: github.ref == 'refs/heads/main'
         run: |
+          # seulement les préversions provisoires d'une fabrication TERMINÉE (une autre fabrication peut tourner en même temps)
           for t in $(gh api "repos/$GITHUB_REPOSITORY/releases?per_page=100" -q '.[] | select(.prerelease) | .tag_name'); do
-            [ "$t" = "$ETAPE" ] || gh release delete "$t" --yes --cleanup-tag || true
+            [ "$t" = "$ETAPE" ] && continue
+            n="${t#fabrication-}"
+            if [ "$n" != "$t" ] && [ -n "$n" ] && [ -z "${n//[0-9]/}" ]; then
+              st=$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/$n" -q .status 2>/dev/null || echo completed)
+              [ "$st" = completed ] || continue
+            fi
+            gh release delete "$t" --yes --cleanup-tag || true
           done
       - name: Espace provisoire du module
         env:
