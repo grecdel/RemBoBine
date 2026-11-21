@@ -271,10 +271,13 @@ function retirerDeMimeapps(fichier, types) {
   }).filter((l) => l !== null);
   try { fs.writeFileSync(fichier, out.join("\n")); return true; } catch (_) { return false; }
 }
-// état vu par la page : pour chaque genre, Rembobine est-il le lecteur par défaut (de la plupart de ses types) ?
-function etatLinux(run) {
-  const r = {};
+// état vu par la page : pour chaque genre, Rembobine a-t-il été choisi ici ET est-il encore le lecteur par défaut (de la
+// plupart de ses types) ? (xdg-mime répond « rembobine.desktop » quand aucun autre lecteur ne connaît un type : ça ne
+// suffit pas ; et si l'utilisateur a choisi un autre lecteur ailleurs depuis, la page le montre)
+function etatLinux(run, memoire) {
+  const r = {}, D = (memoire && memoire.defauts()) || {};
   for (const [g, types] of Object.entries(MIME)) {
+    if (memoire && !(D[g] && D[g].actif)) { r[g] = false; continue; }
     const vus = types.slice(0, 6).map((t) => String(((run("xdg-mime", ["query", "default", t]) || {}).stdout) || "").trim());
     r[g] = vus.filter((a) => a === DESKTOP).length >= Math.ceil(vus.length / 2);
   }

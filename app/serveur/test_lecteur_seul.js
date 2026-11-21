@@ -103,11 +103,11 @@ const run = (cmd, args) => {
 };
 const memD = S.createMemoire(path.join(T, "data", "defauts.json"));
 const mimeapps = path.join(T, "mimeapps.list");
-check(S.etatLinux(run).video === false, "au départ, Rembobine n'est pas le lecteur par défaut");
+check(S.etatLinux(run, memD).video === false, "au départ, Rembobine n'est pas le lecteur par défaut");
 check(S.defautLinux("video", true, { run, memoire: memD, mimeapps }).ok, "faire de Rembobine le lecteur vidéo par défaut");
 check(db["video/x-matroska"] === "rembobine.desktop" && db["video/webm"] === "rembobine.desktop", "xdg-mime default rembobine.desktop pour les types vidéo");
 check(db["audio/mpeg"] === "lecteur-audio.desktop", "la musique n'est pas touchée (genres séparés)");
-check(S.etatLinux(run).video === true && S.etatLinux(run).musique === false, "état vu par la page");
+check(S.etatLinux(run, memD).video === true && S.etatLinux(run, memD).musique === false, "état vu par la page");
 check(memD.defauts().video.avant["video/x-matroska"] === "vlc.desktop", "l'ancien lecteur est retenu");
 S.defautLinux("video", true, { run, memoire: memD, mimeapps });
 check(memD.defauts().video.avant["video/mp4"] === "vlc.desktop", "refaire ne perd pas l'ancien lecteur");
@@ -117,6 +117,8 @@ check(db["video/x-matroska"] === "vlc.desktop" && db["video/mp4"] === "vlc.deskt
 const ma = fs.readFileSync(mimeapps, "utf8");
 check(!/^video\/webm=rembobine/m.test(ma.split("[Added Associations]")[0]) && /video\/x-flv=autre\.desktop;/.test(ma) && /text\/plain=editeur/.test(ma) && /\[Added Associations\]\nvideo\/webm=rembobine/.test(ma), "mimeapps.list : seul le choix par défaut de Rembobine est retiré (« Ouvrir avec » reste)");
 check(!memD.defauts().video, "plus rien de retenu pour la vidéo");
+db["audio/flac"] = "rembobine.desktop"; db["audio/mpeg"] = "rembobine.desktop"; db["audio/x-flac"] = "rembobine.desktop"; db["audio/ogg"] = "rembobine.desktop";
+check(S.etatLinux(run, memD).musique === false, "xdg-mime qui répond Rembobine faute d'autre lecteur : pas « par défaut » tant qu'on ne l'a pas choisi");
 
 // ---------- « Ouvrir avec » : raccourci Linux, paquet MIME, Windows ----------
 const lm = S.ligneMime();

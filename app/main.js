@@ -23,7 +23,8 @@ const fichierSeul = kiosk ? "" : SEUL.fichierDesArgs(process.argv, process.cwd()
 protocol.registerSchemesAsPrivileged([{ scheme: "rbbseul", privileges: { standard: true, secure: true, supportFetchAPI: true, stream: true, corsEnabled: true } }]);
 
 // Une seule Rembobine à la fois : un fichier ouvert pendant qu'elle tourne arrive dans la fenêtre déjà ouverte.
-if (!app.requestSingleInstanceLock({ fichier: fichierSeul })) app.quit();
+const premiere = app.requestSingleInstanceLock({ fichier: fichierSeul });
+if (!premiere) app.quit();
 let pret = false, aOuvrir = "";
 app.on("second-instance", (e, argv, cwd, data) => {
   const f = (data && typeof data.fichier === "string" && data.fichier && SEUL.genre(data.fichier) && fs.existsSync(data.fichier) ? data.fichier : "") || (kiosk ? "" : SEUL.fichierDesArgs(argv, cwd));
@@ -326,7 +327,7 @@ ipcMain.handle("gbx:defaut", () => {
     if (arm) return { possible: false, why: "raspberry" };
     if (!fs.existsSync(desktopFile())) return { possible: false, why: "installer", plat };
     if (!which("xdg-mime")) return { possible: false, why: "xdg", plat };
-    return { possible: true, plat, etat: SEUL.etatLinux(runSync) };
+    return { possible: true, plat, etat: SEUL.etatLinux(runSync, LS.mem) };
   }
   if (plat === "win32") return { possible: true, plat, windows: true };
   return { possible: false, plat };
@@ -342,7 +343,7 @@ ipcMain.handle("gbx:defautFaire", (e, genre, actif) => {
   if (process.platform !== "linux") return { ok: false };
   inscrireOuvrirAvec();
   const r = SEUL.defautLinux(genre, !!actif, { run: runSync, memoire: LS.mem, mimeapps: path.join(process.env.XDG_CONFIG_HOME || path.join(os.homedir(), ".config"), "mimeapps.list") });
-  return { ...r, etat: SEUL.etatLinux(runSync) };
+  return { ...r, etat: SEUL.etatLinux(runSync, LS.mem) };
 });
 
 // Cartouche NFC posée : on allume la télé et on la met sur Rembobine (HDMI-CEC, Raspberry Pi et PC Linux).
@@ -383,6 +384,7 @@ app.whenReady().then(async () => {
   const ours = (u) => /^file:/i.test(String(u || "")) || /^rbbseul:\/\/app\//i.test(String(u || "")) || /^https?:\/\/(127\.0\.0\.1|localhost)(:\d+)?\//i.test(String(u || ""));
   session.defaultSession.setPermissionRequestHandler((wc, perm, cb, details) => cb(ours((details && details.requestingUrl) || (wc && wc.getURL()))));
   session.defaultSession.setPermissionCheckHandler((wc, perm, origin) => ours(origin || (wc && wc.getURL())) || origin === "file://");
+  if (!premiere) return;   // une deuxième Rembobine : elle a passé son fichier à la première et s'en va
   LS.protocole();
   // ouvert avec un fichier : le lecteur seul, tout de suite (rien d'autre ne démarre) ; sinon Rembobine comme toujours
   const f = fichierSeul || aOuvrir; aOuvrir = "";

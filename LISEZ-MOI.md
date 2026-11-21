@@ -116,6 +116,24 @@ Tout se règle dans **Paramètres** (en bas du menu de gauche ; sur téléphone 
 - **Interface** : décorations de saison, fêtes à afficher (toutes / fêtes nationales seulement / aucune, et le pays), « Jingle au démarrage » (le petit air de la cassette qui rembobine, à couper ici).
 - **Métadonnées** : « Chercher fiches et jaquettes sur internet » (activé au départ). Quand Rembobine est connecté, il cherche tout seul, d'après le titre du fichier, l'affiche, une grande image, le résumé, l'année, le genre, les acteurs et la bande-annonce (Wikipédia, Wikidata, Open Library, MusicBrainz, jaquettes RetroArch ; TMDB d'abord si tu mets une clé gratuite). Tout est gardé sur le disque ; une jaquette, un `.nfo` ou une bande-annonce `Titre-trailer.mp4` posés à côté du fichier passent devant. Décoché : rien ne part sur internet.
 
+## Ouvrir un fichier avec Rembobine (lecteur seul)
+
+Rembobine peut aussi servir de simple **lecteur** : clic droit sur une vidéo, une musique ou un jeu → **Ouvrir avec** → **Rembobine**.
+Il s'ouvre tout de suite, sans la médiathèque ni le salon : juste le « R » en néon rouge dans un coin, puis le fichier.
+
+- **Vidéo** (mkv, mp4, avi, mov, webm…) : le lecteur de Rembobine, avec le vrai titre, l'heure de fin, la langue, et les sous-titres posés à côté du film (`Film.srt`, `Film.fr.srt`). Rouvre la même vidéo : elle **reprend où tu t'étais arrêté**.
+- **Musique** (mp3, flac, ogg, opus, m4a, wav…) : le lecteur de musique, avec les **autres morceaux du même dossier** à la suite.
+- **Jeu** : la bonne console est choisie toute seule (ROM des anciennes consoles dans l'émulateur intégré ; disques PS2, GameCube, Wii, Xbox… dans leur émulateur). Les BIOS ne sont jamais téléchargés : ils restent à poser dans `Rembobine/BIOS`.
+- À la fin, une petite question : **« Ajouter ce dossier à ta bibliothèque ? »** (jamais obligatoire, case « Ne plus demander »).
+- Fermer le lecteur ferme Rembobine. Le petit bouton **Ouvrir Rembobine** (en haut à droite, ou dans l'écran de pause d'un film) ouvre la médiathèque complète.
+- Si Rembobine est déjà ouvert, le fichier s'ouvre dans sa fenêtre, par-dessus la médiathèque.
+
+**En faire le lecteur par défaut** (celui qui s'ouvre d'un double-clic) : **Paramètres → Système → Lecteur par défaut**, séparément pour les vidéos, la musique et les jeux. Rien ne change tant que tu ne le demandes pas.
+- **Linux** : un clic suffit (installe d'abord Rembobine avec `./installer.sh`). « Ne plus l'utiliser par défaut » remet l'ancien lecteur.
+- **Windows** : Windows ne laisse aucune appli se mettre par défaut toute seule. Le bouton ouvre **Paramètres de Windows → Applications → Applications par défaut** sur Rembobine : choisis Rembobine pour chaque type de fichier (.mkv, .mp4, .mp3…). Rembobine apparaît dans « Ouvrir avec » dès son premier lancement.
+- **Android** : ouvre un fichier depuis l'appli **Fichiers**, choisis **Rembobine**, puis **Toujours**. Pour revenir en arrière : Réglages d'Android → Applications → Rembobine → Ouvrir par défaut.
+- Raspberry Pi et télé : rien à régler, Rembobine y est déjà tout l'écran.
+
 ## Mises à jour
 
 Quand une nouvelle version de Rembobine est publiée, un bouton **« Nouvelle version détectée »** apparaît en bas à gauche de l'écran.
