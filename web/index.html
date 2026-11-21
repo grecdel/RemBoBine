@@ -11098,6 +11098,7 @@ ${notes.slice(0, 6).map(n => { const pc = Number(n.pct);
   // thème aléatoire : un thème par jour, tiré parmi ceux cochés (le même toute la journée)
   function rbsEraRandom() {
     if (!C("eraRandom", false)) return null;
+    if (C("eraRandomSkip", "") === dayKey()) return null;   // thème choisi à la main aujourd'hui : il remplace le tirage jusqu'au lendemain
     let L = (C("eraRandomSet", null) || ERA_ORDER).filter(k => ERA_ORDER.includes(k)); if (!L.length) L = ERA_ORDER.slice();
     const d = new Date(), key = d.getFullYear() * 1000 + Math.floor((d - new Date(d.getFullYear(), 0, 1)) / 864e5);
     return L[hashStr("epoque" + key) % L.length];
@@ -11340,7 +11341,7 @@ ${notes.slice(0, 6).map(n => { const pc = Number(n.pct);
       { type: "select", key: "salonEra", label: "Époque du salon", help: "Le salon change d'époque : papier peint, sol, meubles, téléviseur de l'époque, objets transposés (ordinateur → machine à écrire, console → jeu de société…) et paysage de la fenêtre. Tout est générique, sans marque. « Aujourd'hui » : le salon habituel. « Gothique » : bois sombre, velours, papier peint damassé et chandeliers (un style, rien d'effrayant). Les décorations de la fête du jour passent toujours par-dessus.", options: ERA_ORDER.slice(), def: "Aujourd'hui", live: true },
       { type: "custom", id: "rbsEraPick" },
       { type: "toggle", key: "eraFilm", label: "Le salon s'adapte au film", help: "Pendant un film, le salon prend en coulisse le thème qui lui va (guerre : années 1930-40, zombies : post-apocalyptique, vampires : gothique, science-fiction : cyberpunk, magie et contes : chaumière magique, film d'époque : son époque). Tu le découvres en revenant au salon. Il reste jusqu'à ce que tu choisisses un thème ou fermes le logiciel ; ton thème choisi n'est pas modifié.", def: false, live: true },
-      { type: "toggle", key: "eraRandom", label: "Thème aléatoire", help: "Chaque jour, un thème tiré au hasard parmi ceux cochés ci-dessous (au moins un). Le thème du film passe devant, puis le salon revient au thème du jour.", def: false, live: true },
+      { type: "toggle", key: "eraRandom", label: "Thème aléatoire", help: "Chaque jour, un thème tiré au hasard parmi ceux cochés ci-dessous (au moins un). Le thème du film passe devant, puis le salon revient au thème du jour. Un thème choisi à la main remplace le tirage jusqu'au lendemain.", def: false, live: true },
       { type: "custom", id: "rbsEraRand" },
       { type: "select", key: "wxMode", label: "Météo à la fenêtre", help: "Selon la saison : le décor habituel. Simulée : pluie, neige ou orage inventés, sans internet. Réelle : la météo de ta ville (internet, désactivée par défaut).", options: ["Selon la saison", "Simulée (sans internet)", "Réelle (internet)"], def: "Selon la saison", live: true },
       { type: "text", key: "wxCity", label: "Ville de la météo", ph: "Lille", def: "Lille" },
@@ -11378,7 +11379,8 @@ ${notes.slice(0, 6).map(n => { const pc = Number(n.pct);
     if (t.id === "f-wxCity" || t.id === "f-wxPos" || t.id === "f-wxMode") { RBS.wx.at = 0; RBS.wx.cur = null; if (t.id === "f-wxCity") rbsGeocode(); else if (rbsWxNet()) rbsWxFetch(true); setTimeout(() => { try { renderSettings(true); } catch (_) {} }, 0); }
     if (t.dataset.rbsErand !== undefined) { let L = (C("eraRandomSet", null) || ERA_ORDER).slice(); const k = t.dataset.rbsErand; L = t.checked ? [...new Set(L.concat(k))] : L.filter(x => x !== k);
       if (!L.length) { t.checked = true; toast("Garde au moins un thème coché."); return; } state.cfg.eraRandomSet = ERA_ORDER.filter(x => L.includes(x)); saveAll(); setTimeout(() => { try { render(); } catch (_) {} }, 0); return; }
-    if (t.id === "f-salonEra" || t.id === "f-eraRandom") RBS_ERA.film = null;   // un choix de thème à la main efface le thème du film
+    if (t.id === "f-salonEra" || t.id === "f-eraRandom") RBS_ERA.film = null;
+    if (t.id === "f-salonEra" && C("eraRandom", false)) { state.cfg.eraRandomSkip = dayKey(); saveAll(); }   // un choix de thème à la main efface le thème du film
     if (t.id === "f-eraRandom") setTimeout(() => { try { renderSettings(true); } catch (_) {} }, 0);
     if (t.id === "f-salonEra" || t.id === "f-eraRandom" || t.id === "f-eraFilm" || t.id === "f-reduceHow" || t.id === "f-wxMode" || t.id === "f-bdayOn") setTimeout(() => { try { applyCfg(); if (!$("salon") || true) render(); } catch (_) {} }, 0);
   });
