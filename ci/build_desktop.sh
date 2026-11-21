@@ -17,6 +17,12 @@ mkdir -p "$OUT" "$DL"
 # une archive abîmée ou remplacée arrête la fabrication
 EU="https://github.com/electron/electron/releases/download/v$EV"
 curl -fsSL -o "$DL/electron-$EV-SHASUMS256.txt" "$EU/SHASUMS256.txt"
+# … et cette liste elle-même doit être celle figée dans ci/empreintes.txt (clé electron/SHASUMS256.txt, même version)
+. ci/empreintes.sh
+read -r ev_fige h_liste _ <<<"$(emp_ligne electron/SHASUMS256.txt)"
+if [ "$ev_fige" = "$EV" ] && [ "${h_liste:--}" != "-" ]; then
+  emp_verifier "$DL/electron-$EV-SHASUMS256.txt" "$h_liste" || { echo "::error::Electron $EV : liste d'empreintes différente de celle figée dans ci/empreintes.txt"; exit 1; }
+else echo "::warning::Electron $EV : liste d'empreintes pas figée dans ci/empreintes.txt (bash ci/relever_empreintes.sh electron)"; fi
 for p in linux-x64 linux-arm64 win32-x64; do
   [ -f "$DL/electron-$p.zip" ] || curl -fsSL -o "$DL/electron-$p.zip" "$EU/electron-v$EV-$p.zip"
   h=$(grep -E "^[0-9a-f]{64} [ *]electron-v$EV-$p\.zip\s*$" "$DL/electron-$EV-SHASUMS256.txt" | cut -c1-64)

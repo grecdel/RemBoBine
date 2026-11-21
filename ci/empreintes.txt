@@ -1,0 +1,50 @@
+# Empreintes SHA-256 de tout ce que la fabrication télécharge (versions figées).
+# Format : clé  version  sha256  adresse     (« - » = pas encore relevé : le fichier est alors refusé)
+# Mettre à jour : bash ci/relever_empreintes.sh  (télécharge vraiment chaque fichier), relire « git diff », enregistrer.
+# Utilisé par : ci/emulateurs_natifs.sh (natif/…), ci/emulateurs.sh (npm/…), ci/build_os.sh (os/…, tailscale/…),
+#               ci/build_desktop.sh (electron/…). pdf.js a son empreinte dans ci/pdfjs.sh.
+natif/pcsx2/linux-x64 v2.8.2 0c46bb6a88aa2782b10853a7b07cf3387ba99cbef2b966372cd2315b8571abea https://github.com/PCSX2/pcsx2/releases/download/v2.8.2/pcsx2-v2.8.2-linux-appimage-x64-Qt.AppImage
+natif/rpcs3/linux-x64 build-c05ef180e787fa162ff0506231bafb5f69d53748 bd52610d986c02f9cae70e7687e20490a6ce20373431ad9dc97d446a74131497 https://github.com/RPCS3/rpcs3-binaries-linux/releases/download/build-c05ef180e787fa162ff0506231bafb5f69d53748/rpcs3-v0.0.43-20641-c05ef180_linux64.AppImage
+natif/xemu/linux-x64 v0.8.139 220282aacf09b30b35c55ba900a774fb6940c70deca1408bc70a4c9cc67c322f https://github.com/xemu-project/xemu/releases/download/v0.8.139/xemu-0.8.139-x86_64.AppImage
+natif/ppsspp/linux-x64 v1.20.4 661c098e6b7f7610171a57b7c533ce8bba6f2312b71e76d61e850461973eba21 https://github.com/hrydgard/ppsspp/releases/download/v1.20.4/PPSSPP-v1.20.4-anylinux-x86_64.AppImage
+natif/xenia/linux-x64 - - -
+natif/ffmpeg/linux-x64 autobuild-2026-10-31-12-59 cf2b9a954ef8f162a94056259a9f20a74a07ba0155778bd14c2f6fbc1641feda https://github.com/FFmpeg-Builds/FFmpeg-Builds/releases/download/autobuild-2026-10-31-12-59/ffmpeg-N-128227-g4811625b5f-linux64-gpl-shared.tar.xz
+natif/ffmpeg/linux-arm64 autobuild-2026-10-31-12-59 16049a187215d21af76a462f1d6276091e3d5c9a826d4db75dcd310d24a04919 https://github.com/FFmpeg-Builds/FFmpeg-Builds/releases/download/autobuild-2026-10-31-12-59/ffmpeg-N-128227-g4811625b5f-linuxarm64-gpl-shared.tar.xz
+natif/ffmpeg/win-x64 autobuild-2026-10-31-12-59 3b1a38912999da560d048ccd91590c7e04dc73b75e478300c1053dce8b0689a6 https://github.com/FFmpeg-Builds/FFmpeg-Builds/releases/download/autobuild-2026-10-31-12-59/ffmpeg-N-128227-g4811625b5f-win64-gpl-shared.zip
+natif/mpv/linux-x64 v0.42.0@2026-11-07_1794059289 c9c367a4038e85b8061ecf974521f56692f68df06f3b2cc37990ab1f43ed6203 https://github.com/pkgforge-dev/mpv-AppImage/releases/download/v0.42.0@2026-11-07_1794059289/mpv-v0.42.0-anylinux-x86_64.AppImage
+natif/mpv/linux-arm64 v0.42.0@2026-11-07_1794059289 0926e601e37f5fcba21f85f1440dedb9c664e19f898a7cfc938fa4d36d24e851 https://github.com/pkgforge-dev/mpv-AppImage/releases/download/v0.42.0@2026-11-07_1794059289/mpv-v0.42.0-anylinux-aarch64.AppImage
+natif/mpv/win-x64 - - -
+natif/pcsx2/win-x64 v2.8.2 7dfc829ca1994cc1045ac49f05e39b6cf968b72e6a374c40e05c2a2b4ac200b4 https://github.com/PCSX2/pcsx2/releases/download/v2.8.2/pcsx2-v2.8.2-windows-x64-Qt.7z
+natif/rpcs3/win-x64 build-c05ef180e787fa162ff0506231bafb5f69d53748 9f1f071a8887ea4b3f651c1133c0937ea3ebab363ee3a61107d470ff9a91f390 https://github.com/RPCS3/rpcs3-binaries-win/releases/download/build-c05ef180e787fa162ff0506231bafb5f69d53748/rpcs3-v0.0.43-20641-c05ef180_win64_msvc.7z
+natif/xemu/win-x64 v0.8.139 fbb14dd7ea08120ca9ec99c955758786645af16a5058250553b3b7d7592e8701 https://github.com/xemu-project/xemu/releases/download/v0.8.139/xemu-win-x86_64-release.zip
+natif/xenia/win-x64 - - -
+natif/ppsspp/win-x64 v1.20.4 fbc9cd2f5131b159a92424e5c458c35ce43ba603cdded64dfc98e4bd4f17ff93 https://github.com/hrydgard/ppsspp/releases/download/v1.20.4/PPSSPP-v1.20.4-Windows-x64.zip
+natif/dolphin/win-x64 - - -
+os/raspios_lite_arm64 - - -
+tailscale/bookworm.noarmor.gpg bookworm - https://pkgs.tailscale.com/stable/debian/bookworm.noarmor.gpg
+tailscale/bookworm.tailscale-keyring.list bookworm - https://pkgs.tailscale.com/stable/debian/bookworm.tailscale-keyring.list
+tailscale/trixie.noarmor.gpg trixie - https://pkgs.tailscale.com/stable/debian/trixie.noarmor.gpg
+tailscale/trixie.tailscale-keyring.list trixie - https://pkgs.tailscale.com/stable/debian/trixie.tailscale-keyring.list
+electron/SHASUMS256.txt 33.2.1 d47544a908888801610d8cd53dea65af1961c386157ef0d4d18f3021e152a5a9 https://github.com/electron/electron/releases/download/v33.2.1/SHASUMS256.txt
+npm/@emulatorjs/emulatorjs 4.2.3 8033a18a3398cae5efd7a4c12a633b10672435977290959633d671365b589639 https://registry.npmjs.org/@emulatorjs/emulatorjs/-/emulatorjs-4.2.3.tgz
+npm/@emulatorjs/core-fceumm 4.2.3 72d7ec8a1cace14448b9f2e177e64a37120543e117d274072b02b67576d54025 https://registry.npmjs.org/@emulatorjs/core-fceumm/-/core-fceumm-4.2.3.tgz
+npm/@emulatorjs/core-snes9x 4.2.3 0b8481c27fb929693e3c8fa3aa8773c173fa9e220c5a5b84bec234cf451a765b https://registry.npmjs.org/@emulatorjs/core-snes9x/-/core-snes9x-4.2.3.tgz
+npm/@emulatorjs/core-gambatte 4.2.3 2edc2ed30fb18da28f67e95209a25f18307913a7eaba693d0d8481986c2fdd32 https://registry.npmjs.org/@emulatorjs/core-gambatte/-/core-gambatte-4.2.3.tgz
+npm/@emulatorjs/core-mgba 4.2.3 9ea664b4f998f6304a49c31a427206e2c12a3c1aa3652765ec5aa6db42cad529 https://registry.npmjs.org/@emulatorjs/core-mgba/-/core-mgba-4.2.3.tgz
+npm/@emulatorjs/core-smsplus 4.2.3 463556fb41886cdf4074c1608a7a18b56a6e2489f29aa06ce705149e4257a738 https://registry.npmjs.org/@emulatorjs/core-smsplus/-/core-smsplus-4.2.3.tgz
+npm/@emulatorjs/core-genesis_plus_gx 4.2.3 3f4ac27829f3a86734cb1b27f62078a1f1413f08cb0bb7e421b95aec31a0dfa3 https://registry.npmjs.org/@emulatorjs/core-genesis_plus_gx/-/core-genesis_plus_gx-4.2.3.tgz
+npm/@emulatorjs/core-mednafen_pce 4.2.3 b2278bd189006a7cb45ad87f8dcf3176040ecef1e079e9c1417e3de8e2683582 https://registry.npmjs.org/@emulatorjs/core-mednafen_pce/-/core-mednafen_pce-4.2.3.tgz
+npm/@emulatorjs/core-stella2014 4.2.3 848bc9d4d94eb15ab7477b5bb7bcab8a5dc9cde692177a3a49b653e618589ffb https://registry.npmjs.org/@emulatorjs/core-stella2014/-/core-stella2014-4.2.3.tgz
+npm/@emulatorjs/core-mupen64plus_next 4.2.3 2b8952aabbe32dc620cbde31b4456a16d7ff96116f471283699dc9ae09724417 https://registry.npmjs.org/@emulatorjs/core-mupen64plus_next/-/core-mupen64plus_next-4.2.3.tgz
+npm/@emulatorjs/core-melonds 4.2.3 6cbd17e0019bd0896265b2d03490a9f14627335ece3daeb6208ff89ee08d0045 https://registry.npmjs.org/@emulatorjs/core-melonds/-/core-melonds-4.2.3.tgz
+npm/@emulatorjs/core-pcsx_rearmed 4.2.3 d641b90c4d4bea0a29e55803a5bc7bd02eb9980e7b4684be6e64618ff165d923 https://registry.npmjs.org/@emulatorjs/core-pcsx_rearmed/-/core-pcsx_rearmed-4.2.3.tgz
+npm/@emulatorjs/core-fbneo 4.2.3 1b7a35a2123d66f30b58650b6de4fff5e115673aab3eabe23a207aa7c547da32 https://registry.npmjs.org/@emulatorjs/core-fbneo/-/core-fbneo-4.2.3.tgz
+npm/@emulatorjs/core-prosystem 4.2.3 01c1d5d2abd1ebf4dfda44ef6531983e53b30b8c7246133af08469b9323a1eb7 https://registry.npmjs.org/@emulatorjs/core-prosystem/-/core-prosystem-4.2.3.tgz
+npm/@emulatorjs/core-beetle_vb 4.2.3 ba60ad6815e8a340696d1d3549fca687e86dba328889f68d9b9683c9c0c978a7 https://registry.npmjs.org/@emulatorjs/core-beetle_vb/-/core-beetle_vb-4.2.3.tgz
+npm/@emulatorjs/core-mednafen_ngp 4.2.3 9436a370c4e21b5dbb18047b097b6664c608e0ed34b0ba4fe03fd0ee61c07be2 https://registry.npmjs.org/@emulatorjs/core-mednafen_ngp/-/core-mednafen_ngp-4.2.3.tgz
+npm/@emulatorjs/core-mednafen_wswan 4.2.3 0fdb858f904681c51bf46a21fa0d7cfd9ecf8c8b68d385cd592dc444bf3ec4aa https://registry.npmjs.org/@emulatorjs/core-mednafen_wswan/-/core-mednafen_wswan-4.2.3.tgz
+npm/@emulatorjs/core-picodrive 4.2.3 70a700f8752ac98b7819e5392e39f6935fd36d645e1113a5835e9fb0bd9f95b0 https://registry.npmjs.org/@emulatorjs/core-picodrive/-/core-picodrive-4.2.3.tgz
+npm/@emulatorjs/core-vice_x64sc 4.2.3 977c9e538eb9b0e3e293a2aa5f7c2d398c27d1d3222c775a1c83854fed6ce3f7 https://registry.npmjs.org/@emulatorjs/core-vice_x64sc/-/core-vice_x64sc-4.2.3.tgz
+npm/@emulatorjs/core-fuse 4.2.3 4a6a4eb0271e20ed6dc96ba48672d6aceffd816473b61c85773162f92737a3e0 https://registry.npmjs.org/@emulatorjs/core-fuse/-/core-fuse-4.2.3.tgz
+npm/@emulatorjs/core-cap32 4.2.3 bcfa8bddbb0aaadc38fc27baf94fbf9f15662cb7812bcc1739aa813f662925c2 https://registry.npmjs.org/@emulatorjs/core-cap32/-/core-cap32-4.2.3.tgz
+npm/@emulatorjs/core-mame2003_plus 4.2.3 f0018fcdf04688ac940f9bff24ccbede9fca1c4a9273093a89a66742f6da07bd https://registry.npmjs.org/@emulatorjs/core-mame2003_plus/-/core-mame2003_plus-4.2.3.tgz

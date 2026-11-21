@@ -1,7 +1,8 @@
 #!/bin/bash
 # Rassemble l'émulateur intégré (EmulatorJS) et ses consoles, pour qu'il marche SANS internet.
 #   ci/emulateurs.sh <dossier de sortie>      → <sortie>/ejs/data/ (loader.js, src/, cores/…)
-# Les fichiers viennent du registre npm (paquets officiels @emulatorjs/*), version figée ci-dessous.
+# Les fichiers viennent du registre npm (paquets officiels @emulatorjs/*), version figée ci-dessous ; chaque archive
+# est comparée à son empreinte SHA-256 figée dans ci/empreintes.txt (clés npm/@emulatorjs/…) et refusée sinon.
 # Seules les variantes utiles des consoles sont gardées (WebGL2 et « legacy », sans les fils d'exécution).
 set -euo pipefail
 OUT="$(mkdir -p "$1" && cd "$1" && pwd)/ejs"
@@ -12,9 +13,16 @@ V=4.2.3
 # ZX Spectrum, Amstrad CPC, arcade MAME 2003
 CORES="fceumm snes9x gambatte mgba smsplus genesis_plus_gx mednafen_pce stella2014 mupen64plus_next melonds pcsx_rearmed fbneo \
  prosystem beetle_vb mednafen_ngp mednafen_wswan picodrive vice_x64sc fuse cap32 mame2003_plus"
+. "$(dirname "$0")/empreintes.sh"
+# archive npm téléchargée → refus (arrêt) si son empreinte n'est pas celle figée pour cette version
+verif() {  # paquet, fichier
+  local v h; read -r v h _ <<<"$(emp_ligne "npm/@emulatorjs/$1")"
+  [ "$v" = "$V" ] && emp_verifier "$2" "$h" || { echo "::error::@emulatorjs/$1 $V : empreinte absente ou différente de ci/empreintes.txt — refusé"; exit 1; }
+}
 TMP=$(mktemp -d); trap 'rm -rf "$TMP"' EXIT
 cd "$TMP"
 npm pack --silent "@emulatorjs/emulatorjs@$V" >/dev/null
+verif emulatorjs "emulatorjs-emulatorjs-$V.tgz"
 tar xzf emulatorjs-emulatorjs-$V.tgz
 rm -rf "$OUT"; mkdir -p "$OUT"
 cp -r package/data "$OUT/data"
@@ -25,6 +33,7 @@ sed -i 's|^    checkForUpdates() {|    checkForUpdates() { return; // Rembobine 
 grep -q "Rembobine : version embarquée" "$OUT/data/src/emulator.js" || { echo "checkForUpdates introuvable"; exit 1; }
 for c in $CORES; do
   npm pack --silent "@emulatorjs/core-$c@$V" >/dev/null
+  verif "core-$c" "emulatorjs-core-$c-$V.tgz"
   mkdir -p "c-$c"; tar xzf "emulatorjs-core-$c-$V.tgz" -C "c-$c"
   cp "c-$c/package/$c-wasm.data" "c-$c/package/$c-legacy-wasm.data" "$OUT/data/cores/"
   cp "c-$c/package/reports/$c.json" "$OUT/data/cores/reports/"

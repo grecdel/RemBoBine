@@ -1,0 +1,33 @@
+# Relevé des empreintes des téléchargements de la fabrication (à lancer à la main : Actions → « Relever les empreintes »).
+# Ne modifie rien : le nouveau ci/empreintes.txt et ses différences s'affichent dans le résumé de l'exécution,
+# à relire puis à enregistrer dans le dépôt. La fabrication refuse tout fichier dont l'empreinte ne correspond pas.
+name: Relever les empreintes
+on:
+  workflow_dispatch:
+    inputs:
+      parties:
+        description: "Parties (natifs os tailscale electron npm), vide = tout"
+        required: false
+        default: ""
+permissions:
+  contents: read
+jobs:
+  relever:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - run: |
+          # (texte saisi passé par une variable, et seulement des mots connus : rien d'autre ne peut s'exécuter)
+          [[ "$PARTIES" =~ ^[a-z\ ]*$ ]] || { echo "parties invalides"; exit 1; }
+          bash ci/relever_empreintes.sh $PARTIES
+        env:
+          PARTIES: ${{ inputs.parties }}
+          # (questions à l'API de GitHub : dernières versions publiées, sans la limite de 60 demandes par heure ; lecture seule)
+          GH_TOKEN: ${{ github.token }}
+      - name: Résumé
+        run: |
+          { echo '## Différences'; echo '```diff'; git diff ci/empreintes.txt; echo '```'
+            echo '## ci/empreintes.txt complet'; echo '```'; cat ci/empreintes.txt; echo '```'; } >> "$GITHUB_STEP_SUMMARY"

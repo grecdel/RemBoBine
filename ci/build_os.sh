@@ -6,11 +6,26 @@ set -euo pipefail
 APP="$(readlink -f "$1")"
 OUT="$(readlink -f "$2")"
 WORK="$(pwd)/build/os"
-BASE_URL="https://downloads.raspberrypi.com/raspios_lite_arm64_latest"
+. "$(dirname "$0")/empreintes.sh"
 mkdir -p "$WORK"
 
 echo "== 1. Image de base : Raspberry Pi OS Lite 64 bits"
-[ -f "$WORK/base.img.xz" ] || curl -sSL -o "$WORK/base.img.xz" "$BASE_URL"
+# version datée et empreinte figées dans ci/empreintes.txt (clé os/raspios_lite_arm64) : une image remplacée ou abîmée
+# arrête la fabrication. Tant que l'empreinte n'est pas relevée (« - ») : dernière image publiée, comparée à
+# l'empreinte publiée à côté d'elle par Raspberry Pi (.sha256), avec un avertissement.
+read -r _ BASE_SHA BASE_URL <<<"$(emp_ligne os/raspios_lite_arm64)"
+if [ -f "$WORK/base.img.xz" ] && emp_verifier "$WORK/base.img.xz" "${BASE_SHA:-}"; then echo "  image déjà là, empreinte vérifiée"
+elif [ -n "${BASE_SHA:-}" ] && [ "$BASE_SHA" != "-" ]; then
+  emp_telecharger os/raspios_lite_arm64 "$WORK/base.img.xz" || exit 1
+else
+  echo "::warning::image Raspberry Pi OS : empreinte pas encore figée (bash ci/relever_empreintes.sh os) — vérification par l'empreinte publiée"
+  BASE_URL=$(curl -fsSIL -o /dev/null -w '%{url_effective}' https://downloads.raspberrypi.com/raspios_lite_arm64_latest)
+  case "$BASE_URL" in https://downloads.raspberrypi.com/*.img.xz) ;; *) echo "::error::adresse de l'image inattendue : $BASE_URL"; exit 1 ;; esac
+  curl -fsSL -o "$WORK/base.img.xz" "$BASE_URL"
+  h=$(curl -fsSL "$BASE_URL.sha256" | cut -c1-64)
+  emp_verifier "$WORK/base.img.xz" "$h" || { echo "::error::image Raspberry Pi OS : empreinte différente de celle publiée — refusée"; rm -f "$WORK/base.img.xz"; exit 1; }
+  echo "  $BASE_URL : empreinte publiée vérifiée ($h)"
+fi
 rm -f "$OUT"; xz -dc "$WORK/base.img.xz" > "$OUT"
 
 echo "== 2. Agrandir l'image (+2,5 Go pour Rembobine et l'affichage)"
@@ -48,7 +63,14 @@ AVAIL=$(CH "for p in $PKGS; do apt-cache policy \$p 2>/dev/null | grep -q 'Candi
 echo "  absents de cette version du système (ignorés) : $(for p in $PKGS; do case " $AVAIL " in *" $p "*) ;; *) printf '%s ' "$p" ;; esac; done)"
 CH "apt-get install -y -q --no-install-recommends $AVAIL"
 # Tailscale (réseau privé pour les amis à distance), depuis le dépôt officiel ; facultatif si le dépôt ne répond pas
-CH "set -e; . /etc/os-release; curl -fsSL https://pkgs.tailscale.com/stable/debian/\$VERSION_CODENAME.noarmor.gpg -o /usr/share/keyrings/tailscale-archive-keyring.gpg && curl -fsSL https://pkgs.tailscale.com/stable/debian/\$VERSION_CODENAME.tailscale-keyring.list -o /etc/apt/sources.list.d/tailscale.list && apt-get update -q && apt-get install -y -q tailscale && systemctl enable tailscaled" || echo "Tailscale non installé (dépôt injoignable)"
+# la clé du dépôt et son adresse sont téléchargées ici, comparées à ci/empreintes.txt, puis posées dans l'image
+# (la clé est ce qui garantit tous les paquets Tailscale ensuite : elle ne doit pas pouvoir être remplacée en route)
+TSC=$(. "$R/etc/os-release" && echo "$VERSION_CODENAME")
+if emp_telecharger "tailscale/$TSC.noarmor.gpg" "$WORK/ts.gpg" && emp_telecharger "tailscale/$TSC.tailscale-keyring.list" "$WORK/ts.list"; then
+  sudo install -m 644 "$WORK/ts.gpg" "$R/usr/share/keyrings/tailscale-archive-keyring.gpg"
+  sudo install -m 644 "$WORK/ts.list" "$R/etc/apt/sources.list.d/tailscale.list"
+  CH "set -e; apt-get update -q && apt-get install -y -q tailscale && systemctl enable tailscaled" || echo "Tailscale non installé (dépôt injoignable)"
+else echo "::warning::Tailscale non installé : clé du dépôt ($TSC) absente de ci/empreintes.txt ou différente"; fi
 # le serveur de Rembobine (utilisateur rembobine) peut connecter / couper Tailscale, et rien d'autre
 # (commande exacte, sans « * » : pas d'autres options comme --ssh, --advertise-routes ou --exit-node)
 #  (dans sudoers, le « = » des arguments s'écrit « \= »)
