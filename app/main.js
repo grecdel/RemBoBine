@@ -172,10 +172,20 @@ ipcMain.handle("gbx:mpvCmd", (e, a) => {
 
 // Le lecteur de cartouches lu directement (Linux, groupe « input ») : il marche même quand mpv est devant.
 // Un lecteur « clavier » tape le numéro de la puce puis Entrée, en quelques millisecondes.
+// Vie privée : /dev/input n'est lu QUE si la page le demande (gbx:nfcLecture), c.-à-d. quand au moins une cartouche
+// est enregistrée ou que « Créer une cartouche » est ouvert ; sinon aucun clavier n'est ouvert. Seules les rafales
+// de chiffres trop rapides pour une main (< 80 ms entre deux touches, puis Entrée) sont transmises, rien d'autre.
+// Avec le vrai lecteur : une règle udev peut réserver ce seul appareil à Rembobine (voir CLAUDE.md, Cartouches NFC).
 const KEYS = { 2: "1", 3: "2", 4: "3", 5: "4", 6: "5", 7: "6", 8: "7", 9: "8", 10: "9", 11: "0", 79: "1", 80: "2", 81: "3", 75: "4", 76: "5", 77: "6", 71: "7", 72: "8", 73: "9", 82: "0", 30: "A", 48: "B", 46: "C", 32: "D", 18: "E", 33: "F" };
 const evOpen = new Map();
+let evScan = null;
+function stopCardReaders() {
+  if (evScan) { clearInterval(evScan); evScan = null; }
+  for (const rs of evOpen.values()) { try { if (rs) rs.destroy(); } catch (_) {} }
+  evOpen.clear();
+}
 function watchCardReaders() {
-  if (process.platform !== "linux") return;
+  if (process.platform !== "linux" || evScan) return;
   const size = process.arch === "arm" || process.arch === "ia32" ? 16 : 24, at = size - 8;
   const scan = () => {
     let list = []; try { list = fs.readdirSync("/dev/input").filter(n => /^event\d+$/.test(n)); } catch (_) { return; }
@@ -200,8 +210,9 @@ function watchCardReaders() {
       });
     }
   };
-  scan(); setInterval(scan, 4000);
+  scan(); evScan = setInterval(scan, 4000);
 }
+ipcMain.handle("gbx:nfcLecture", (e, on) => { if (on === true) watchCardReaders(); else stopCardReaders(); return !!evScan; });
 
 // Les vidéos que Chromium ne sait pas lire (mkv, avi…) partent dans mpv, en plein écran.
 // lire une valeur de mpv (position, durée) par le même tuyau : la jauge de reprise suit la vraie position
@@ -270,7 +281,7 @@ app.whenReady().then(async () => {
   const ours = (u) => /^file:/i.test(String(u || "")) || /^https?:\/\/(127\.0\.0\.1|localhost)(:\d+)?\//i.test(String(u || ""));
   session.defaultSession.setPermissionRequestHandler((wc, perm, cb, details) => cb(ours((details && details.requestingUrl) || (wc && wc.getURL()))));
   session.defaultSession.setPermissionCheckHandler((wc, perm, origin) => ours(origin || (wc && wc.getURL())) || origin === "file://");
-  await startServer(); createWindow(); watchCardReaders();
+  await startServer(); createWindow();
 });
 app.on("before-quit", () => { M3D.stop(); M3DW.stop(); if (serveur) serveur.stop().catch(() => {}); });
 app.on("window-all-closed", () => app.quit());

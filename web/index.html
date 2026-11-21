@@ -1,5 +1,5 @@
 <meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="object-src 'none'; base-uri 'self'">
+<meta http-equiv="Content-Security-Policy" content="object-src 'none'; base-uri 'self'; form-action 'none'">
 <title>Rembobine</title>
 <meta name="claude:viewport-fit-sides" content="cover">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
@@ -3343,9 +3343,9 @@
   }
   const fmtHms = (s) => { s = Math.max(0, Math.floor(s || 0)); const h = Math.floor(s / 3600), m = Math.floor(s % 3600 / 60), x = s % 60; return (h ? h + ":" + String(m).padStart(2, "0") : m) + ":" + String(x).padStart(2, "0"); };
   async function gbxVideo(it, vid, rurl) {
-    const id = decodeURIComponent((/\/media\/([^?]+)/.exec(rurl) || [])[1] || ""), tok = encodeURIComponent(gbxTok()), can = vidCaps();
+    const id = decodeURIComponent((/\/media\/([^?]+)/.exec(rurl) || [])[1] || ""), lk = gbxLk(), can = vidCaps();
     let pr = null; try { pr = await gbx(`/api/probe/${encodeURIComponent(id)}?can=${can}`); } catch (_) {}
-    if (!pr || !pr.dur) { vid.src = rurl; return; }
+    if (!pr || !pr.dur) { vid.src = gbxLu(rurl); return; }
     const bar = $("convbar"), V = { mode: pr.mode, a: pr.audioPicked, sub: -1, off: 0, extra: "" };
     // version « salon » préparée à l'avance par le serveur : un vrai fichier, lu comme un fichier direct (voir « Lecture vidéo »)
     if (pr.prepared && pr.prepared.salon && pr.mode !== "direct") { V.mode = "direct"; V.prep = true; }
@@ -3355,14 +3355,14 @@
     if (fr && audioLang && !/^(fr|fre|fra)$/.test(audioLang)) V.sub = fr.n;
     const setTracks = () => {
       [...vid.querySelectorAll("track")].forEach(t => t.remove());
-      pr.subs.forEach(x => { const t = document.createElement("track"); t.kind = "subtitles"; t.label = x.label; t.srclang = (x.lang || "fr").slice(0, 2); t.src = `${GBX.base}/subs/${encodeURIComponent(id)}/${x.n}?tok=${tok}${V.off ? "&ss=" + V.off : ""}`; vid.appendChild(t); });
+      pr.subs.forEach(x => { const t = document.createElement("track"); t.kind = "subtitles"; t.label = x.label; t.srclang = (x.lang || "fr").slice(0, 2); t.src = `${GBX.base}/subs/${encodeURIComponent(id)}/${x.n}?${lk}${V.off ? "&ss=" + V.off : ""}`; vid.appendChild(t); });
       [...vid.textTracks].forEach((t, i) => { t.mode = pr.subs[i] && pr.subs[i].n === V.sub ? "showing" : "disabled"; });
     };
     const load = (from) => {
       V.off = V.mode === "direct" ? 0 : Math.max(0, Math.floor(from || 0));
       vid.rbbConv = V.mode !== "direct"; vid.rbbOff = V.off; vid.rbbDur = pr.dur;
-      vid.src = V.mode === "direct" ? `${GBX.base}/media/${encodeURIComponent(id)}?tok=${tok}${V.prep ? "&prep=1" : ""}`
-        : `${GBX.base}/media/${encodeURIComponent(id)}?tok=${tok}&mode=${V.mode}&can=${can}&ss=${V.off}${V.a != null ? "&a=" + V.a : ""}${V.extra || ""}${V.low ? "&q=low" : ""}`;
+      vid.src = V.mode === "direct" ? `${GBX.base}/media/${encodeURIComponent(id)}?${lk}${V.prep ? "&prep=1" : ""}`
+        : `${GBX.base}/media/${encodeURIComponent(id)}?${lk}&mode=${V.mode}&can=${can}&ss=${V.off}${V.a != null ? "&a=" + V.a : ""}${V.extra || ""}${V.low ? "&q=low" : ""}`;
       setTracks(); vid.play().catch(() => {});
       if (V.mode === "direct" && from > 0) vid.addEventListener("loadedmetadata", () => { vid.currentTime = from; }, { once: true });
     };
@@ -3414,7 +3414,7 @@
       if (state.videoUrl) URL.revokeObjectURL(state.videoUrl);
       state.videoUrl = file ? URL.createObjectURL(file) : "";
       const fromGbx = !file && rurl && GBX.base && rurl.startsWith(GBX.base + "/media/");
-      $("player").innerHTML = `<video id="vid" controls autoplay playsinline${fromGbx ? ' crossorigin="anonymous"' : ` src="${file ? state.videoUrl : esc(rurl)}"`}></video><div class="convbar" id="convbar" hidden></div><div class="seance" id="seance"></div><p class="err" id="verr" hidden>Ce format n'est pas lu par le navigateur (mkv et avi, souvent). mpv le lira sans problème sur Linux.</p>`;
+      $("player").innerHTML = `<video id="vid" controls autoplay playsinline${fromGbx ? ' crossorigin="anonymous"' : ` src="${file ? state.videoUrl : esc(gbxLu(rurl))}"`}></video><div class="convbar" id="convbar" hidden></div><div class="seance" id="seance"></div><p class="err" id="verr" hidden>Ce format n'est pas lu par le navigateur (mkv et avi, souvent). mpv le lira sans problème sur Linux.</p>`;
       const tv = $("tvid"); if (tv) tv.pause();
       const vid = $("vid"); let lastSave = 0;
       // vidéo convertie par le serveur : la position réelle = départ de la conversion + temps lu (voir gbxVideo)
@@ -3921,7 +3921,7 @@
     if (x.episodes && x.episodes.some(e => e.name)) o.epNames = Object.fromEntries(x.episodes.filter(e => e.name).map(e => [`${e.s}x${e.e}`, e.name]));
     return o;
   }
-  const bibExtraUrl = (x) => x.file ? URL.createObjectURL(x.file) : x.id && GBX.base ? gbxMedia(x.id) : "";
+  const bibExtraUrl = (x) => x.file ? URL.createObjectURL(x.file) : x.id && GBX.base ? gbxMediaLu(x.id) : "";
 
   // ---- fiche : affiche de la saison, titres d'épisodes, bande-annonce du serveur, bonus, note et avis, enfants, acteurs ----
   episodeOptions = ((f) => function (it) {
@@ -3930,7 +3930,7 @@
   })(episodeOptions);
   trailerHtml = ((f) => function (it) {
     if (!it.trailerFile && it.trailerId && GBX.base) return `<div class="tr fe-hero fe-media" id="tr"><video id="tvid"
- src="${esc(gbxMedia(it.trailerId))}" autoplay muted loop controls playsinline crossorigin="anonymous"></video><span class="tr-badge">Bande-annonce · ${esc(GBX.info?.name || "serveur")}</span></div>`;
+ src="${esc(gbxMediaLu(it.trailerId))}" autoplay muted loop controls playsinline crossorigin="anonymous"></video><span class="tr-badge">Bande-annonce · ${esc(GBX.info?.name || "serveur")}</span></div>`;
     return f.apply(this, arguments);
   })(trailerHtml);
   // ---- fiches d'internet : grande image, livres, pistes, jauge de reprise juste partout ----
@@ -4116,7 +4116,7 @@
     e.stopImmediatePropagation();
     v.bibPart = i; v.rbbConv = false; v.rbbOff = 0; v.rbbDur = 0; v.rbbFallback = null;
     if (state.videoUrl && it.parts) URL.revokeObjectURL(state.videoUrl);
-    v.src = it.parts ? (state.videoUrl = URL.createObjectURL(it.parts[i])) : gbxMedia(it.partIds[i]);
+    v.src = it.parts ? (state.videoUrl = URL.createObjectURL(it.parts[i])) : gbxMediaLu(it.partIds[i]);
     v.play().catch(() => {}); toast(`Morceau ${i + 1} sur ${n}`);
   }, true);
 
@@ -8068,7 +8068,7 @@ ${notes.slice(0, 6).map(n => { const pc = Number(n.pct);
   // ---------- l'émulateur intégré : réglages au lancement, barre « ☰ Rembobine », fin de partie ----------
   function jxEmuCfg(it, cfg) {   // avant que la page de l'émulateur soit écrite
     const discs = jxDiscList(it), n = jxDiscOf(it);
-    if (discs.length > 1) { if (it.gbxId) cfg.EJS_gameUrl = gbxMedia(it.gbxId + "~" + n); else if (discs[n - 1] && discs[n - 1].file) { cfg.EJS_gameUrl = URL.createObjectURL(discs[n - 1].file); JX.discUrl = cfg.EJS_gameUrl; } }
+    if (discs.length > 1) { if (it.gbxId) cfg.EJS_gameUrl = gbxMediaLu(it.gbxId + "~" + n); else if (discs[n - 1] && discs[n - 1].file) { cfg.EJS_gameUrl = URL.createObjectURL(discs[n - 1].file); JX.discUrl = cfg.EJS_gameUrl; } }
     const b = jxBios(it);
     if (b && b.ok && it.gbxId && b.fichier) cfg.EJS_biosUrl = `${GBX.base}/api/jeux/bios/${encodeURIComponent(it.gbxId)}/${encodeURIComponent(b.fichier)}?${jxTokQ()}`;
   }
@@ -8683,7 +8683,7 @@ ${notes.slice(0, 6).map(n => { const pc = Number(n.pct);
     clearTimeout(W.prevTm);
     W.prevTm = setTimeout(() => {
       W.lastBucket = bucket;
-      if (srv) { const img = el.querySelector("img"); if (img) img.src = `${GBX.base}/thumb/${encodeURIComponent(W.gid)}?t=${bucket}&tok=${encodeURIComponent(gbxTok())}`; }
+      if (srv) { const img = el.querySelector("img"); if (img) img.src = `${GBX.base}/thumb/${encodeURIComponent(W.gid)}?t=${bucket}&${gbxLk()}`; }
       else if (loc) { // fichier sur cet appareil : une 2e lecture discrète du fichier, juste pour l'image
         const cv = el.querySelector("canvas"); if (!cv) return;
         if (!W.pv) { W.pv = document.createElement("video"); W.pv.muted = true; W.pv.preload = "auto"; W.pv.src = W.vid.currentSrc || W.vid.src; }
@@ -8879,8 +8879,8 @@ ${notes.slice(0, 6).map(n => { const pc = Number(n.pct);
   })(shotsSection);
   function vxSrvShots(it) {
     if (!it || !it.gbxId || !GBX.base || !["film", "serie"].includes(it.kind)) return;
-    gbx(`/api/captures/${encodeURIComponent(it.gbxId)}`).then(r => { const tk = encodeURIComponent(gbxTok());
-      VX.srvShots[it.gbxId] = (r.captures || []).map(c => ({ url: `${GBX.base}${c.url}?tok=${tk}`, at: Math.floor(c.at / 1000) }));
+    gbx(`/api/captures/${encodeURIComponent(it.gbxId)}`).then(r => { const tk = gbxLk();
+      VX.srvShots[it.gbxId] = (r.captures || []).map(c => ({ url: `${GBX.base}${c.url}?${tk}`, at: Math.floor(c.at / 1000) }));
       if (state.modalItem === it && state.sheet.view === "main") refreshSec("shotSec", shotsSection(it)); }).catch(() => {});
   }
 
@@ -8914,7 +8914,7 @@ ${notes.slice(0, 6).map(n => { const pc = Number(n.pct);
       return await new Promise((res) => { const r = new FileReader(); r.onload = () => res(String(r.result)); r.onerror = () => res(""); r.readAsDataURL(b); }); } catch (_) { return ""; }
   }
   async function vxFetchOffline(id, file, meta) {
-    const url = `${GBX.base}/offline/${encodeURIComponent(id)}?tok=${encodeURIComponent(gbxTok())}`;
+    const url = `${GBX.base}/offline/${encodeURIComponent(id)}?${gbxLk()}`;
     // appli Android : le fichier va dans la mémoire du téléphone (dossier HorsLigne de l'appli)
     if (window.gamebox && window.gamebox.offline) { window.gamebox.offline.save(url, file, meta); toast(`Téléchargement de « ${meta.title} » sur le téléphone…`); return; }
     toast(`Téléchargement de « ${meta.title} »…`);
@@ -15907,6 +15907,18 @@ FETES2D["saison:halloween"] = (() => {
   try { if (/[?&]kiosk=1/.test(location.search)) sessionStorage.setItem("gbxKiosk", "1"); GBX.kiosk = sessionStorage.getItem("gbxKiosk") === "1"; } catch (_) {}
   const gbxTok = () => { try { return localStorage.getItem("gbxTok") || ""; } catch (_) { return ""; } };
   const gbxSetTok = (t) => { try { localStorage.setItem("gbxTok", t); localStorage.removeItem("rbbInvite"); } catch (_) {} try { telTokSave(t); } catch (_) {} };
+  // Liens de lecture signés : les adresses des fichiers (vidéo, sous-titres, vignettes, musique, photos, copie hors ligne)
+  // portent « lk=… » (lecture seule, 7 jours, donné par /api/lien) plutôt que la clé d'appairage, pour qu'une adresse
+  // restée dans un journal ou un historique n'ouvre pas tout le serveur. Sans lien valable : la clé, comme avant.
+  const gbxLienOk = () => { const L = GBX.lien, now = Date.now(); return !!(L && L.k && L.base === GBX.base && L.t === gbxTok().slice(0, 12) && (L.until - now > 2 * 86400000 || (L.cap && L.until - now > 60000))); };
+  async function gbxLienMaj() {
+    const t = gbxTok(), b = GBX.base; if (!b || !t || GBX.local) return;
+    try { const res = await remoteFetch(b + "/api/lien", { headers: { Authorization: "Bearer " + t } }, 3000); const j = res.ok ? await res.json() : null;
+      if (j && j.lien && /^[0-9a-f]{16}\.\d+\.[0-9a-f]{32}$/.test(j.lien)) GBX.lien = { k: j.lien, until: Number(j.until) || 0, cap: Number(j.until) < Date.now() + 6 * 86400000, base: b, t: t.slice(0, 12) }; } catch (_) {}
+  }
+  // une adresse gardée (« …/media/x?tok=… ») lue maintenant : même adresse, avec le lien signé à la place de la clé
+  const gbxLu = (u) => (typeof u === "string" && GBX.base && u.startsWith(GBX.base + "/") ? u.replace(/([?&])tok=[^&#]*/, (m, c) => c + gbxLk()) : u);
+  const gbxLk = () => { if (gbxLienOk()) { if (GBX.lien.until - Date.now() < 5 * 86400000 && !GBX.lien.cap) gbxLienMaj(); return "lk=" + encodeURIComponent(GBX.lien.k); } return "tok=" + encodeURIComponent(gbxTok()); };
   async function gbxFind() {
     // 1) la page est servie par le Raspberry lui-même (télé ou téléphone sur le réseau de la maison) ; 2) l'adresse réglée dans « Serveurs à distance »
     const cands = []; if (/^https?:$/.test(location.protocol) && !/claude|anthropic|claudeusercontent/.test(location.host)) cands.push(location.origin);
@@ -15917,11 +15929,13 @@ FETES2D["saison:halloween"] = (() => {
     if (window.gamebox && window.gamebox.android) cands.push("http://rembobine.local:8080");
     // plusieurs Rembobine dans la maison : celui choisi dans la télécommande passe en premier
     try { const pk = telSrvPick(); if (pk) cands.unshift(pk); } catch (_) {}
-    for (const b of cands) { try { const res = await remoteFetch(b + "/api/info" + (gbxTok() ? "?tok=" + encodeURIComponent(gbxTok()) : ""), {}, 3500); if (res.ok) { const j = await res.json(); if (j && j.api) { GBX.base = b; GBX.info = j; GBX.local = /^http:\/\/127\.0\.0\.1[:/]/.test(b); try { telSrvSeen(b, j); } catch (_) {} return j; } } } catch (_) {} }
+    for (const b of cands) { try { const res = await remoteFetch(b + "/api/info", gbxTok() ? { headers: { Authorization: "Bearer " + gbxTok() } } : {}, 3500); if (res.ok) { const j = await res.json(); if (j && j.api) { GBX.base = b; GBX.info = j; GBX.local = /^http:\/\/127\.0\.0\.1[:/]/.test(b); try { telSrvSeen(b, j); } catch (_) {} if (j.paired && !j.kiosk) await gbxLienMaj(); return j; } } } catch (_) {} }
     GBX.base = null; GBX.info = null; return null;
   }
   async function gbx(p, body, ms = 12000) { if (!GBX.base && !(await gbxFind())) throw new Error("hors ligne"); const t = gbxTok(); const res = await remoteFetch(GBX.base + p, { method: body ? "POST" : "GET", headers: { "Content-Type": "application/json", ...(t ? { Authorization: "Bearer " + t } : {}) }, body: body ? JSON.stringify(body) : undefined }, ms); if (res.status === 401) { const e = new Error("appairage"); e.pair = true; throw e; } return res.json(); }
   const gbxMedia = (id, extra = "") => `${GBX.base}/media/${encodeURIComponent(id)}?tok=${encodeURIComponent(gbxTok())}${extra}`;
+  // (même adresse avec un lien de lecture signé : pour ce qui se lit tout de suite, jamais pour ce qui est gardé)
+  const gbxMediaLu = (id, extra = "") => `${GBX.base}/media/${encodeURIComponent(id)}?${gbxLk()}${extra}`;
   function gbxEvents() {
     if (!GBX.base || GBX.es || typeof EventSource === "undefined") return; try { GBX.es = new EventSource(`${GBX.base}/api/stream?tok=${encodeURIComponent(gbxTok())}`); } catch (_) { return; }
     GBX.es.onmessage = (m) => { let ev; try { ev = JSON.parse(m.data); } catch (_) { return; } gbxOnEvent(ev); };
@@ -16056,7 +16070,7 @@ FETES2D["saison:halloween"] = (() => {
   function telRemember() { try { if (telAndroid() && window.gamebox.remember && GBX.base && !GBX.local) window.gamebox.remember(GBX.base, gbxTok(), (GBX.info && GBX.info.name) || "TV"); } catch (_) {} }
   async function telProbe(url) {
     const tk = (telStore("rbbSrvToks") || {})[url] || "";
-    try { const r = await remoteFetch(url + "/api/info" + (tk ? "?tok=" + encodeURIComponent(tk) : ""), {}, 2500); if (!r.ok) return null; const j = await r.json(); return j && j.api ? { url, name: j.name || "Rembobine", paired: !!j.paired } : null; } catch (_) { return null; }
+    try { const r = await remoteFetch(url + "/api/info", tk ? { headers: { Authorization: "Bearer " + tk } } : {}, 2500); if (!r.ok) return null; const j = await r.json(); return j && j.api ? { url, name: j.name || "Rembobine", paired: !!j.paired } : null; } catch (_) { return null; }
   }
   async function telScan() {
     if (TEL.scanning) return; TEL.scanning = true; telSrvRender();
@@ -17074,7 +17088,7 @@ FETES2D["saison:halloween"] = (() => {
     if (it.trailerUrl) return { html: `<video muted autoplay loop playsinline src="${esc(it.trailerUrl)}"></video>`, mode: "trailer" };
     const file = it.kind === "film" ? it.file : it.kind === "serie" ? it.seasons?.[0]?.eps?.[0]?.file : null, rurl = !file && it.kind === "film" && it.remoteUrl && !/&t=1/.test(it.remoteUrl) ? it.remoteUrl : "";
     if (file && /^(mp4|m4v|webm|mov)$/i.test((file.name || "").split(".").pop())) { PV.url = URL.createObjectURL(file); return { html: `<video muted autoplay playsinline src="${PV.url}"></video>${kb ? "" : ""}<span class="ff">▶▶ Aperçu</span>`, mode: "montage" }; }
-    if (rurl) return { html: `<video muted autoplay playsinline src="${esc(rurl)}"></video><span class="ff">▶▶ Aperçu</span>`, mode: "montage" };
+    if (rurl) return { html: `<video muted autoplay playsinline src="${esc(gbxLu(rurl))}"></video><span class="ff">▶▶ Aperçu</span>`, mode: "montage" };
     if (it.shots && it.shots.length > 1) return { html: it.shots.slice(0, 6).map((s, i) => `<img class="kb" alt="" src="${esc(s.url)}" style="opacity:${i ? 0 : 1};transition:opacity .8s">`).join(""), mode: "shots" };
     return { html: kb, mode: "still" };
   }
@@ -17424,7 +17438,7 @@ FETES2D["saison:halloween"] = (() => {
 
   /* ---- fichiers trouvés à côté des titres (sur la Rembobine) ---- */
   function gbxExtras(x) {
-    const ex = (kind, n = 0) => `${GBX.base}/extra/${encodeURIComponent(x.id)}/${kind}/${n}?tok=${encodeURIComponent(gbxTok())}`;
+    const ex = (kind, n = 0) => `${GBX.base}/extra/${encodeURIComponent(x.id)}/${kind}/${n}?${gbxLk()}`;
     const o = {}; if (x.theme) o.themeUrl = ex("theme"); if (x.manual) o.manualUrl = ex("manual"); if (x.maps) o.maps = Array.from({ length: x.maps }, (_, i) => ex("map", i)); if (x.tmdb) o.tmdb = x.tmdb;
     // fiche trouvée sur internet : grande image, écran titre (jeux), bande-annonce YouTube, éditeur, d'où vient la fiche
     if (x.backdrop) o.backdrop = GBX.base + x.backdrop; if (x.titleShot) o.titleShot = GBX.base + x.titleShot; if (x.yt) o.yt = x.yt;
@@ -19626,7 +19640,7 @@ ${keys}
           } catch (_) { end(null); }   // image « protégée » (autre origine) : on garde le rectangle
         }, { once: true });
         if (it.file) { url = URL.createObjectURL(it.file); own = url.startsWith("blob:"); }
-        else { url = it.remoteUrl; v.crossOrigin = "anonymous"; }
+        else { url = gbxLu(it.remoteUrl); v.crossOrigin = "anonymous"; }
         v.src = url;
       });
     }
@@ -19720,6 +19734,13 @@ ${keys}
   }
   window.addEventListener("keydown", nfcKey, true);
   try { if (window.gamebox && window.gamebox.onCard) window.gamebox.onCard((uid) => nfcRead(uid.toUpperCase())); } catch (_) {}
+  // l'appli (Linux) ne lit les claviers directement que si la fonction sert : une cartouche enregistrée,
+  // ou « Créer une cartouche » ouvert ; sinon rien n'est lu (vie privée)
+  function nfcDirect() {
+    try { const on = Object.keys(nfcCards()).length > 0 || !!NFC.pair;
+      if (on !== NFC.direct && window.gamebox && window.gamebox.nfcLecture) { NFC.direct = on; window.gamebox.nfcLecture(on); } } catch (_) {}
+  }
+  setTimeout(nfcDirect, 1500); setInterval(nfcDirect, 5000);
 
   function nfcRead(uid) {
     // la même cartouche lue deux fois d'un coup (clavier + lecture directe) ne compte qu'une fois
@@ -19875,9 +19896,10 @@ ${keys}
     const have = nfcCardsOf(it);
     NFC.pair = { it, pid: state.pid, step: "wait", uid: null, phone: !!phone, look: (have[0] && have[0][1].look) || C("nfcLook", "disk35") };
     if (phone) nfcPhoneWatch();
+    nfcDirect();
     if (uid) nfcPairWith(uid); else if (have.length) nfcStep("have"); else nfcStep("wait");
   }
-  function nfcClose() { const was = NFC.pair && NFC.pair.phone; NFC.pair = null; const d = $("nfcd"); if (d) d.remove(); if (was) nfcPhoneWatch(); }
+  function nfcClose() { const was = NFC.pair && NFC.pair.phone; NFC.pair = null; const d = $("nfcd"); if (d) d.remove(); if (was) nfcPhoneWatch(); nfcDirect(); }
   function nfcWhoChips(P) {
     const opts = [["", "Le profil actif"], ...state.profiles.map(p => [p.id, p.name])];
     return `<div class="nfcwho"><span>Elle reprend là où en était le profil :</span>${opts.map(([id, n]) => `<button type="button" class="nfcchipbtn" data-nfc="who" data-pid="${esc(id)}" aria-pressed="${(P.pid || "") === id}">${esc(n)}</button>`).join("")}</div>`;

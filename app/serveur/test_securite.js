@@ -111,6 +111,21 @@ function stream(host, tok) {
   const sys = (await req("/api/system", { tok: gt })).json;
   check(sys && sys.net && !sys.net.ip && !sys.net.tailscale, "invité : /api/system sans les adresses de la maison");
   check((await req(`/media/${film.id}`, { tok: gt })).status === 200, "invité : regarde un film");
+
+  // ---------- liens de lecture signés (« ?lk= » à la place de la clé dans les adresses des fichiers) ----------
+  const L1 = (await req("/api/lien", { tok })).json, LG = (await req("/api/lien", { tok: gt })).json;
+  check(L1 && /^[0-9a-f]{16}\.\d+\.[0-9a-f]{32}$/.test(L1.lien) && L1.until > Date.now() + 6 * 86400000, "lien de lecture : donné à un appareil relié, valable 7 jours");
+  check(LG && LG.lien && LG.until <= Date.now() + 2 * 86400000 + 5000, "lien d'un invité : jamais plus long que son invitation");
+  check(!new RegExp(tok).test(L1.lien), "le lien ne contient pas la clé d'appairage");
+  check((await req(`/media/${film.id}?lk=${L1.lien}`)).status === 200, "lien de lecture : ouvre la vidéo");
+  check((await req(`/media/${film.id}?lk=${L1.lien}`, { method: "HEAD" })).status === 200, "lien de lecture : HEAD accepté (lecteurs vidéo)");
+  check((await req(`/api/library?lk=${L1.lien}`)).status === 401 && (await req(`/api/config?lk=${L1.lien}`)).status === 401, "lien de lecture : n'ouvre pas l'API (bibliothèque, réglages)");
+  check((await req(`/media/${film.id}?lk=${L1.lien}`, { body: {} })).status === 401, "lien de lecture : lecture seule (pas de POST)");
+  const [li, le, ls] = L1.lien.split(".");
+  check((await req(`/media/${film.id}?lk=${li}.${Number(le) + 999}.${ls}`)).status === 401, "lien de lecture : date de fin changée = refusé");
+  const oldExp = Math.floor(Date.now() / 1000) - 10, oldSig = crypto.createHmac("sha256", S.cfg.secret).update(`lien:${li}.${oldExp}`).digest("hex").slice(0, 32);
+  check((await req(`/media/${film.id}?lk=${li}.${oldExp}.${oldSig}`)).status === 401, "lien de lecture expiré : refusé");
+  check((await req(`/media/${film.id}?lk=${"0".repeat(16)}.${le}.${ls}`)).status === 401, "lien de lecture d'un autre appareil : refusé");
   await req(`/api/saves/${game.id}/srm/0?profil=Tom&at=10`, { raw: Buffer.from("SAUVE-DE-TOM"), tok });
   check((await req(`/api/saves/${game.id}/srm/0?profil=Tom`, { tok: gt })).status === 404, "invité : ne lit pas la sauvegarde de Tom");
   await req(`/api/saves/${game.id}/srm/0?profil=Tom&del=1`, { tok: gt, method: "POST" });
@@ -162,6 +177,8 @@ function stream(host, tok) {
   const big = await req("/api/cards", { raw: Buffer.alloc(3 * 1024 * 1024, 32), tok }).catch(() => ({ status: 0 }));
   check(big.status === 0 || big.status === 200, "corps de 3 Mo : coupé sans bloquer le serveur");
   check((await req("/api/info")).status === 200, "le serveur répond toujours");
+  const pg = await req("/");
+  check(pg.status === 200 && /frame-ancestors 'self'/.test(pg.headers["content-security-policy"] || "") && pg.headers["x-frame-options"] === "SAMEORIGIN", "la page ne s'affiche pas dans le cadre d'un autre site");
   check((await req("/media/%E0%A4%A")).status === 400, "adresse mal formée : réponse 400 (pas d'« erreur interne » dans le journal)");
   S.transcodes = 4;
   check((await req(`/media/${film.id}?mode=transcode`, { tok })).status === 503, "trop de conversions vidéo en même temps : refusé poliment");

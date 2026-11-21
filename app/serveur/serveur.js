@@ -179,9 +179,28 @@ function createServer(opt = {}) {
     const h = req.headers.authorization || ""; if (h.startsWith("Bearer ")) return h.slice(7).trim();
     return url.searchParams.get("tok") || "";
   }
+  // Liens de lecture signés (« ?lk= ») : dans les adresses des médias (vidéo, sous-titres, vignettes, musique, photos,
+  // copie hors ligne…), à la place de la clé d'appairage. Ils ne servent qu'à LIRE ces fichiers (GET/HEAD, liste
+  // LIEN_PATHS), expirent au bout de 7 jours et cessent de marcher dès que l'appareil est oublié. Une adresse qui
+  // traîne dans un journal (mpv, ffmpeg), l'historique ou un téléchargement ne donne donc ni la télécommande, ni
+  // les réglages, ni un accès durable. Forme : <16 premiers chiffres de l'empreinte de l'appareil>.<fin>.<signature>.
+  const lienSig = (id, exp) => crypto.createHmac("sha256", String(S.cfg.secret || "")).update(`lien:${id}.${exp}`).digest("hex").slice(0, 32);
+  function lienPour(rec) {
+    const id = String(rec.hash || "").slice(0, 16); if (!/^[0-9a-f]{16}$/.test(id)) return null;
+    let exp = Math.floor(Date.now() / 1000) + LIEN_DUREE; if (rec.until) exp = Math.min(exp, Math.floor(rec.until / 1000));
+    return { lien: `${id}.${exp}.${lienSig(id, exp)}`, until: exp * 1000 };
+  }
+  function lienRec(req, url) {
+    const k = url.searchParams.get("lk"); if (!k || (req.method !== "GET" && req.method !== "HEAD") || !LIEN_PATHS.test(url.pathname)) return null;
+    const m = /^([0-9a-f]{16})\.(\d{9,11})\.([0-9a-f]{32})$/.exec(k); if (!m) return null;
+    if (Number(m[2]) * 1000 < Date.now() || !safeEq(m[3], lienSig(m[1], m[2]))) return null;
+    const rec = S.cfg.tokens.find((x) => String(x.hash || "").startsWith(m[1]));
+    if (!rec || (rec.until && rec.until < Date.now())) return null;
+    return rec;
+  }
   function who(req, url) {
     if (isLocal(req)) return { local: true };
-    const t = tokenOf(req, url); if (!t) return null;
+    const t = tokenOf(req, url); if (!t) return lienRec(req, url);
     const hash = sha(t);
     const rec = S.cfg.tokens.find((x) => safeEq(x.hash, hash));
     if (rec && rec.until && rec.until < Date.now()) return null;   // invitation expirée
@@ -470,7 +489,8 @@ function createServer(opt = {}) {
     if (req.method === "OPTIONS") { res.writeHead(204); return res.end(); }
 
     // --- ouvert à tous (sur le réseau de la maison) : la page elle-même, l'identité, la demande de code ---
-    if (p === "/" || p === "/index.html") return serveStatic(res, req, "index.html");
+    // la page ne peut pas être affichée dans le cadre d'un autre site (« clickjacking » : faux boutons posés par-dessus)
+    if (p === "/" || p === "/index.html") { res.setHeader("Content-Security-Policy", "frame-ancestors 'self'"); res.setHeader("X-Frame-Options", "SAMEORIGIN"); return serveStatic(res, req, "index.html"); }
     if (p === "/remote" || p === "/manette") { res.writeHead(302, { Location: p === "/remote" ? "/?telecommande=1" : "/?manette=1" }); return res.end(); }
     if (p === "/api/info") { const w = who(req, url), bi = OSR.info(); return send(res, 200, { api: API, name: S.cfg.name, version: S.version, build: bi.build, date: bi.date, os: bi.os, firstboot: !S.cfg.setupDone, paired: !!w, guest: !!(w && w.guest), kiosk: isLocal(req) }); }
     // textes des licences des logiciels livrés avec Rembobine (page « Crédits et licences »)
@@ -623,6 +643,8 @@ function createServer(opt = {}) {
     if (await PR.route(p, req, res, W, { body, send, url })) return;
     if (await TEL.route(p, req, res, W, { body, send, url })) return;
     if (await BPR.route(p, req, res, url, W)) return;
+    // lien de lecture signé pour cet appareil (voir lienPour) ; l'écran de la TV n'en a pas besoin
+    if (p === "/api/lien") return send(res, 200, W.local ? { ok: true, lien: "" } : { ok: true, ...(lienPour(W) || { lien: "" }) });
 
     if (p === "/api/stream") {
       res.writeHead(200, { "Content-Type": "text/event-stream", "Cache-Control": "no-store", Connection: "keep-alive" });
@@ -934,7 +956,7 @@ function writeJson(f, v) { try { fs.writeFileSync(f + ".tmp", JSON.stringify(v, 
 function sha(s) { return crypto.createHash("sha256").update(String(s)).digest("hex"); }
 // ce qu'un invité (ami d'une séance, accès 2 jours) a le droit de faire : regarder, écouter, jouer, être dans la séance
 // (jamais les BIOS des consoles : ils viennent des consoles de la maison et ne doivent pas en sortir)
-const GUEST_READ = /^\/api\/(stream|library|scan|now|probe\/[^/]+|intro\/[^/]+|prepare|captures\/[^/]+|seances|pad|jeux\/(?!bios\/).+|saves\/.+|lyrics\/.+|eq|cards|party|poke|health\/ui|emulators|posters\/.+|system|storage|smart|fiche-plus\/[^/]+)$/;
+const GUEST_READ = /^\/api\/(lien|stream|library|scan|now|probe\/[^/]+|intro\/[^/]+|prepare|captures\/[^/]+|seances|pad|jeux\/(?!bios\/).+|saves\/.+|lyrics\/.+|eq|cards|party|poke|health\/ui|emulators|posters\/.+|system|storage|smart|fiche-plus\/[^/]+)$/;
 const GUEST_WRITE = /^\/api\/(room|pad|pad\/in|prepare|saves\/.+|jeux\/scores\/[^/]+|crash|poke)$/;
 function guestAllowed(p, method) {
   if (!p.startsWith("/api/")) return true;   // médias, sous-titres, vignettes, page : comme tout appareil relié
@@ -942,6 +964,9 @@ function guestAllowed(p, method) {
   if (method === "POST" || method === "PUT" || method === "DELETE") return GUEST_WRITE.test(p);
   return false;
 }
+// liens de lecture signés : durée, et seules adresses qu'ils ouvrent (fichiers à lire, jamais /api/…)
+const LIEN_DUREE = 7 * 86400;
+const LIEN_PATHS = /^\/(media|subs|thumb|track|photo|offline|capture|extra)\//;
 // ---------- réseaux acceptés ----------
 const DEVICE_TTL = 90 * 86400000;   // appareils reliés oubliés après 90 jours sans nouvelles
 const ip4n = (a) => { const p = String(a).split(".").map(Number); return p.length === 4 && p.every((x) => Number.isInteger(x) && x >= 0 && x < 256) ? ((p[0] << 24) >>> 0) + (p[1] << 16) + (p[2] << 8) + p[3] : -1; };

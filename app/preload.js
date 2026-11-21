@@ -16,6 +16,8 @@ contextBridge.exposeInMainWorld("gamebox", {
   tvOn: () => ipcRenderer.invoke("gbx:tvOn"),
   mpvCmd: (a) => ipcRenderer.invoke("gbx:mpvCmd", a),
   onCard: (cb) => { if (typeof cb === "function") ipcRenderer.on("nfc:card", (e, uid) => cb(String(uid))); },
+  // lecture directe du lecteur de cartouches (Linux) : seulement quand la page en a besoin
+  nfcLecture: (on) => ipcRenderer.invoke("gbx:nfcLecture", on === true),
   // o.startPct : où reprendre (en %) ; o.titre, o.sous, o.genre : ce qu'affiche l'interface de lecture ; le résultat
   // donne la position et la durée à la fermeture de mpv
   playExternal: (file, o) => { let p = ""; try { p = webUtils.getPathForFile(file); } catch (_) {} const t = (v) => (typeof v === "string" ? v.slice(0, 200) : ""); return ipcRenderer.invoke("gbx:mpv", p, o && typeof o === "object" ? { startPct: Number(o.startPct) || 0, titre: t(o.titre), sous: t(o.sous), genre: t(o.genre) } : undefined); },
