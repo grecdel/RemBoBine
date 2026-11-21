@@ -53,8 +53,8 @@ fi
 # 5. ce qui n'a pas apporté son texte : le texte officiel, publié avec le code source (sinon un lien)
 #    id → adresse du texte de licence
 declare -A URL=(
-  [godot]="https://raw.githubusercontent.com/godotengine/godot/4.3-stable/LICENSE.txt"
-  [godot-copyright]="https://raw.githubusercontent.com/godotengine/godot/4.3-stable/COPYRIGHT.txt"
+  [godot]="https://raw.githubusercontent.com/godotengine/godot/4.7-stable/LICENSE.txt"
+  [godot-copyright]="https://raw.githubusercontent.com/godotengine/godot/4.7-stable/COPYRIGHT.txt"
   [pcsx2]="https://raw.githubusercontent.com/PCSX2/pcsx2/master/COPYING.GPLv3"
   [rpcs3]="https://raw.githubusercontent.com/RPCS3/rpcs3/master/LICENSE"
   [xemu]="https://raw.githubusercontent.com/xemu-project/xemu/master/COPYING"

@@ -11,7 +11,7 @@ if not build.exists():
 
 # 1) notre écran de démarrage (Java) et l'ajout au manifeste
 shutil.copytree(root / "android" / "src", build / "src", dirs_exist_ok=True)
-# Le manifeste : Godot 4.3 RÉÉCRIT src/release/AndroidManifest.xml à chaque export (le nôtre, copié là, était
+# Le manifeste : Godot (4.3 comme 4.7) RÉÉCRIT src/release/AndroidManifest.xml à chaque export (le nôtre, copié là, était
 # écrasé : l'appli démarrait alors directement sur le module, avec son écran « cassette », bloquée à
 # l'horizontale). On garde donc nos ajouts à part (rbb_manifest/) et Gradle les ajoute au manifeste de Godot
 # juste avant la compilation (tâche preBuild, plus bas).
@@ -43,7 +43,10 @@ def rbbManifeste = {
             l.trim() && !(m.find() && t.contains('"' + m.group(1) + '"'))
         }.join('\n')
         // GodotApp : plus de MAIN/LAUNCHER, processus à part, non exporté
+        // (Godot 4.3 écrit « com.godot.game.GodotApp » ; depuis 4.4, « .GodotApp », et son entrée dans les applications
+        // est un alias à part, « .GodotAppLauncher », retiré plus bas)
         def a = t.indexOf('android:name="com.godot.game.GodotApp"')
+        if (a < 0) a = t.indexOf('android:name=".GodotApp"')
         if (a >= 0) {
             def s0 = t.lastIndexOf('<activity', a), e0 = t.indexOf('</activity>', a)
             def el = t.substring(s0, e0 + '</activity>'.length())
@@ -52,6 +55,13 @@ def rbbManifeste = {
             tete = tete.replaceFirst(/>$/, ' android:process=":monde3d" android:exported="false">')
             if (tete.endsWith('/>')) tete = tete
             t = t.substring(0, s0) + tete + '\n        </activity>' + t.substring(e0 + '</activity>'.length())
+        }
+        // Godot 4.4+ : l'alias « .GodotAppLauncher » (MAIN/LAUNCHER) ouvrirait le module directement depuis les applications
+        // (deuxième icône) : on le retire, y compris celui du manifeste principal du modèle (tools:node="remove")
+        def al = t.indexOf('android:name=".GodotAppLauncher"')
+        if (al >= 0) {
+            def s1 = t.lastIndexOf('<activity-alias', al), e1 = t.indexOf('</activity-alias>', al)
+            t = t.substring(0, s1) + '<activity-alias android:name=".GodotAppLauncher" android:targetActivity=".GodotApp" tools:node="remove" />' + t.substring(e1 + '</activity-alias>'.length())
         }
         t = t.replaceFirst('<application ', '<application android:usesCleartextTraffic="true" ')
         t = t.replace('</application>', app + '\n    </application>')

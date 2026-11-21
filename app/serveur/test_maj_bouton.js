@@ -338,7 +338,7 @@ const kill = () => { spawnSync("pkill", ["-f", FAKEAPP]); };
   check(/android\.permission\.REQUEST_INSTALL_PACKAGES/.test(man) && /android:name="fr\.rembobine\.app\.MajFichiers"/.test(majProv) && /android:exported="false"/.test(majProv) && /android:grantUriPermissions="true"/.test(majProv) && /@xml\/rbb_maj_chemins/.test(majProv), "manifeste : permission d'installer et FileProvider à nous (MajFichiers, non exporté)");
   const MF = path.join(R, "android", "src", "fr", "rembobine", "app", "MajFichiers.java");
   check(fs.existsSync(MF) && /public class MajFichiers extends androidx\.core\.content\.FileProvider/.test(fs.readFileSync(MF, "utf8")), "MajFichiers.java : un FileProvider d'AndroidX sous notre nom");
-  // aucun élément de notre manifeste ne reprend le nom d'un élément de la bibliothèque de Godot 4.3 (sinon la fusion échoue)
+  // aucun élément de notre manifeste ne reprend le nom d'un élément de la bibliothèque de Godot (sinon la fusion échoue)
   const GODOT_LIB = ["androidx.core.content.FileProvider", "org.godotengine.godot.utils.ProcessPhoenix", "org.godotengine.godot.GodotDownloaderService"];
   const noms = [...man.replace(/<!--[\s\S]*?-->/g, "").matchAll(/<(?:provider|activity|service|receiver)\b[^>]*?android:name="([^"]+)"/g)].map(m => m[1]);
   check(!noms.some(n => GODOT_LIB.includes(n)), "manifeste : aucun nom déjà déclaré par la bibliothèque de Godot (fusion de Gradle possible)");
