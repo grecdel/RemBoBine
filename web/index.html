@@ -10126,7 +10126,7 @@ ${notes.slice(0, 6).map(n => { const pc = Number(n.pct);
     const web = s === "Halloween" ? `<g stroke="rgba(230,230,240,.55)" stroke-width="1" fill="none"><path d="M786 116 L846 116 M786 116 L786 176 M786 116 L836 166 M786 116 L816 172 M786 116 L842 140"/><path d="M806 116 Q800 128 786 132 M826 116 Q814 138 786 150 M842 120 Q826 152 786 166"/></g>` : "";
     return `<g aria-hidden="true">
       <rect x="786" y="116" width="228" height="288" fill="#3e281b"/>
-      <g clip-path="url(#cSky)"><rect x="798" y="128" width="204" height="264" fill="url(#gSky)"/>${stars}${moon}${sun}${clouds}<g id="outside"></g>${s === "Noël" ? xmasWindow(per) : ""}${ground}${s === "Halloween" ? hallWindow() : ""}${fetePart("window")}${s === "Noël" ? xmasSnowman() : ""}${weather}${snowy ? `<rect x="798" y="128" width="204" height="264" fill="url(#gFrost)"/><path d="M798 128 ${Array.from({ length: 17 }, (_, i) => `L${804 + i * 12} ${128 + (i % 2 ? 10 + (i % 3) * 5 : 2)}`).join(" ")} L1002 128 Z" fill="#e6f4ff" opacity=".75"/>` : ""}${s === "Été" && (per === "night" || per === "dusk") ? Array.from({ length: 8 }, (_, i) => `<circle class="ffly" cx="${812 + (i * 53) % 180}" cy="${300 + (i * 29) % 80}" r="2" fill="#f3ff8a" style="animation-delay:${i * .4}s"/>`).join("") : ""}${sp === "mai4" ? `<g class="hyperbg">${Array.from({ length: 14 }, (_, i) => `<line x1="900" y1="260" x2="${900 + Math.cos(i / 14 * 6.28) * 140}" y2="${260 + Math.sin(i / 14 * 6.28) * 140}" stroke="#cfe6ff" stroke-width="1" opacity=".25"/>`).join("")}</g>` : ""}</g>
+      <g clip-path="url(#cSky)"><rect x="798" y="128" width="204" height="264" fill="url(#gSky)"/>${stars}${moon}${sun}${clouds}<g id="outside"></g>${s === "Noël" ? xmasWindow(per) : ""}${rbsEraView(ground)}${s === "Halloween" ? hallWindow() : ""}${fetePart("window")}${s === "Noël" ? xmasSnowman() : ""}${weather}${snowy ? `<rect x="798" y="128" width="204" height="264" fill="url(#gFrost)"/><path d="M798 128 ${Array.from({ length: 17 }, (_, i) => `L${804 + i * 12} ${128 + (i % 2 ? 10 + (i % 3) * 5 : 2)}`).join(" ")} L1002 128 Z" fill="#e6f4ff" opacity=".75"/>` : ""}${s === "Été" && (per === "night" || per === "dusk") ? Array.from({ length: 8 }, (_, i) => `<circle class="ffly" cx="${812 + (i * 53) % 180}" cy="${300 + (i * 29) % 80}" r="2" fill="#f3ff8a" style="animation-delay:${i * .4}s"/>`).join("") : ""}${sp === "mai4" ? `<g class="hyperbg">${Array.from({ length: 14 }, (_, i) => `<line x1="900" y1="260" x2="${900 + Math.cos(i / 14 * 6.28) * 140}" y2="${260 + Math.sin(i / 14 * 6.28) * 140}" stroke="#cfe6ff" stroke-width="1" opacity=".25"/>`).join("")}</g>` : ""}</g>
       <rect x="898" y="128" width="6" height="264" fill="#3e281b"/><rect x="798" y="256" width="204" height="6" fill="#3e281b"/>
       <rect x="776" y="400" width="248" height="12" rx="2" fill="#5a3a26"/>
       <path class="curtain" d="M760 104 L806 104 C800 200 812 300 792 404 L760 404 Z" fill="${curtain}"/><path class="curtain" d="M994 104 L1034 104 L1034 404 C1012 300 1002 200 994 104 Z" fill="${curtain}"/>
@@ -10144,7 +10144,7 @@ ${notes.slice(0, 6).map(n => { const pc = Number(n.pct);
       <rect x="40" y="-24" width="34" height="24" fill="#a63a3a"/><rect x="54" y="-24" width="6" height="24" fill="#ffd36a"/><rect x="-80" y="-18" width="28" height="18" fill="#3a6aa6"/><rect x="-80" y="-11" width="28" height="4" fill="#ffd36a"/></g>`;
     if (s === "Halloween") return `<g aria-hidden="true" transform="translate(900 600)"><ellipse cx="0" cy="-26" rx="40" ry="28" fill="#e2731e"/><ellipse cx="-14" cy="-26" rx="14" ry="27" fill="#d0661a"/><ellipse cx="14" cy="-26" rx="14" ry="27" fill="#d0661a"/><rect x="-4" y="-60" width="8" height="12" fill="#4a6b2a"/>
       <path class="pglow" d="M-22 -34 l10 -10 l10 10 Z M2 -34 l10 -10 l10 10 Z M-20 -16 q20 14 40 0 l-6 6 l-6 -4 l-6 6 l-6 -6 l-6 6 Z" fill="#ffd36a"/></g>`;
-    return `<g aria-hidden="true"><rect x="820" y="470" width="160" height="96" rx="6" fill="#4a4448"/>${Array.from({ length: 9 }, (_, i) => `<rect x="${828 + i * 17}" y="478" width="10" height="80" rx="4" fill="#5c555a"/>`).join("")}<rect x="840" y="566" width="8" height="34" fill="#3a3437"/><rect x="952" y="566" width="8" height="34" fill="#3a3437"/></g>`;
+    return rbsEraPart("radiator", `<g aria-hidden="true"><rect x="820" y="470" width="160" height="96" rx="6" fill="#4a4448"/>${Array.from({ length: 9 }, (_, i) => `<rect x="${828 + i * 17}" y="478" width="10" height="80" rx="4" fill="#5c555a"/>`).join("")}<rect x="840" y="566" width="8" height="34" fill="#3a3437"/><rect x="952" y="566" width="8" height="34" fill="#3a3437"/></g>`);
   }
 
   /* ---- Vitrine 3D ---- */
@@ -10206,20 +10206,20 @@ ${notes.slice(0, 6).map(n => { const pc = Number(n.pct);
         <line id="hH" y2="-19" stroke="#2a201a" stroke-width="5" stroke-linecap="round"/><line id="hM" y2="-29" stroke="#2a201a" stroke-width="3" stroke-linecap="round"/><circle r="3.5" fill="#2a201a"/></g>
       <g aria-hidden="true">${mantelDeco}</g></g>
       ${xmasTreeHere() || (decoSeason() === "Halloween" && halloweenDay().full) ? "" : `<g transform="translate(1110 600)" aria-hidden="true"><rect x="-14" y="-38" width="28" height="38" rx="4" fill="#7a4a2e"/><ellipse cx="-12" cy="-62" rx="9" ry="26" fill="#3f7d4f" transform="rotate(-28 -12 -62)"/><ellipse cx="12" cy="-62" rx="9" ry="26" fill="#4d9160" transform="rotate(28 12 -62)"/><ellipse cx="0" cy="-72" rx="8" ry="30" fill="#5aa36d"/>${s === "Printemps" ? `<circle cx="-22" cy="-84" r="6" fill="#f7b6cf"/><circle cx="20" cy="-86" r="6" fill="#ffd36a"/><circle cx="0" cy="-102" r="7" fill="#f28aa8"/>` : ""}</g>`}
-      ${xmasTreeHere() ? "" : `<g ${hsAttrs("lamp", 1180, 400, 252, "La lampe")}><ellipse cx="1180" cy="598" rx="26" ry="5" fill="#120d0d"/><rect x="1177" y="300" width="6" height="298" fill="#4a4040"/><path class="shade" d="M1146 302 L1162 252 L1198 252 L1214 302 Z"/>${s === "Halloween" ? `<path d="M1160 254 L1180 214 L1200 254 Z" fill="#1d1420"/><rect x="1152" y="250" width="56" height="6" rx="3" fill="#1d1420"/>` : ""}</g>`}
-      <g transform="translate(-300 0)"><rect x="700" y="500" width="400" height="92" rx="4" fill="url(#gWood)"/><rect x="714" y="516" width="180" height="66" rx="2" fill="#4a2f1f"/><rect x="906" y="516" width="180" height="66" rx="2" fill="#4a2f1f"/>
-      <circle cx="884" cy="549" r="3" fill="#c9a26b"/><circle cx="916" cy="549" r="3" fill="#c9a26b"/><rect x="712" y="592" width="10" height="8" fill="#2a1a10"/><rect x="1078" y="592" width="10" height="8" fill="#2a1a10"/>
+      ${xmasTreeHere() ? "" : `<g ${hsAttrs("lamp", 1180, 400, 252, "La lampe")}>${rbsEraPart("lamp", `<ellipse cx="1180" cy="598" rx="26" ry="5" fill="#120d0d"/><rect x="1177" y="300" width="6" height="298" fill="#4a4040"/><path class="shade" d="M1146 302 L1162 252 L1198 252 L1214 302 Z"/>${s === "Halloween" ? `<path d="M1160 254 L1180 214 L1200 254 Z" fill="#1d1420"/><rect x="1152" y="250" width="56" height="6" rx="3" fill="#1d1420"/>` : ""}`)}</g>`}
+      <g transform="translate(-300 0)">${rbsEraPart("stand", `<rect x="700" y="500" width="400" height="92" rx="4" fill="url(#gWood)"/><rect x="714" y="516" width="180" height="66" rx="2" fill="#4a2f1f"/><rect x="906" y="516" width="180" height="66" rx="2" fill="#4a2f1f"/>
+      <circle cx="884" cy="549" r="3" fill="#c9a26b"/><circle cx="916" cy="549" r="3" fill="#c9a26b"/><rect x="712" y="592" width="10" height="8" fill="#2a1a10"/><rect x="1078" y="592" width="10" height="8" fill="#2a1a10"/>`)}
       <g ${hsAttrs("tv", 600, 360, 250, "La télé")}>
-        <rect x="884" y="468" width="32" height="28" fill="#1a1a1f"/><rect x="846" y="494" width="108" height="7" rx="3" fill="#1a1a1f"/>
+        ${rbsEraPart("tv", `<rect x="884" y="468" width="32" height="28" fill="#1a1a1f"/><rect x="846" y="494" width="108" height="7" rx="3" fill="#1a1a1f"/>
         <rect x="718" y="248" width="364" height="224" rx="10" fill="#0b0b0e" stroke="#2a2a31" stroke-width="2"/><rect id="tvRect" x="732" y="262" width="336" height="196" rx="4" fill="#050506"/><rect x="730" y="260" width="340" height="200" rx="5" fill="none" stroke="#18181d" stroke-width="3"/>
-        <circle cx="1068" cy="465" r="2.2" class="tvled"/>
+        <circle cx="1068" cy="465" r="2.2" class="tvled"/>`)}
         ${s === "Halloween" ? `<g stroke="rgba(230,230,240,.5)" stroke-width="1" fill="none"><path d="M718 248 L768 248 M718 248 L718 296 M718 248 L756 284 M718 248 L748 262 M718 248 L736 290"/><path d="M736 248 Q732 258 718 262 M752 248 Q744 270 718 278"/></g>` : ""}
         ${sp === "poisson" ? `<path d="M1040 256 q14 -12 30 0 q-14 12 -30 0 Z M1070 256 l10 -8 l0 16 Z" fill="#ff9a3c" transform="rotate(18 1060 256)"/>` : ""}
       </g>
-      <g ${hsAttrs("console", 560, 490, 470, "La console")}>
+      <g ${hsAttrs("console", 560, 490, 470, "La console")}>${rbsEraPart("console", `
         <rect x="742" y="478" width="118" height="22" rx="4" fill="#2b2c33"/><rect x="742" y="478" width="118" height="6" rx="3" fill="#3d3f49"/>
         <rect x="756" y="489" width="46" height="3" rx="1.5" fill="#14151a"/><circle id="led" cx="848" cy="490" r="3"/>
-        <g transform="translate(958 484)"><path d="M0 8 C0 0 8 -2 14 2 L34 2 C40 -2 48 0 48 8 C48 16 40 18 34 12 L14 12 C8 18 0 16 0 8 Z" fill="#2b2c33"/><rect x="8" y="5" width="8" height="2.4" fill="#555"/><rect x="10.8" y="2.2" width="2.4" height="8" fill="#555"/><circle cx="35" cy="5" r="2.2" fill="var(--accent)"/><circle cx="40" cy="9" r="2.2" fill="#4da3ff"/></g>
+        <g transform="translate(958 484)"><path d="M0 8 C0 0 8 -2 14 2 L34 2 C40 -2 48 0 48 8 C48 16 40 18 34 12 L14 12 C8 18 0 16 0 8 Z" fill="#2b2c33"/><rect x="8" y="5" width="8" height="2.4" fill="#555"/><rect x="10.8" y="2.2" width="2.4" height="8" fill="#555"/><circle cx="35" cy="5" r="2.2" fill="var(--accent)"/><circle cx="40" cy="9" r="2.2" fill="#4da3ff"/></g>`)}
       </g>
       </g>
       <ellipse id="fglow" cx="922" cy="540" rx="430" ry="300" fill="url(#gFire)"/>
@@ -10257,7 +10257,7 @@ ${notes.slice(0, 6).map(n => { const pc = Number(n.pct);
         </g>
       <g ${hsAttrs("sofa", 922, 650, 600, "La table basse")}>
         <path d="M748 652 L776 616 L1068 616 L1096 652 Z" fill="#6b452d"/><path d="M748 652 L1096 652 L1096 664 L748 664 Z" fill="#4d3120"/><rect x="762" y="664" width="12" height="56" fill="#3b2516"/><rect x="1070" y="664" width="12" height="56" fill="#3b2516"/>
-        <g transform="translate(922 628)">${lf ? lifeSvg(lf.scene.id) : ""}</g>
+        <g transform="translate(922 628)">${lf ? rbsEraLife(lf.scene.id, lifeSvg(lf.scene.id)) : ""}</g>
         <rect id="cush2" x="0" y="0" width="0" height="0"/>
         ${lf && lf.extra === "slippers" ? `<ellipse cx="724" cy="704" rx="20" ry="7" fill="#8a5a80"/><ellipse cx="736" cy="714" rx="20" ry="7" fill="#7a4e72"/>` : ""}
         ${sp === "nuit" && C("eggCat", true) ? `<g transform="translate(500 566)"><ellipse cx="0" cy="0" rx="30" ry="13" fill="#c27b3e"/><circle cx="24" cy="-4" r="10" fill="#c27b3e"/><path d="M18 -12 l3 -8 l4 7 Z M27 -12 l4 -7 l2 8 Z" fill="#c27b3e"/></g>` : ""}
@@ -10487,7 +10487,17 @@ ${notes.slice(0, 6).map(n => { const pc = Number(n.pct);
     if (fd && fd.type === "toggle" && /^fete_(?!grp_)/.test(fd.key || "")) { const id = fd.key.slice(5); return h.replace('<div class="fc">', `<div class="fc"><button type="button" class="fpv" data-fpv="${esc(id)}" data-fpvl="${esc(fd.label)}" aria-label="Aperçu de la décoration : ${esc(fd.label)}"></button>`); }
     return h;
   })(fieldHtml);
-  renderSettings = ((f) => function () { const r = f.apply(this, arguments); try { rbsCss(); rbsThumbsMount(); } catch (e) { console.warn(e); } return r; })(renderSettings);
+  renderSettings = ((f) => function () { const r = f.apply(this, arguments); try { rbsCss(); rbsThumbsMount(); rbsEraThumbs(); } catch (e) { console.warn(e); } return r; })(renderSettings);
+  // vignettes des époques : le salon dessiné dans chaque époque (fenêtre, télé, cheminée), une image à la fois
+  function rbsEraThumbs() {
+    const els = [...document.querySelectorAll("[data-era-th]:not([data-done])")]; if (!els.length) return; rbsEraCss();
+    const one = () => { const el = els.shift(); if (!el) return; el.dataset.done = "1"; let svg = "";
+      try { rbsEraOv = el.dataset.eraTh === "Aujourd'hui" ? "__aucune" : el.dataset.eraTh; svg = salonSvg(); } catch (e) { console.warn("vignette d'époque", e); } finally { rbsEraOv = null; }
+      if (svg) { svg = rbsUniq(svg).replace(/viewBox="[^"]*"/, 'viewBox="770 100 960 520"').replace('role="group" aria-label="Le salon"', 'aria-hidden="true"').replace("<svg ", '<svg xmlns="http://www.w3.org/2000/svg" width="192" height="104" ').replace(/<image\b[^>]*\/>/g, "");
+        const img = new Image(); img.alt = ""; img.decoding = "async"; img.src = "data:image/svg+xml;charset=utf-8," + encodeURIComponent(svg); el.appendChild(img); }
+      setTimeout(one, 30); };
+    setTimeout(one, 60);
+  }
 
   /* ---- 80. Météo réelle à la fenêtre (ville réglable, internet seulement si on l'active) ---- */
   const rbsWxNet = () => C("wxMode", "Selon la saison") === "Réelle (internet)";
@@ -10588,24 +10598,322 @@ ${notes.slice(0, 6).map(n => { const pc = Number(n.pct);
       <p class="note">Facultatif. Ce jour-là, le salon 2D affiche un gâteau aux bougies allumées sur la table basse, une guirlande et un message. Ça s'ajoute à la fête du jour sans la remplacer. L'année sert seulement à compter les bougies.</p>`;
   }
 
-  /* ---- 84. Époques du salon (couleurs et objets génériques, sans marque) ---- */
+  /* ---- 84. Époques du salon (couleurs, meubles, téléviseur et paysage de l'époque ; tout est générique, sans marque) ---- */
+  // Une époque peut fournir : wall/wain/trim/rug (couleurs), floor [haut, bas], planks (couleur des lattes, "" = moquette), wood (bois des étagères),
+  // pat(y) (papier peint), tv/stand (téléviseur et meuble, coordonnées du groupe de la télé), screen (forme CSS de l'image de la télé),
+  // console (la console transposée), lamp (lampe à pied), sofa (couleurs du canapé), chair (fauteuil), radiator, obj (objets posés),
+  // view (paysage de la fenêtre), wallx (décor du mur), mid (décor devant le mur), life (objets de la table basse transposés), fix (retouches).
+  // Lumière : seules des sources visibles (néons, bougies, lampe, feu) ont une lueur, et elle reste locale.
+  var rbsEraOv = null;   // aperçu d'une époque dans les réglages (vignettes)
+  const EPN = (n, f) => Array.from({ length: n }, (_, i) => f(i)).join("");
+  const EG = (x, y, s) => `<g transform="translate(${x} ${y})">${s}</g>`;
+  const eraNight = () => { const p = skyPeriod(); return p === "night" || p === "dusk"; };
+  // halo doux autour d'une source visible (néon, flamme, globe)
+  const eraHalo = (x, y, r, c, a) => `<circle cx="${x}" cy="${y}" r="${r}" fill="${c}" opacity="${a}" filter="url(#eraBlur)" style="mix-blend-mode:screen" pointer-events="none"/>`;
+  // tube de néon : le tube clair, sa lueur floue autour (la lueur vient du tube)
+  const eraNeon = (d, c, w = 4) => `<path d="${d}" fill="none" stroke="${c}" stroke-width="${w * 4}" stroke-linecap="round" opacity=".35" filter="url(#eraBlur)" style="mix-blend-mode:screen"/><path d="${d}" fill="none" stroke="${c}" stroke-width="${w}" stroke-linecap="round"/><path d="${d}" fill="none" stroke="#fff" stroke-width="${w * 0.35}" stroke-linecap="round" opacity=".75"/>`;
+
+  /* ---- la console (sur le meuble de la télé), transposée selon l'époque ---- */
+  const ERA_CONSOLE = {
+    // un jeu de société (damier) et des dés
+    board: (c = "#7a4a26") => `<rect x="756" y="482" width="100" height="18" rx="2" fill="${c}"/><path d="M760 482 L768 474 L860 474 L852 482 Z" fill="#e8dcc0"/>${EPN(10, i => `<path d="M${770 + i * 9} 474 l-2.5 2.6 h9 l2.5 -2.6 Z M${764.8 + i * 9} 479.4 l-2.5 2.6 h9 l2.5 -2.6 Z" fill="${i % 2 ? "#2a1a10" : "#9a2a22"}" transform="translate(${i % 2 ? 4.5 : 0} 0)"/>`)}<rect x="756" y="490" width="100" height="2" fill="rgba(0,0,0,.25)"/><circle id="led" cx="848" cy="490" r="0"/>
+      <g transform="translate(966 486)"><rect x="0" y="0" width="13" height="13" rx="2" fill="#f2ede2"/><circle cx="4" cy="4" r="1.4" fill="#222"/><circle cx="9" cy="9" r="1.4" fill="#222"/><rect x="17" y="2" width="11" height="11" rx="2" fill="#f2ede2" transform="rotate(14 22 7)"/><circle cx="22" cy="7.5" r="1.4" fill="#c22"/></g>`,
+    // une console de salon à palettes, bois et alu, et sa manette à molette
+    pong: () => `<rect x="748" y="480" width="112" height="20" rx="3" fill="#4a2e18"/><rect x="752" y="483" width="104" height="10" rx="2" fill="#c9c4b6"/><circle cx="770" cy="488" r="4" fill="#2a2a2a"/><circle cx="838" cy="488" r="4" fill="#2a2a2a"/><rect x="790" y="486" width="28" height="4" fill="#d8481e"/><circle id="led" cx="804" cy="496" r="2"/>
+      <g transform="translate(962 484)"><rect x="0" y="0" width="30" height="16" rx="3" fill="#4a2e18"/><rect x="2" y="2" width="26" height="6" fill="#c9c4b6"/><circle cx="15" cy="11" r="4.5" fill="#1a1a1a"/></g>`,
+    // une console à cartouches (une cartouche enfoncée) et sa manette rectangulaire
+    cart: (c = "#8d8a86") => `<rect x="748" y="482" width="116" height="18" rx="3" fill="${c}"/><rect x="748" y="482" width="116" height="5" rx="2" fill="rgba(255,255,255,.18)"/><rect x="790" y="470" width="34" height="14" rx="1.5" fill="#3a3a40"/><rect x="794" y="473" width="26" height="7" fill="#c84a3a"/><rect x="756" y="492" width="22" height="3" fill="#2a2a2e"/><circle id="led" cx="852" cy="491" r="2.4"/>
+      <g transform="translate(960 486)"><rect x="0" y="0" width="44" height="14" rx="2" fill="#2e2e33"/><path d="M6 7 h8 M10 3 v8" stroke="#8a8a90" stroke-width="2.4"/><circle cx="32" cy="7" r="2.6" fill="#c83a3a"/><circle cx="39" cy="7" r="2.6" fill="#c83a3a"/></g>`,
+    // la console d'aujourd'hui, rafistolée au ruban adhésif
+    patched: (d) => d.replace('fill="#2b2c33"/><rect x="742" y="478" width="118" height="6" rx="3" fill="#3d3f49"/>', 'fill="#3a3530"/><rect x="742" y="478" width="118" height="6" rx="3" fill="#57493a"/><rect x="770" y="476" width="12" height="26" fill="#b9ab8a" opacity=".85" transform="rotate(-8 776 489)"/><rect x="826" y="476" width="10" height="26" fill="#b9ab8a" opacity=".85" transform="rotate(10 831 489)"/>'),
+    sleek: (d) => d.replace('fill="#2b2c33"/><rect x="742" y="478" width="118" height="6" rx="3" fill="#3d3f49"/>', 'fill="#14141c"/><rect x="742" y="478" width="118" height="2" rx="1" fill="#2ef2ff"/>')
+  };
+  /* ---- la table basse : objets anachroniques transposés (ordinateur → machine à écrire, manette → cartes…) ---- */
+  const ERA_LIFE = {
+    typewriter: `<g aria-hidden="true"><rect x="-38" y="-64" width="46" height="26" fill="#f4f1e8"/><path d="M-34 -58 h36 M-34 -53 h30 M-34 -48 h34" stroke="#6a6a70" stroke-width="1.2"/><rect x="-52" y="-42" width="76" height="8" rx="4" fill="#1d1d21"/><circle cx="-54" cy="-38" r="4" fill="#3a3a40"/><path d="M-50 -34 L-44 -24 H18 L24 -34 Z" fill="#2c2c31"/><rect x="-50" y="-24" width="74" height="18" rx="4" fill="#2c2c31"/>${EPN(3, j => EPN(8 - j, i => `<circle cx="${-40 + j * 4 + i * 8.5}" cy="${-20 + j * 5}" r="2.3" fill="#d8d2c2"/>`))}<rect x="30" y="-12" width="40" height="8" fill="#f2efe6"/><rect x="32" y="-16" width="40" height="5" fill="#e8e3d6"/></g>`,
+    grimoire: `<g aria-hidden="true"><path d="M-56 -8 L-50 -26 L0 -22 L6 -4 Z" fill="#5a2a1e"/><path d="M-50 -24 Q-26 -32 -4 -22 L-4 -8 Q-26 -16 -50 -8 Z" fill="#efe3c4"/><path d="M-4 -22 Q18 -32 40 -24 L40 -8 Q18 -16 -4 -8 Z" fill="#e8dbb8"/><path d="M-44 -20 h30 M-44 -16 h26 M2 -20 h30 M2 -16 h24" stroke="#7a5a3a" stroke-width="1"/><path d="M48 -6 L70 -46" stroke="#e8e0d0" stroke-width="2"/><path d="M70 -46 q8 6 2 16 q-6 -2 -2 -16 Z" fill="#c9b9a0"/><rect x="52" y="-12" width="12" height="8" rx="2" fill="#1d2a3a"/></g>`,
+    cards: `<g aria-hidden="true">${[-40, -26, -12].map((x, i) => `<rect x="${x}" y="-18" width="18" height="24" rx="2" fill="#f6f2e8" stroke="#bbb" transform="rotate(${-14 + i * 12} ${x + 9} 0)"/><text x="${x + 9}" y="-2" text-anchor="middle" font-size="9" fill="${i % 2 ? "#222" : "#c22"}" transform="rotate(${-14 + i * 12} ${x + 9} 0)">${["♥", "♣", "♦"][i]}</text>`).join("")}<rect x="22" y="-10" width="20" height="6" rx="2" fill="#2a5a8a"/><rect x="24" y="-14" width="20" height="6" rx="2" fill="#8a2a2a"/><circle cx="58" cy="-8" r="5" fill="#d8b040"/><circle cx="66" cy="-6" r="5" fill="#d8b040"/></g>`,
+    beige: `<g aria-hidden="true"><rect x="-56" y="-10" width="72" height="6" rx="2" fill="#d8d0bc"/><rect x="-48" y="-50" width="52" height="40" rx="4" fill="#d6ceb8"/><rect x="-43" y="-45" width="40" height="28" rx="3" fill="#1d2a22"/><path d="M-38 -38 h22 M-38 -32 h28 M-38 -26 h14" stroke="#6ad08a" stroke-width="2"/><rect x="22" y="-12" width="40" height="8" fill="#f2efe6"/></g>`
+  };
+  const ERA_LIFE_OLD = { work: "typewriter", gaming: "cards" };
+
+  /* ---- fauteuils (coordonnées de la pièce, devant le radiateur, à gauche du canapé) ---- */
+  const chairAt = (s) => `<g aria-hidden="true" class="rbs-era-chair" transform="translate(842 0)"><ellipse cx="0" cy="716" rx="70" ry="7" fill="rgba(0,0,0,.35)"/>${s}</g>`;
+  const ERA_CHAIR = {
+    club: (c = "#6a3a22", d = "#4a2614") => chairAt(`<rect x="-62" y="618" width="30" height="88" rx="14" fill="${d}"/><rect x="32" y="618" width="30" height="88" rx="14" fill="${d}"/><path d="M-44 650 Q-48 590 0 586 Q48 590 44 650 Z" fill="${c}"/><rect x="-46" y="646" width="92" height="40" rx="10" fill="${c}"/><rect x="-62" y="612" width="30" height="16" rx="8" fill="${c}"/><rect x="32" y="612" width="30" height="16" rx="8" fill="${c}"/><rect x="-48" y="684" width="96" height="14" rx="4" fill="${d}"/><rect x="-44" y="698" width="8" height="14" fill="#2a1a10"/><rect x="36" y="698" width="8" height="14" fill="#2a1a10"/>${EPN(6, i => `<circle cx="${-28 + i * 11}" cy="${612}" r="1.6" fill="${d}"/>`)}`),
+    cocktail: (c = "#e0a84a", d = "#b9832e") => chairAt(`<path d="M-40 652 Q-46 592 0 590 Q46 592 40 652 Z" fill="${c}"/><path d="M-50 650 Q0 636 50 650 L46 674 Q0 684 -46 674 Z" fill="${d}"/><path d="M-36 672 L-48 714 M36 672 L48 714 M-14 678 L-18 712 M14 678 L18 712" stroke="#3a2818" stroke-width="4" stroke-linecap="round"/><circle cx="-48" cy="714" r="2.5" fill="#c9a26b"/><circle cx="48" cy="714" r="2.5" fill="#c9a26b"/>`),
+    shell: (c = "#f1ece2", k = "#e2731e") => chairAt(`<path d="M-58 640 Q-62 570 0 566 Q62 570 58 640 Q50 676 0 680 Q-50 676 -58 640 Z" fill="${c}"/><path d="M-44 640 Q-46 590 0 588 Q46 590 44 640 Q38 664 0 666 Q-38 664 -44 640 Z" fill="${k}"/><ellipse cx="0" cy="660" rx="40" ry="10" fill="${k}" opacity=".85"/><rect x="-4" y="678" width="8" height="28" fill="#cfcac0"/><ellipse cx="0" cy="708" rx="30" ry="6" fill="#d8d3c8"/>`),
+    lounge: (c = "#7a4a1e", d = "#5a3412") => chairAt(`<rect x="-64" y="610" width="128" height="96" rx="34" fill="${d}"/><path d="M-48 650 Q-50 594 0 592 Q50 594 48 650 Z" fill="${c}"/>${EPN(5, i => `<path d="M${-36 + i * 18} 600 V648" stroke="${d}" stroke-width="2" opacity=".6"/>`)}<rect x="-50" y="646" width="100" height="40" rx="16" fill="${c}"/><rect x="-40" y="704" width="80" height="6" rx="3" fill="#2a1a10"/>`),
+    tulipe: (c = "#d8cfc0") => chairAt(`<path d="M-44 650 Q-48 596 0 594 Q48 596 44 650 Z" fill="${c}"/><rect x="-50" y="646" width="100" height="28" rx="12" fill="${c}"/><path d="M-40 674 L-50 714 M40 674 L50 714 M-16 676 L-20 712 M16 676 L20 712" stroke="#a07848" stroke-width="5" stroke-linecap="round"/>`),
+    blackleather: () => chairAt(`<rect x="-60" y="616" width="26" height="90" rx="8" fill="#16161a"/><rect x="34" y="616" width="26" height="90" rx="8" fill="#16161a"/><rect x="-40" y="584" width="80" height="70" rx="10" fill="#222228"/><path d="M-34 596 H34 M-34 616 H34 M-34 636 H34" stroke="#2e2e36" stroke-width="2"/><rect x="-42" y="650" width="84" height="38" rx="8" fill="#26262c"/><path d="M-30 692 L-34 712 M30 692 L34 712" stroke="#8a8a92" stroke-width="4"/>`),
+    bouclette: () => chairAt(`<path d="M-60 650 Q-64 584 0 580 Q64 584 60 650 Q58 700 0 704 Q-58 700 -60 650 Z" fill="#e9e3d8"/>${EPN(40, i => `<circle cx="${-50 + (i * 23) % 100}" cy="${596 + Math.floor(i / 5) * 13}" r="1.4" fill="#d6cfc2"/>`)}<ellipse cx="0" cy="664" rx="44" ry="16" fill="#f2ede4"/><rect x="-30" y="702" width="6" height="10" fill="#6a4e34"/><rect x="24" y="702" width="6" height="10" fill="#6a4e34"/>`),
+    gamer: () => chairAt(`<rect x="-60" y="618" width="24" height="86" rx="8" fill="#101018"/><rect x="36" y="618" width="24" height="86" rx="8" fill="#101018"/><path d="M-38 656 L-42 586 Q0 574 42 586 L38 656 Z" fill="#16161f"/><path d="M-38 656 L-42 586 Q0 574 42 586 L38 656" fill="none" stroke="#2ef2ff" stroke-width="2"/><path d="M-20 590 V650 M20 590 V650" stroke="#ff3fb4" stroke-width="2" opacity=".8"/><rect x="-44" y="652" width="88" height="34" rx="8" fill="#1c1c26"/><rect x="-44" y="684" width="88" height="3" fill="#2ef2ff" opacity=".8"/><rect x="-36" y="700" width="72" height="8" rx="3" fill="#3a3a48"/>`),
+    wingquilt: () => chairAt(`<path d="M-58 600 Q-66 560 -30 566 L30 566 Q66 560 58 600 L56 700 L-56 700 Z" fill="#5a2e22"/>${EPN(12, i => `<rect x="${-48 + (i % 4) * 24}" y="${600 + Math.floor(i / 4) * 24}" width="24" height="24" fill="${["#b8643a", "#7a8a4a", "#d8b060", "#8a4a6a", "#4a6a8a", "#c88a5a"][(i * 5) % 6]}" opacity=".9"/>`)}<path d="M-48 600 h96 M-48 624 h96 M-48 648 h96 M-24 600 v72 M0 600 v72 M24 600 v72" stroke="#3a2016" stroke-width="1.2" stroke-dasharray="3 2"/><rect x="-60" y="672" width="120" height="30" rx="6" fill="#4a2618"/><rect x="-52" y="700" width="8" height="12" fill="#2a1a10"/><rect x="44" y="700" width="8" height="12" fill="#2a1a10"/>`),
+    carseat: () => chairAt(`<rect x="-46" y="690" width="92" height="14" fill="#5a4a32"/><rect x="-50" y="702" width="100" height="10" fill="#4a3a26" transform="rotate(-2 0 707)"/><path d="M-36 660 L-40 584 Q0 574 40 584 L36 660 Z" fill="#3a3a40"/><rect x="-20" y="570" width="40" height="16" rx="6" fill="#3a3a40"/><path d="M-24 600 L-6 616 M10 630 L30 618" stroke="#8a7a5a" stroke-width="5" opacity=".9"/><rect x="-44" y="656" width="88" height="34" rx="8" fill="#44444a"/><path d="M-30 664 q10 8 20 0" stroke="#1a1a1a" stroke-width="2" fill="none"/><rect x="12" y="664" width="20" height="8" fill="#b9ab8a" transform="rotate(-6 22 668)"/>`)
+  };
+  /* ---- lampes à pied (coordonnées du milieu ; la source est à hauteur de l'abat-jour, comme la lampe d'origine) ---- */
+  const ERA_LAMP = {
+    fringe: () => `<ellipse cx="1180" cy="598" rx="24" ry="5" fill="#120d0d"/><rect x="1177" y="300" width="6" height="298" fill="#8a6a3a"/>${[360, 430, 500, 560].map(y => `<ellipse cx="1180" cy="${y}" rx="7" ry="4" fill="#6a4a24"/>`).join("")}<path class="shade" d="M1140 300 Q1150 256 1162 252 L1198 252 Q1210 256 1220 300 Z"/>${EPN(14, i => `<line x1="${1142 + i * 5.6}" y1="300" x2="${1142 + i * 5.6}" y2="310" stroke="#a8823c" stroke-width="1.6"/>`)}`,
+    tripod: (c = "#e8c8a0") => `<path d="M1180 360 L1150 598 M1180 360 L1210 598 M1180 360 L1182 598" stroke="#2a2a2a" stroke-width="4"/><circle cx="1150" cy="598" r="3" fill="#c9a26b"/><circle cx="1210" cy="598" r="3" fill="#c9a26b"/><rect x="1177" y="296" width="6" height="66" fill="#2a2a2a"/><path class="shade" d="M1150 300 L1166 250 L1194 250 L1210 300 Z"/><path d="M1166 250 L1194 250" stroke="${c}" stroke-width="3"/>`,
+    arc: () => `<ellipse cx="1240" cy="596" rx="20" ry="6" fill="#ddd8cc"/><path d="M1240 594 L1240 260 Q1240 196 1180 220" fill="none" stroke="#c9c9cf" stroke-width="5"/><path class="shade" d="M1150 270 Q1150 236 1180 236 Q1210 236 1210 270 Z"/><path d="M1150 270 h60" stroke="#e8e0d0" stroke-width="2"/>`,
+    drum: () => `<ellipse cx="1180" cy="598" rx="26" ry="6" fill="#3a2414"/><rect x="1177" y="306" width="6" height="292" fill="#5a3a1e"/><rect class="shade" x="1146" y="250" width="68" height="56" rx="6"/><path d="M1146 266 h68 M1146 290 h68" stroke="#c8641e" stroke-width="5" opacity=".75"/>`,
+    halogen: () => `<ellipse cx="1180" cy="598" rx="22" ry="5" fill="#0c0c0e"/><rect x="1178" y="268" width="4" height="330" fill="#1a1a1e"/><path class="shade" d="M1148 254 Q1180 290 1212 254 Z"/><path d="M1148 254 h64" stroke="#2a2a30" stroke-width="3"/>`,
+    torch: () => `<ellipse cx="1180" cy="598" rx="22" ry="5" fill="#2a2a2e"/><rect x="1178" y="270" width="4" height="328" fill="#5a5a62"/><path class="shade" d="M1140 252 L1220 252 L1190 276 L1170 276 Z"/>`,
+    steel: () => `<ellipse cx="1180" cy="598" rx="24" ry="5" fill="#8a8e96"/><rect x="1178" y="290" width="4" height="308" fill="#a8acb4"/><path class="shade" d="M1150 262 Q1180 312 1210 262 Q1180 252 1150 262 Z"/>`,
+    scandi: () => `<path d="M1180 330 L1146 598 M1180 330 L1214 598 M1180 330 L1180 598" stroke="#b08a5a" stroke-width="5"/><rect x="1177" y="300" width="6" height="34" fill="#b08a5a"/><rect class="shade" x="1150" y="256" width="60" height="46" rx="4"/>`,
+    globe: () => `<ellipse cx="1180" cy="598" rx="18" ry="4" fill="#1a1a1c"/><rect x="1179" y="300" width="2" height="298" fill="#1a1a1c"/><circle class="shade" cx="1180" cy="280" r="24"/>`,
+    neon: () => `<rect x="1162" y="588" width="36" height="10" rx="2" fill="#24242e"/><rect x="1176" y="250" width="8" height="340" rx="4" class="shade"/><rect x="1176" y="250" width="8" height="340" rx="4" fill="none" stroke="#ff3fb4" stroke-width="1.5"/>`,
+    lantern: () => `<path d="M1180 598 V236 Q1180 226 1196 226 Q1212 226 1212 238" fill="none" stroke="#2a1a10" stroke-width="5"/><path d="M1168 598 h24" stroke="#2a1a10" stroke-width="6"/><path d="M1212 238 v10" stroke="#3a3a3a" stroke-width="2"/><path d="M1200 254 h24 l-3 -6 h-18 Z" fill="#2a2a2a"/><path class="shade" d="M1202 256 Q1196 276 1202 296 h20 Q1228 276 1222 256 Z"/><rect x="1200" y="294" width="24" height="5" fill="#2a2a2a"/><path class="rbs-fl" d="M1212 286 c-3 -4 -1 -8 0 -11 c1 3 3 7 0 11 Z" fill="#ffc35a"/>`,
+    oil: () => `<path d="M1180 598 V236 L1206 236" fill="none" stroke="#4a4038" stroke-width="5"/><path d="M1166 598 l14 -10 l14 10" fill="none" stroke="#4a4038" stroke-width="5"/><path d="M1206 236 v14" stroke="#6a5a4a" stroke-width="2"/><path d="M1196 252 h20 l-2 -4 h-16 Z" fill="#6a5a3a"/><path class="shade" d="M1198 254 Q1192 274 1200 288 h12 Q1220 274 1214 254 Z"/><rect x="1194" y="288" width="24" height="12" rx="4" fill="#8a5a2a"/><path class="rbs-fl" d="M1206 280 c-3 -4 -1 -8 0 -11 c1 3 3 7 0 11 Z" fill="#ffb84a"/>`
+  };
+  /* ---- radiateurs / meubles sous la fenêtre ---- */
+  const radPal = (a, b, c) => `<g aria-hidden="true"><rect x="820" y="470" width="160" height="96" rx="6" fill="${a}"/>${EPN(9, i => `<rect x="${828 + i * 17}" y="478" width="10" height="80" rx="4" fill="${b}"/>`)}<rect x="840" y="566" width="8" height="34" fill="${c}"/><rect x="952" y="566" width="8" height="34" fill="${c}"/></g>`;
+  const ERA_RAD = {
+    fonte: radPal("#6a5a4e", "#7c6b5d", "#4a3d34"),
+    pastel: radPal("#d8d2c4", "#e6e0d2", "#a8a294"),
+    chrome: radPal("#9aa0aa", "#b8bec8", "#6a7078"),
+    blanc: radPal("#d8d8d4", "#e8e8e4", "#a8a8a4"),
+    rouille: `<g aria-hidden="true"><rect x="820" y="470" width="160" height="96" rx="6" fill="#5a3a26"/>${EPN(9, i => `<rect x="${828 + i * 17}" y="478" width="10" height="80" rx="4" fill="${i % 3 ? "#6a4630" : "#7a4a28"}"/>`)}<path d="M830 520 q20 10 40 -4 q30 14 60 2" stroke="#8a5a2a" stroke-width="5" fill="none" opacity=".6"/><rect x="840" y="566" width="8" height="34" fill="#3a2a1e"/><rect x="952" y="566" width="8" height="34" fill="#3a2a1e"/></g>`,
+    banc: `<g aria-hidden="true"><rect x="812" y="470" width="176" height="14" rx="3" fill="#6a4a2a"/><rect x="812" y="470" width="176" height="3" fill="#8a6a42"/><rect x="822" y="484" width="12" height="116" fill="#4a3018"/><rect x="966" y="484" width="12" height="116" fill="#4a3018"/><rect x="834" y="540" width="132" height="8" fill="#4a3018"/><path d="M842 560 l18 40 M940 560 l16 40" stroke="#3a2412" stroke-width="3"/></g>`
+  };
+
+  /* ---- paysages de la fenêtre (dans le cadre 798–1002 × 128–392) ---- */
+  function rbsView(kind) {
+    const nuit = eraNight(), s = decoSeason(), snowy = s === "Hiver" || s === "Noël", r = rng(91);
+    const grid = (x, y, w, h, cols, rows, lit, dark, p = 0.55) => { let o = ""; const cw = (w - 6) / cols, ch = (h - 6) / rows; for (let i = 0; i < cols; i++) for (let j = 0; j < rows; j++) o += `<rect x="${(x + 4 + i * cw).toFixed(1)}" y="${(y + 4 + j * ch).toFixed(1)}" width="${(cw - 3).toFixed(1)}" height="${(ch - 4).toFixed(1)}" fill="${nuit && r() < p ? lit : dark}"/>`; return o; };
+    const veil = (a) => `<rect x="798" y="128" width="204" height="264" fill="rgba(8,10,28,${a})"/>`;
+    const snowCap = (x, y, w) => snowy ? `<rect x="${x}" y="${y - 2}" width="${w}" height="4" rx="2" fill="#eef3f8"/>` : "";
+    const road = (c = "#3a3a3e", walk = "#8a8580") => `<rect x="798" y="352" width="204" height="10" fill="${snowy ? "#e6edf3" : walk}"/><rect x="798" y="362" width="204" height="30" fill="${c}"/><path d="M806 378 h20 M846 378 h20 M886 378 h20 M926 378 h20 M966 378 h20" stroke="#d8d2b8" stroke-width="2" opacity=".6"/>`;
+    const wheels = (a, b) => `<circle cx="${a}" cy="0" r="5" fill="#141414"/><circle cx="${b}" cy="0" r="5" fill="#141414"/><circle cx="${a}" cy="0" r="2" fill="#8a8a8a"/><circle cx="${b}" cy="0" r="2" fill="#8a8a8a"/>`;
+    const lights = (x) => nuit ? `<circle cx="${x}" cy="-6" r="2" fill="#fff2c0"/>${eraHalo(x + 4, -6, 8, "#fff2c0", .5)}` : "";
+    const CARS = {
+      "30": (c) => `<path d="M0 0 L2 -7 Q4 -11 14 -11 L18 -21 Q20 -24 28 -24 L40 -24 Q46 -24 48 -17 L50 -11 Q62 -11 66 -6 L66 0 Z" fill="${c}"/><path d="M4 -1 Q8 -12 20 -6 M44 -6 Q56 -12 62 -1" stroke="#141414" stroke-width="3" fill="none"/><rect x="22" y="-20" width="10" height="7" fill="#9ab"/><rect x="34" y="-20" width="10" height="7" fill="#9ab"/>${wheels(12, 54)}${lights(66)}`,
+      "50": (c) => `<path d="M0 0 L0 -8 L12 -10 L22 -19 L48 -19 L56 -10 L76 -9 L80 -15 L80 0 Z" fill="${c}"/><path d="M22 -19 L48 -19 L46 -15 L24 -15 Z" fill="#f2ede2"/><rect x="0" y="-4" width="80" height="2" fill="#d8d8d8"/><rect x="26" y="-17" width="18" height="6" fill="#9ab"/>${wheels(16, 62)}${lights(80)}`,
+      "60": (c) => `<path d="M0 0 V-7 Q2 -12 10 -12 L16 -21 Q18 -23 24 -23 L38 -23 Q44 -23 46 -18 L50 -12 Q58 -12 60 -6 V0 Z" fill="${c}"/><rect x="20" y="-20" width="12" height="7" rx="2" fill="#9ab"/><rect x="34" y="-20" width="9" height="7" rx="2" fill="#9ab"/>${wheels(12, 48)}${lights(60)}`,
+      "80": (c) => `<path d="M0 0 V-9 L12 -10 L18 -20 H46 L54 -10 H68 V0 Z" fill="${c}"/><rect x="21" y="-18" width="12" height="7" fill="#9ab"/><rect x="35" y="-18" width="12" height="7" fill="#9ab"/><rect x="0" y="-4" width="68" height="3" fill="#2a2a2a"/>${wheels(13, 55)}${lights(68)}`,
+      "mod": (c) => `<path d="M0 0 V-8 Q4 -12 16 -13 L26 -20 Q34 -22 46 -21 L58 -13 Q70 -12 72 -6 V0 Z" fill="${c}"/><path d="M28 -19 Q36 -21 46 -20 L54 -13 H24 Z" fill="#2a3440"/>${wheels(14, 58)}${lights(72)}`
+    };
+    const facade = (x, y, w, c, cols, rows) => `<rect x="${x}" y="${y}" width="${w}" height="${352 - y}" fill="${c}"/>${snowCap(x, y, w)}`;
+    const shopfront = (x, w, a, b) => `<rect x="${x + 3}" y="326" width="${w - 6}" height="26" fill="${nuit ? "#e8b86a" : "#2a3038"}" opacity="${nuit ? .85 : 1}"/>${EPN(Math.floor((w - 6) / 6), i => `<rect x="${x + 3 + i * 6}" y="318" width="6" height="8" fill="${i % 2 ? a : b}"/>`)}<rect x="${x + 6}" y="306" width="${w - 12}" height="9" fill="#2a241e"/>`;
+    let o = "", top = "";
+    if (kind === "rue30" || kind === "rue50" || kind === "rue60" || kind === "rue70") {
+      const pal = { rue30: ["#7a5e4a", "#8a7d68", "#6a5a52"], rue50: ["#c9a8a0", "#9fc0b4", "#e0cf9a"], rue60: ["#d08a4a", "#c9c2b0", "#8a9aa8"], rue70: ["#8a6a42", "#b0894a", "#6a5a48"] }[kind];
+      const B = [[798, 214, 68], [866, 238, 66], [932, 206, 70]];
+      B.forEach(([x, y, w], i) => { o += facade(x, y, w, pal[i]); top += grid(x + 4, y + 8, w - 8, 300 - y - 8, 3, Math.max(2, Math.floor((300 - y) / 24)), "#ffd98a", "rgba(30,30,40,.55)"); top += shopfront(x, w, ["#c23a3a", "#2a6a5a", "#d8a030"][i], "#f2ede2"); });
+      o += road(kind === "rue30" ? "#4a4642" : "#3a3a3e", kind === "rue30" ? "#8a7e70" : "#8a8580");
+      o += `<rect x="984" y="290" width="3" height="64" fill="#1e1e22"/><path d="M978 290 h15 l-3 -8 h-9 Z" fill="#1e1e22"/>`;
+      top += nuit ? `<circle cx="985.5" cy="292" r="3" fill="#ffe6a0"/>${eraHalo(985, 296, 16, "#ffd98a", .6)}` : "";
+      const st = { rue30: "30", rue50: "50", rue60: "60", rue70: "80" }[kind], cc = { rue30: "#1e2a22", rue50: "#c8505a", rue60: "#e0c040", rue70: "#8a5a2a" }[kind];
+      top += EG(830, 384, CARS[st](cc));
+    } else if (kind === "ville") {
+      const B = [[798, 196, 58, "#8a8478"], [856, 236, 78, "#a09888"], [934, 184, 68, "#7a7a80"]];
+      B.forEach(([x, y, w, c]) => { o += facade(x, y, w, c); top += grid(x + 2, y + 6, w - 4, 340 - y, 4, Math.floor((340 - y) / 18), "#ffe0a0", "rgba(40,50,60,.6)", .45); });
+      o += road(); top += EG(900, 384, CARS["80"]("#3a5a8a"));
+    } else if (kind === "moderne") {
+      const B = [[798, 150, 44], [842, 200, 60], [902, 140, 52], [954, 186, 48]];
+      B.forEach(([x, y, w], i) => { o += `<rect x="${x}" y="${y}" width="${w}" height="${352 - y}" fill="${["#5a7a96", "#7a9ab4", "#4a6a88", "#6a8aa6"][i]}"/>${EPN(Math.floor(w / 8), k => `<rect x="${x + 4 + k * 8}" y="${y}" width="1" height="${352 - y}" fill="rgba(255,255,255,.25)"/>`)}<rect x="${x}" y="${y}" width="${w}" height="3" fill="rgba(255,255,255,.4)"/>${snowCap(x, y, w)}`; top += nuit ? EPN(Math.floor((352 - y) / 9), j => r() < .4 ? `<rect x="${x + 3}" y="${y + 6 + j * 9}" width="${w - 6}" height="3" fill="#ffe6b0" opacity=".7"/>` : "") : ""; });
+      o += `<path d="M940 140 V96 M920 100 h60" stroke="#e0a030" stroke-width="2"/>` + road("#34363c", "#a8a8a8");
+      top += EG(830, 384, CARS.mod("#d8dce2"));
+    } else if (kind === "cyber") {
+      o += `<rect x="798" y="128" width="204" height="264" fill="${nuit ? "rgba(40,10,60,.55)" : "rgba(80,70,110,.55)"}"/>`;
+      const T = [[798, 30, "#141428"], [826, 44, "#1c1a34"], [868, 24, "#10101e"], [890, 52, "#181830"], [940, 34, "#121226"], [972, 30, "#1a1830"]];
+      T.forEach(([x, w, c], i) => { o += `<rect x="${x}" y="${i % 2 ? 128 : 150 + i * 6}" width="${w}" height="264" fill="${c}"/>`; top += EPN(40, k => { const yy = 140 + ((k * 37 + i * 13) % 240), xx = x + 3 + ((k * 7) % Math.max(4, w - 6)); return r() < (nuit ? .7 : .35) ? `<rect x="${xx}" y="${yy}" width="2.5" height="1.6" fill="${["#2ef2ff", "#ff3fb4", "#ffe066", "#9a7aff"][k % 4]}" opacity=".9"/>` : ""; }); });
+      top += `<g font-family="sans-serif" font-weight="700">${[[838, 190, "夜", "#ff3fb4"], [952, 230, "光", "#2ef2ff"], [902, 300, "店", "#ffe066"]].map(([x, y, t, c]) => `<rect x="${x - 8}" y="${y - 30}" width="16" height="40" rx="2" fill="#0a0a14" stroke="${c}" stroke-width="1.5"/><text x="${x}" y="${y - 4}" text-anchor="middle" font-size="13" fill="${c}">${t}</text>${eraHalo(x, y - 10, 18, c, .45)}`).join("")}</g>`;
+      top += `<rect x="798" y="356" width="204" height="36" fill="#0c0c16"/><path d="M798 370 h204" stroke="#ff3fb4" stroke-width="1" opacity=".5"/><path d="M798 384 h204" stroke="#2ef2ff" stroke-width="1" opacity=".4"/>`;
+      top += [[0, 196, 11, "#ff3fb4"], [1, 250, 15, "#2ef2ff"], [2, 168, 19, "#ffe066"]].map(([i, y, d, c]) => `<g class="era-fly" style="animation-duration:${d}s;animation-delay:-${i * 4}s"><rect x="770" y="${y}" width="18" height="5" rx="2.5" fill="#3a3a52"/><circle cx="788" cy="${y + 2.5}" r="1.6" fill="${c}"/><circle cx="771" cy="${y + 2.5}" r="1.2" fill="#ff4a3d"/></g>`).join("");
+      top += `<g class="rbs-rain" style="animation-duration:.55s">${EPN(34, k => `<path d="M${800 + (k * 29) % 210} ${130 + (k * 53) % 240} l-4 12" stroke="#bcd6ff" stroke-width="1" opacity=".55"/>`)}</g>`;
+    } else if (kind === "postapo") {
+      o += `<rect x="798" y="128" width="204" height="264" fill="rgba(140,130,80,.35)"/>`;
+      const R = [[800, 230, 50, "M0 0 L10 -14 L18 -4 L30 -22 L50 -8 V122 H0 Z"], [860, 200, 56, "M0 0 L12 -6 L20 6 L34 -12 L44 2 L56 -4 V152 H0 Z"], [930, 240, 70, "M0 0 L20 -10 L28 4 L48 -18 L70 -2 V112 H0 Z"]];
+      R.forEach(([x, y, w, d], i) => { o += `<path d="${d}" transform="translate(${x} ${y})" fill="${["#5a5648", "#4a4a40", "#62584a"][i]}"/>`; o += EPN(6, k => `<rect x="${x + 6 + (k % 3) * (w / 3.4)}" y="${y + 14 + Math.floor(k / 3) * 34}" width="${w / 6}" height="16" fill="#1e1e1a"/>`); o += `<path d="M${x + 8} ${y + 20} q6 30 -2 60 q8 20 2 40" stroke="#4a6a2a" stroke-width="4" fill="none"/><path d="M${x + w - 10} ${y} q-8 40 4 80" stroke="#5a7a30" stroke-width="3" fill="none"/>`; });
+      o += `<path d="M798 392 V356 Q830 340 860 352 Q900 336 940 350 Q976 342 1002 354 V392 Z" fill="#5a5444"/>${EPN(14, k => `<path d="M${804 + k * 14} 356 q2 -8 4 0 q2 -6 4 0" stroke="#5a7a2a" stroke-width="2" fill="none"/>`)}`;
+      o += `<g transform="translate(818 380) rotate(-6)"><path d="M0 0 V-9 L12 -10 L18 -19 H44 L52 -10 H64 V0 Z" fill="#7a4a2a"/><rect x="20" y="-17" width="12" height="6" fill="#1e1e1a"/></g>`;
+      // au loin, quelques silhouettes qui errent (petites, sombres, sans détail)
+      top += `<g fill="#2a2a24" opacity=".75">${[[914, 352], [930, 354], [962, 350]].map(([x, y], i) => `<g transform="translate(${x} ${y})${i === 1 ? " scale(-1 1)" : ""}"><circle cx="0" cy="-12" r="2"/><path d="M-1.6 -10 L1.6 -10 L2.4 -3 L1 0 L0 -3 L-1 0 L-2.4 -3 Z"/><path d="M1 -9 L6 -8" stroke="#2a2a24" stroke-width="1.2"/></g>`).join("")}</g>`;
+    } else if (kind === "foret") {
+      const tree = (x, h, c) => `<path d="M${x} ${392 - h} L${x + h * .28} 392 L${x - h * .28} 392 Z" fill="${c}"/>`;
+      o += EPN(9, k => tree(800 + k * 26, 120 + (k * 37) % 60, "#1e3a2e")) + EPN(7, k => tree(812 + k * 32, 80 + (k * 23) % 50, "#16302a"));
+      o += `<path d="M798 392 V370 Q900 356 1002 372 V392 Z" fill="${snowy ? "#dfe7ef" : "#203a26"}"/>`;
+      top += `<g><rect x="862" y="372" width="3" height="10" fill="#efe6d4"/><path d="M856 374 q7 -10 14 0 Z" fill="#c23a2a"/><circle cx="861" cy="371" r="1.1" fill="#fff"/><circle cx="866" cy="372" r="1" fill="#fff"/></g>`;
+      top += EPN(nuit ? 12 : 5, k => `<g class="ffly" style="animation-delay:-${(k * .37).toFixed(2)}s"><circle cx="${808 + (k * 47) % 190}" cy="${250 + (k * 31) % 120}" r="1.6" fill="#fff6a0"/>${eraHalo(808 + (k * 47) % 190, 250 + (k * 31) % 120, 6, "#fff6a0", .6)}</g>`);
+      if (!nuit) top += `<path d="M830 128 L870 392 L900 392 L850 128 Z" fill="#fff6d8" opacity=".08"/>`;
+    } else if (kind === "cimetiere") {
+      o += `<path d="M880 260 V200 L888 176 L896 200 V230 H920 V196 L928 168 L936 196 V260 Z" fill="#2a2a34"/><rect x="896" y="236" width="24" height="28" fill="#2a2a34"/><circle cx="908" cy="226" r="7" fill="${nuit ? "#c9904a" : "#46465a"}"/><rect x="860" y="250" width="100" height="40" fill="#2a2a34"/>`;
+      o += `<path d="M798 392 V318 Q860 296 920 310 Q970 300 1002 314 V392 Z" fill="${snowy ? "#dfe7ef" : nuit ? "#141a16" : "#3a4a3a"}"/>`;
+      top += [[820, 352, 0], [850, 360, 1], [900, 350, 0], [940, 362, 1], [975, 354, 0]].map(([x, y, c]) => c ? `<path d="M${x} ${y} v-18 M${x - 6} ${y - 12} h12" stroke="#8a8a92" stroke-width="3"/>` : `<path d="M${x - 7} ${y} V${y - 14} Q${x} ${y - 22} ${x + 7} ${y - 14} V${y} Z" fill="#7a7a84"/>`).join("");
+      top += `<path d="M798 372 H1002" stroke="#1a1a1e" stroke-width="2"/>${EPN(21, k => `<path d="M${800 + k * 10} 384 V366 l1.5 -4 l1.5 4 V384" stroke="#1a1a1e" stroke-width="1.6" fill="none"/>`)}`;
+    }
+    return `<g aria-hidden="true" class="rbs-era-view">${o}${nuit ? veil(kind === "cyber" ? .15 : .45) : ""}${top}</g>`;
+  }
+
+  /* ---- téléviseurs (coordonnées du groupe de la télé : la pièce moins 340) ---- */
+  const tvScr = (x, y, w, h, rx) => `<rect id="tvRect" x="${x}" y="${y}" width="${w}" height="${h}" rx="${rx}" fill="#0c0e0c"/>`;
+  const ERA_TV = {
+    // 1930-40 : un poste de table en noyer, petit écran presque rond, haut-parleur en tissu
+    deco: () => `<path d="M770 500 V340 Q770 298 816 298 H984 Q1030 298 1030 340 V500 Z" fill="#5a3420"/><path d="M778 496 V342 Q778 306 818 306 H982 Q1022 306 1022 342 V496 Z" fill="none" stroke="#7a4a2a" stroke-width="2"/>
+      <rect x="790" y="318" width="146" height="128" rx="52" fill="#2a1a10" stroke="#b08a4a" stroke-width="3"/>${tvScr(800, 328, 126, 108, 46)}
+      <rect x="950" y="320" width="60" height="150" rx="10" fill="#b89a6a"/>${EPN(6, i => `<rect x="${954 + i * 10}" y="322" width="3" height="146" fill="#4a2a16"/>`)}
+      <circle cx="830" cy="474" r="9" fill="#1a1210"/><circle cx="830" cy="474" r="3" fill="#b08a4a"/><circle cx="896" cy="474" r="9" fill="#1a1210"/><circle cx="896" cy="474" r="3" fill="#b08a4a"/><circle cx="1016" cy="486" r="2" class="tvled"/>`,
+    // années 50 : boîtier en bois à coins arrondis, antenne en V, boutons sur le côté
+    fifties: () => `<path d="M890 296 L846 222 M910 296 L964 226" stroke="#9a9aa2" stroke-width="3"/><circle cx="846" cy="222" r="4" fill="#c9c9cf"/><circle cx="964" cy="226" r="4" fill="#c9c9cf"/><ellipse cx="900" cy="298" rx="18" ry="6" fill="#3a3a40"/>
+      <rect x="772" y="300" width="262" height="196" rx="28" fill="#7a4a2a"/><rect x="772" y="300" width="262" height="10" rx="5" fill="#9a6a40"/>
+      <rect x="786" y="316" width="180" height="146" rx="30" fill="#e8dcc0"/>${tvScr(796, 326, 160, 126, 26)}
+      <rect x="974" y="320" width="48" height="110" rx="6" fill="#e8dcc0"/>${EPN(7, i => `<rect x="980" y="${326 + i * 9}" width="36" height="4" rx="2" fill="#8a6a4a"/>`)}<circle cx="998" cy="450" r="8" fill="#e8dcc0"/><circle cx="998" cy="476" r="6" fill="#e8dcc0"/>
+      <path d="M790 496 L782 500 M1016 496 L1024 500" stroke="#3a2818" stroke-width="5"/><circle cx="1026" cy="488" r="2" class="tvled"/>`,
+    // années 60 : un poste « spatial » arrondi, blanc et orange, sur un pied tulipe
+    sixties: () => `<rect x="888" y="460" width="24" height="30" fill="#e8e2d6"/><ellipse cx="900" cy="494" rx="56" ry="7" fill="#e8e2d6"/>
+      <rect x="778" y="276" width="244" height="190" rx="70" fill="#f1ece2"/><rect x="778" y="276" width="244" height="190" rx="70" fill="none" stroke="#e2731e" stroke-width="7"/>
+      ${tvScr(806, 300, 188, 132, 40)}<circle cx="980" cy="448" r="5" fill="#e2731e"/><circle cx="964" cy="448" r="5" fill="#e2731e"/><circle cx="944" cy="449" r="2" class="tvled"/>`,
+    // années 70 : grand poste en bois verni, boutons rotatifs et grille de haut-parleur
+    seventies: () => `<rect x="756" y="290" width="296" height="206" rx="10" fill="#6a4320"/>${EPN(14, i => `<path d="M${760 + i * 21} 292 q4 100 -2 202" stroke="#5a3618" stroke-width="2" fill="none" opacity=".6"/>`)}
+      <rect x="770" y="304" width="196" height="160" rx="16" fill="#1a1612"/>${tvScr(780, 312, 176, 144, 24)}
+      <rect x="976" y="304" width="62" height="178" rx="6" fill="#c9c2b0"/><circle cx="1007" cy="334" r="15" fill="#2a2a2a"/><path d="M1007 322 V330" stroke="#e8e0c8" stroke-width="3"/><circle cx="1007" cy="376" r="12" fill="#2a2a2a"/><path d="M1016 370 l-5 4" stroke="#e8e0c8" stroke-width="3"/>${EPN(6, i => `<rect x="984" y="${404 + i * 11}" width="46" height="5" rx="2" fill="#7a7062"/>`)}<circle cx="1028" cy="488" r="2" class="tvled"/>`,
+    // années 80 : téléviseur cathodique carré, côtés façon bois, touches et magnétoscope
+    eighties: () => `<rect x="776" y="282" width="254" height="194" rx="8" fill="#2a2a2e"/><rect x="776" y="282" width="12" height="194" fill="#6a4a2e"/><rect x="1018" y="282" width="12" height="194" fill="#6a4a2e"/>
+      <rect x="792" y="294" width="176" height="150" rx="14" fill="#101012"/>${tvScr(800, 302, 160, 134, 18)}
+      ${EPN(6, i => `<rect x="978" y="${300 + i * 12}" width="30" height="7" rx="1.5" fill="#4a4a52"/>`)}${EPN(5, i => `<rect x="980" y="${384 + i * 8}" width="26" height="3" fill="#18181c"/>`)}<circle cx="1000" cy="462" r="2.2" class="tvled"/>
+      <rect x="800" y="476" width="200" height="22" rx="2" fill="#1e1e22"/><rect x="852" y="482" width="70" height="8" rx="1" fill="#0a0a0c"/><rect x="934" y="483" width="20" height="5" fill="#6ae08a" opacity=".7"/>`,
+    // années 90 : gros cathodique gris anthracite à façade arrondie
+    nineties: () => `<rect x="900" y="470" width="0" height="0"/><path d="M766 494 L774 270 Q776 262 786 262 H1014 Q1024 262 1026 270 L1034 494 Z" fill="#3a3c42"/>
+      <rect x="784" y="278" width="232" height="176" rx="22" fill="#18191d"/>${tvScr(794, 288, 212, 156, 26)}
+      <rect x="790" y="466" width="220" height="10" rx="3" fill="#2a2c30"/>${EPN(4, i => `<circle cx="${960 + i * 12}" cy="471" r="2.4" fill="#5a5c64"/>`)}<circle cx="806" cy="471" r="2.2" class="tvled"/>`,
+    // années 2000 : premier écran plat argenté, cadre épais, pied central
+    twothousands: () => `<rect x="880" y="466" width="40" height="22" fill="#b8bec8"/><rect x="842" y="486" width="116" height="10" rx="4" fill="#a8aeb8"/>
+      <rect x="732" y="268" width="336" height="206" rx="8" fill="#c9cfd8"/><rect x="742" y="278" width="316" height="180" rx="3" fill="#1a1c22"/>${tvScr(748, 282, 304, 172, 2)}
+      <rect x="732" y="460" width="336" height="14" rx="6" fill="#aab0ba"/>${EPN(2, i => `<rect x="${760 + i * 250}" y="463" width="30" height="8" rx="3" fill="#8a909a"/>`)}<circle cx="900" cy="467" r="2.2" class="tvled"/>`,
+    // années 2010 : écran plat très fin à bords étroits, pieds discrets
+    tens: () => `<path d="M770 496 L790 470 M1030 496 L1010 470" stroke="#2a2a2e" stroke-width="4"/><rect x="714" y="252" width="372" height="220" rx="3" fill="#0c0c0e" stroke="#2a2a30" stroke-width="1.5"/>${tvScr(720, 258, 360, 206, 1)}<circle cx="900" cy="469" r="1.6" class="tvled"/>`,
+    // aujourd'hui : très grand écran accroché au mur, sans pied, barre de son en dessous
+    wall: () => `<rect x="700" y="214" width="380" height="226" rx="2" fill="#09090b" stroke="#24242a" stroke-width="1"/>${tvScr(703, 217, 374, 220, 1)}<circle cx="890" cy="438" r="1.4" class="tvled"/>
+      <rect x="760" y="452" width="280" height="14" rx="7" fill="#1c1c20"/>${EPN(40, i => `<circle cx="${770 + i * 6.6}" cy="459" r="1.2" fill="#3a3a42"/>`)}`,
+    // cyberpunk : dalle sans cadre, liseré néon, pied métallique ; deux panneaux holographiques flottent à côté
+    cyber: () => `<path d="M880 494 L892 470 H908 L920 494 Z" fill="#2a2c36"/><rect x="852" y="492" width="96" height="6" rx="3" fill="#3a3c48"/>
+      <rect x="712" y="244" width="376" height="226" rx="2" fill="#05050a"/>${tvScr(716, 248, 368, 218, 1)}
+      ${eraNeon("M712 472 H1088", "#ff3fb4", 2.5)}<circle cx="1080" cy="466" r="1.6" class="tvled"/>`,
+    // post-apocalyptique : vieux poste récupéré, écran fendu recollé, antenne en cintre et ruban adhésif
+    scrap: () => `<path d="M900 282 L870 214 L900 230 L930 206" stroke="#8a8a8a" stroke-width="2.5" fill="none"/><rect x="884" y="276" width="34" height="10" fill="#4a4a44"/>
+      <rect x="770" y="282" width="260" height="196" rx="10" fill="#4a4840" transform="rotate(-1.5 900 380)"/><rect x="784" y="296" width="190" height="160" rx="16" fill="#141412"/>${tvScr(792, 304, 174, 144, 18)}
+      <rect x="980" y="302" width="40" height="150" rx="4" fill="#5a5448"/><circle cx="1000" cy="330" r="9" fill="#2a2a28"/><rect x="994" y="364" width="12" height="40" fill="#8a3a2a"/><rect x="780" y="286" width="44" height="12" fill="#b9ab8a" opacity=".9" transform="rotate(-24 802 292)"/><rect x="940" y="440" width="40" height="11" fill="#b9ab8a" opacity=".9" transform="rotate(16 960 445)"/><path d="M1020 420 q30 20 10 60" stroke="#2a2a2a" stroke-width="2.5" fill="none"/><circle cx="1012" cy="468" r="2" class="tvled"/>`,
+    // chaumière magique : un miroir enchanté au cadre de bois sculpté et doré, qui montre l'image
+    miroir: () => `<ellipse cx="900" cy="362" rx="146" ry="122" fill="#5a3418"/><ellipse cx="900" cy="362" rx="138" ry="114" fill="none" stroke="#c9a24a" stroke-width="4"/>${EPN(12, i => { const a = i / 12 * Math.PI * 2; return `<circle cx="${(900 + Math.cos(a) * 142).toFixed(1)}" cy="${(362 + Math.sin(a) * 118).toFixed(1)}" r="${i % 3 ? 4 : 7}" fill="#c9a24a"/>`; })}
+      <path d="M884 236 q16 -22 32 0 q-16 -8 -32 0 Z" fill="#c9a24a"/><circle cx="900" cy="228" r="5" fill="#8ad0ff"/>${tvScr(778, 262, 244, 200, 100)}
+      <path d="M836 494 h128 l-8 -22 h-112 Z" fill="#5a3418"/><circle cx="900" cy="478" r="2" class="tvled"/>`
+  };
+  const ERA_STAND = {
+    deco: `<rect x="712" y="500" width="376" height="90" rx="16" fill="#5a3820"/><rect x="712" y="500" width="376" height="7" rx="3" fill="#7a5030"/><rect x="730" y="516" width="162" height="62" rx="10" fill="#4a2c18"/><rect x="908" y="516" width="162" height="62" rx="10" fill="#4a2c18"/>${EPN(5, i => `<path d="M${746 + i * 30} 520 q8 26 0 54 M${924 + i * 30} 520 q8 26 0 54" stroke="#5e3a22" stroke-width="2" fill="none"/>`)}<rect x="878" y="540" width="6" height="16" rx="2" fill="#c9a26b"/><rect x="916" y="540" width="6" height="16" rx="2" fill="#c9a26b"/><rect x="726" y="590" width="20" height="10" rx="4" fill="#2a1a10"/><rect x="1054" y="590" width="20" height="10" rx="4" fill="#2a1a10"/>`,
+    fifties: `<rect x="716" y="500" width="368" height="64" rx="4" fill="#e8e0cc"/><rect x="716" y="500" width="368" height="6" fill="#d8a0a8"/><rect x="726" y="512" width="170" height="44" rx="3" fill="#9fc8b8"/><rect x="904" y="512" width="170" height="44" rx="3" fill="#e8b8c0"/><rect x="880" y="530" width="10" height="3" fill="#c9a26b"/><rect x="910" y="530" width="10" height="3" fill="#c9a26b"/><path d="M740 564 L726 600 M1060 564 L1074 600 M800 564 L796 600 M1000 564 L1004 600" stroke="#4a3220" stroke-width="5" stroke-linecap="round"/>`,
+    teak: (c = "#8a5a30", d = "#6a4020") => `<rect x="706" y="500" width="388" height="70" rx="3" fill="${c}"/><rect x="706" y="500" width="388" height="5" fill="rgba(255,255,255,.12)"/>${EPN(4, i => `<rect x="${718 + i * 94}" y="512" width="86" height="50" rx="2" fill="${d}"/>${EPN(8, k => `<rect x="${722 + i * 94 + k * 10}" y="514" width="5" height="46" fill="${c}" opacity=".55"/>`)}`)}<path d="M720 570 L716 600 M1080 570 L1084 600" stroke="#2a1a10" stroke-width="6"/>`,
+    black: `<rect x="712" y="500" width="376" height="92" rx="2" fill="#141416"/><rect x="712" y="500" width="376" height="4" fill="#2a2a30"/><rect x="726" y="514" width="166" height="70" fill="rgba(120,140,170,.18)" stroke="#3a3a44"/><rect x="908" y="514" width="166" height="70" fill="rgba(120,140,170,.18)" stroke="#3a3a44"/>${EPN(4, i => `<rect x="${740 + i * 32}" y="${540}" width="6" height="40" fill="${["#c84a8a", "#3ad0e0", "#e0c040", "#e8e2d4"][i]}"/>`)}<rect x="716" y="592" width="12" height="8" fill="#0a0a0c"/><rect x="1072" y="592" width="12" height="8" fill="#0a0a0c"/>`,
+    glass: `<rect x="712" y="500" width="376" height="8" rx="2" fill="rgba(200,220,240,.45)" stroke="rgba(230,240,255,.6)"/><rect x="712" y="550" width="376" height="8" rx="2" fill="rgba(200,220,240,.35)" stroke="rgba(230,240,255,.5)"/><rect x="722" y="508" width="6" height="92" fill="#b8c0cc"/><rect x="1072" y="508" width="6" height="92" fill="#b8c0cc"/><rect x="760" y="530" width="90" height="16" rx="2" fill="#2a2e36"/><rect x="900" y="534" width="70" height="12" rx="2" fill="#3a404a"/>`,
+    oak: `<rect x="712" y="500" width="376" height="56" rx="3" fill="#c9a77a"/><rect x="712" y="500" width="376" height="4" fill="#dcc09a"/><rect x="724" y="512" width="170" height="36" rx="2" fill="#e8e6e0"/><rect x="906" y="512" width="170" height="36" rx="2" fill="#e8e6e0"/><path d="M736 556 L728 600 M1064 556 L1072 600 M880 556 L884 600 M920 556 L916 600" stroke="#1e1e22" stroke-width="3"/>`,
+    float: `<rect x="700" y="500" width="400" height="34" rx="2" fill="#d9cbb4"/><rect x="700" y="500" width="400" height="3" fill="#ece2d0"/><rect x="702" y="534" width="396" height="2.5" fill="#ffd9a0"/><ellipse cx="900" cy="546" rx="190" ry="12" fill="#ffd9a0" opacity=".12" filter="url(#eraBlur)"/>`,
+    metal: `<rect x="704" y="500" width="392" height="80" rx="2" fill="#1e2028"/><rect x="704" y="500" width="392" height="3" fill="#3a3e4a"/>${EPN(8, i => `<circle cx="${716 + i * 52}" cy="${512}" r="2" fill="#4a4e5a"/><circle cx="${716 + i * 52}" cy="${570}" r="2" fill="#4a4e5a"/>`)}<rect x="724" y="524" width="352" height="36" fill="#14161e"/>${eraNeon("M712 582 H1088", "#2ef2ff", 2)}<rect x="716" y="584" width="14" height="16" fill="#14161e"/><rect x="1070" y="584" width="14" height="16" fill="#14161e"/>`,
+    crates: `${[[712, 500, "#8a6a42"], [900, 506, "#7a5a36"]].map(([x, y, c]) => `<g transform="rotate(${x > 800 ? 1.5 : -1} ${x + 90} 550)"><rect x="${x}" y="${y}" width="${x > 800 ? 188 : 184}" height="${600 - y}" fill="${c}"/>${EPN(4, k => `<rect x="${x}" y="${y + 6 + k * 24}" width="${x > 800 ? 188 : 184}" height="16" fill="rgba(0,0,0,.18)"/>`)}<rect x="${x + 6}" y="${y}" width="10" height="${600 - y}" fill="rgba(0,0,0,.22)"/><rect x="${x + (x > 800 ? 172 : 168)}" y="${y}" width="10" height="${600 - y}" fill="rgba(0,0,0,.22)"/></g>`).join("")}<text x="800" y="560" text-anchor="middle" font-size="12" font-family="monospace" fill="rgba(30,20,10,.55)">FRAGILE</text>`,
+    coffre: `<rect x="712" y="504" width="376" height="90" rx="8" fill="#6a4426"/><path d="M712 520 Q900 496 1088 520" fill="none" stroke="#3a2a1e" stroke-width="2"/>${[740, 1060].map(x => `<rect x="${x - 6}" y="504" width="12" height="90" fill="#3a3a3a"/>`).join("")}<rect x="712" y="540" width="376" height="10" fill="#3a3a3a"/><rect x="890" y="534" width="20" height="24" rx="3" fill="#b08a4a"/><circle cx="900" cy="546" r="3" fill="#2a1a10"/><rect x="720" y="594" width="24" height="6" fill="#2a1a10"/><rect x="1056" y="594" width="24" height="6" fill="#2a1a10"/>`
+  };
+
+  const pat = (n, f) => (y) => `<g opacity=".18">${EPN(n, i => f(i, y))}</g>`;
   const ERAS = {
-    "Années 80": { wall: ["#1f1630", "#3a2342"], wain: "#2a1b33", trim: "#ff4fa3", rug: "#203a5a",
+    "Années 1930-40": { code: "1930", wall: ["#3a3324", "#4b402c"], wain: "#2e1f14", trim: "#a07a48", rug: "#6a2a22", floor: ["#4a3020", "#22150c"], wood: ["#4a2c18", "#6a4228"],
+      pat: pat(60, (i, y) => { const x = (i % 30) * 88 + (Math.floor(i / 30) ? 44 : 0) + 20, yy = y - 30 + Math.floor(i / 30) * 70; return `<g transform="translate(${x} ${yy})"><circle r="6" fill="#d89a8a"/><circle cx="-7" cy="4" r="4" fill="#e8b8a0"/><circle cx="6" cy="5" r="4" fill="#e8b8a0"/><path d="M0 6 q-4 14 -12 18 M0 6 q6 10 12 14" stroke="#7a8a5a" stroke-width="2" fill="none"/><ellipse cx="-12" cy="16" rx="5" ry="2.5" fill="#7a8a5a"/><ellipse cx="12" cy="14" rx="5" ry="2.5" fill="#7a8a5a"/></g>`; }),
+      tv: ERA_TV.deco, stand: ERA_STAND.deco, screen: "border-radius: 37% / 43%;", console: () => ERA_CONSOLE.board(), lamp: ERA_LAMP.fringe, radiator: ERA_RAD.fonte,
+      sofa: { a: "#4a2a1e", c: "#7a4a30", c2: "#824e34", e: "#9a6040", g: ["#6a3e28", "#2e1a10"] }, chair: () => ERA_CHAIR.club(), view: "rue30", life: ERA_LIFE_OLD,
+      // un poste de radio TSF en bois (façade en ogive, tissu et cadran)
+      obj: () => `<g transform="translate(890 470)"><path d="M-30 0 V-36 Q-30 -66 0 -66 Q30 -66 30 -36 V0 Z" fill="#6a3e22"/><path d="M-22 -10 V-36 Q-22 -58 0 -58 Q22 -58 22 -36 V-10 Z" fill="#c8a878"/>${EPN(5, i => `<path d="M${-14 + i * 7} -12 V-50" stroke="#5a3418" stroke-width="2"/>`)}<rect x="-14" y="-8" width="28" height="6" rx="2" fill="#efe2c0"/><circle cx="-20" cy="-4" r="3" fill="#2a1a10"/><circle cx="20" cy="-4" r="3" fill="#2a1a10"/></g>
+        <g transform="translate(952 470)"><rect x="-14" y="-30" width="28" height="30" fill="#2a1a10"/><rect x="-11" y="-27" width="22" height="24" fill="#c8b890"/><circle cx="0" cy="-17" r="6" fill="#8a7a5a"/><rect x="-4" y="-10" width="8" height="5" fill="#6a5a3a"/></g>` },
+    "Années 50": { code: "1950", wall: ["#2f4a46", "#3e5c57"], wain: "#2a3a38", trim: "#f2b8c6", rug: "#c8b48a", floor: ["#5a4a3a", "#2a2018"], wood: ["#6a4a30", "#8a6440"],
+      pat: pat(52, (i, y) => { const x = (i % 26) * 100 + 30 + (Math.floor(i / 26) ? 50 : 0), yy = y - 20 + Math.floor(i / 26) * 70; return `<g transform="translate(${x} ${yy}) rotate(${(i * 47) % 360})"><path d="M-16 4 Q0 -14 16 4 Q0 -4 -16 4 Z" fill="${["#f2b8c6", "#f4e2a0", "#bfe0d6"][i % 3]}"/></g><g transform="translate(${x + 46} ${yy + 22})">${EPN(4, k => `<path d="M0 0 L${(Math.cos(k * 0.785) * 9).toFixed(1)} ${(Math.sin(k * 0.785) * 9).toFixed(1)} M0 0 L${(-Math.cos(k * 0.785) * 9).toFixed(1)} ${(-Math.sin(k * 0.785) * 9).toFixed(1)}" stroke="#f4e2a0" stroke-width="2"/>`)}</g>`; }),
+      tv: ERA_TV.fifties, stand: ERA_STAND.fifties, screen: "border-radius: 18% / 22%;", console: () => ERA_CONSOLE.board("#c8505a"), lamp: () => ERA_LAMP.tripod("#f2b8c6"), radiator: ERA_RAD.pastel,
+      sofa: { a: "#2e6a62", c: "#4a9a8a", c2: "#52a090", e: "#7ac0b0", g: ["#3e8a7e", "#1e4a44"] }, chair: () => ERA_CHAIR.cocktail(), view: "rue50", life: ERA_LIFE_OLD,
+      // un poste de radio arrondi couleur crème et une pile de petits disques
+      obj: () => `<g transform="translate(890 470)"><rect x="-32" y="-34" width="64" height="34" rx="14" fill="#f2b8c6"/><rect x="-26" y="-28" width="30" height="20" rx="6" fill="#efe6d2"/>${EPN(4, i => `<path d="M-22 ${-24 + i * 5} h22" stroke="#c8909a" stroke-width="1.5"/>`)}<circle cx="18" cy="-18" r="7" fill="#efe6d2"/><circle cx="18" cy="-18" r="2" fill="#c8909a"/><path d="M-18 -34 Q0 -48 18 -34" stroke="#c9c9cf" stroke-width="3" fill="none"/></g>
+        <g transform="translate(956 470)">${EPN(4, i => `<rect x="-16" y="${-5 - i * 5}" width="32" height="4.5" rx="1" fill="${["#1a1a1a", "#f4e2a0", "#1a1a1a", "#bfe0d6"][i]}"/>`)}</g>` },
+    "Années 60": { code: "1960", wall: ["#3c2a1a", "#4e361f"], wain: "#2a1c10", trim: "#ff8a1e", rug: "#d06a1a", floor: ["#4a3420", "#20160c"], wood: ["#7a4e2a", "#9a6838"],
+      pat: pat(40, (i, y) => { const x = (i % 20) * 130 + 30, yy = y - 30 + Math.floor(i / 20) * 80; return `<circle cx="${x}" cy="${yy}" r="26" fill="none" stroke="#ff8a1e" stroke-width="8"/><circle cx="${x}" cy="${yy}" r="10" fill="#f4c430"/><circle cx="${x + 65}" cy="${yy + 30}" r="18" fill="none" stroke="#c84a1e" stroke-width="6"/>`; }),
+      tv: ERA_TV.sixties, stand: ERA_STAND.teak(), screen: "border-radius: 22% / 30%;", console: () => ERA_CONSOLE.board("#e2731e"), lamp: ERA_LAMP.arc, radiator: ERA_RAD.blanc,
+      sofa: { a: "#8a3a12", c: "#c8581e", c2: "#d06020", e: "#e87a30", g: ["#b04e1a", "#5a240a"] }, chair: () => ERA_CHAIR.shell(), view: "rue60", life: ERA_LIFE_OLD,
+      // une lampe à lave (sa lueur reste sur elle) et un tourne-disque portatif
+      obj: () => `<g transform="translate(886 470)"><path d="M-8 0 L-12 -10 H12 L8 0 Z" fill="#c9c9cf"/><path d="M-10 -10 Q-14 -40 -6 -58 H6 Q14 -40 10 -10 Z" fill="#ff7a30" opacity=".8"/><ellipse cx="0" cy="-30" rx="5" ry="8" fill="#ffd040" class="rbs-fl"/><path d="M-6 -58 L-4 -66 H4 L6 -58 Z" fill="#c9c9cf"/>${eraHalo(0, -34, 22, "#ff9a40", .35)}</g>
+        <g transform="translate(950 470)"><rect x="-30" y="-16" width="60" height="16" rx="3" fill="#e2731e"/><rect x="-28" y="-20" width="56" height="5" rx="2" fill="#f1ece2"/><ellipse cx="-4" cy="-20" rx="18" ry="3" fill="#1a1a1a"/><path d="M20 -22 L8 -20" stroke="#c9c9cf" stroke-width="2"/></g>` },
+    "Années 70": { code: "1970", wall: ["#3a2414", "#4a2e18"], wain: "#5a3a1e", trim: "#d89a2a", rug: "#b8782a", floor: ["#7a4a1e", "#3a2210"], planks: "", wood: ["#5a381a", "#7a4e26"],
+      pat: pat(28, (i, y) => { const x = (i % 14) * 190 + 20, yy = y - 40 + Math.floor(i / 14) * 90; return `<rect x="${x}" y="${yy}" width="80" height="80" rx="40" fill="none" stroke="#d89a2a" stroke-width="10"/><rect x="${x + 16}" y="${yy + 16}" width="48" height="48" rx="24" fill="none" stroke="#c8641e" stroke-width="10"/><rect x="${x + 32}" y="${yy + 32}" width="16" height="16" rx="8" fill="#8a4a1e"/><path d="M${x + 95} ${yy + 10} q40 30 0 60 q40 30 0 60" fill="none" stroke="#d89a2a" stroke-width="10"/>`; }),
+      tv: ERA_TV.seventies, stand: ERA_STAND.teak("#6a4320", "#4a2c14"), screen: "border-radius: 13% / 16%;", console: () => ERA_CONSOLE.pong(), lamp: ERA_LAMP.drum, radiator: ERA_RAD.fonte,
+      sofa: { a: "#5a3412", c: "#8a5a22", c2: "#946226", e: "#b07a32", g: ["#7a4a1a", "#3a220a"] }, chair: () => ERA_CHAIR.lounge(), view: "rue70", life: { work: "typewriter" },
+      // une chaîne hi-fi avec sa platine sous capot fumé et des vinyles
+      obj: () => `<g transform="translate(894 470)"><rect x="-40" y="-18" width="80" height="18" rx="2" fill="#5a3a1e"/><rect x="-38" y="-16" width="76" height="8" fill="#c9c4b6"/>${EPN(5, i => `<circle cx="${-30 + i * 10}" cy="-12" r="2.2" fill="#2a2a2a"/>`)}<rect x="-38" y="-38" width="76" height="20" rx="2" fill="rgba(60,50,40,.55)" stroke="#8a8070"/><ellipse cx="-6" cy="-22" rx="20" ry="3" fill="#141414"/></g>
+        <g transform="translate(962 470)">${EPN(5, i => `<rect x="${-14 + i * 5}" y="-34" width="4" height="34" fill="${["#c8641e", "#2a2a2a", "#d89a2a", "#5a3a1e", "#e8e0c8"][i]}"/>`)}</g>` },
+    "Années 80": { code: "80", wall: ["#1f1630", "#3a2342"], wain: "#2a1b33", trim: "#ff4fa3", rug: "#203a5a",
       pat: (y) => `<g opacity=".16">${Array.from({ length: 26 }, (_, i) => `<path d="M${i * 100 + 20} ${y + (i % 3) * 30} l18 -18 l18 18" fill="none" stroke="${["#ff4fa3", "#33e1ff", "#ffe14d"][i % 3]}" stroke-width="5"/><circle cx="${i * 100 + 70}" cy="${y + 40 + (i % 2) * 40}" r="7" fill="${["#33e1ff", "#ffe14d", "#ff4fa3"][i % 3]}"/>`).join("")}</g>`,
+      tv: ERA_TV.eighties, stand: ERA_STAND.black, screen: "border-radius: 9% / 11%;", console: () => ERA_CONSOLE.cart(), lamp: ERA_LAMP.halogen, radiator: ERA_RAD.blanc,
+      sofa: { a: "#2a2a44", c: "#4a4a7a", c2: "#50508a", e: "#ff4fa3", g: ["#3e3e66", "#1a1a2e"] }, chair: () => ERA_CHAIR.blackleather(), view: "ville", life: { work: "beige" },
       obj: () => `<g transform="translate(900 470)"><rect x="-58" y="-34" width="116" height="34" rx="5" fill="#2b2b31"/><rect x="-58" y="-34" width="116" height="6" rx="3" fill="#44444c"/><circle cx="-36" cy="-15" r="12" fill="#16161a" stroke="#5a5a64" stroke-width="2"/><circle cx="36" cy="-15" r="12" fill="#16161a" stroke="#5a5a64" stroke-width="2"/><rect x="-16" y="-24" width="32" height="15" rx="2" fill="#0f0f12" stroke="#5a5a64"/><circle cx="-8" cy="-16" r="3" fill="#5a5a64"/><circle cx="8" cy="-16" r="3" fill="#5a5a64"/><path d="M-40 -34 Q0 -52 40 -34" fill="none" stroke="#5a5a64" stroke-width="3"/></g>
         <g transform="translate(978 470)">${[0, 1, 2].map(i => `<rect x="-14" y="${-7 - i * 7}" width="28" height="6" rx="1" fill="${["#e8e2d4", "#ff4fa3", "#33e1ff"][i]}"/><rect x="-9" y="${-6 - i * 7}" width="18" height="3" fill="#2a2a2a"/>`).join("")}</g>` },
-    "Années 90": { wall: ["#14262a", "#24383a"], wain: "#1d2b2d", trim: "#a46cff", rug: "#3b2a55",
+    "Années 90": { code: "90", wall: ["#14262a", "#24383a"], wain: "#1d2b2d", trim: "#a46cff", rug: "#3b2a55",
       pat: (y) => `<g opacity=".14">${Array.from({ length: 40 }, (_, i) => `<path d="M${i * 66 + 10} ${y + (i % 4) * 26} q10 -14 20 0 t20 0" fill="none" stroke="${["#2fd3b0", "#a46cff", "#ffb02e"][i % 3]}" stroke-width="4"/>`).join("")}</g>`,
+      tv: ERA_TV.nineties, stand: ERA_STAND.black, screen: "border-radius: 11% / 15%;", console: () => ERA_CONSOLE.cart("#5a5a64"), lamp: ERA_LAMP.torch, radiator: ERA_RAD.blanc,
+      sofa: { a: "#22384a", c: "#3a5a74", c2: "#40627c", e: "#5a7a94", g: ["#34526a", "#16242e"] }, chair: () => ERA_CHAIR.club("#3a4a6a", "#22304a"), view: "ville",
       obj: () => `<g transform="translate(880 470)"><rect x="-26" y="-46" width="52" height="46" rx="4" fill="#cfcbd2"/><rect x="-20" y="-40" width="40" height="30" rx="3" fill="#2b3a44"/><rect x="-16" y="-36" width="32" height="22" rx="2" fill="#6aa0a8" opacity=".35"/><rect x="-20" y="-6" width="40" height="3" fill="#9a96a0"/></g>
         <g transform="translate(948 470)"><circle cx="0" cy="-14" r="14" fill="#d5d9de"/><circle cx="0" cy="-14" r="10" fill="#b8bec6"/><circle cx="0" cy="-14" r="3" fill="#6a707a"/><rect x="18" y="-36" width="18" height="36" rx="2" fill="#3a2a55"/>${[0, 1, 2, 3, 4].map(i => `<rect x="20" y="${-34 + i * 7}" width="14" height="5" fill="${["#ffb02e", "#2fd3b0", "#a46cff", "#ff6b6b", "#e8e2d4"][i]}"/>`).join("")}</g>` },
-    "Années 2000": { wall: ["#1a2030", "#2c3446"], wain: "#232a38", trim: "#9fb6d8", rug: "#2f3b52",
+    "Années 2000": { code: "2000", wall: ["#1a2030", "#2c3446"], wain: "#232a38", trim: "#9fb6d8", rug: "#2f3b52",
       pat: (y) => `<g opacity=".12">${Array.from({ length: 30 }, (_, i) => `<circle cx="${i * 88 + 30}" cy="${y + (i % 3) * 34}" r="${10 + (i % 4) * 6}" fill="none" stroke="#bcd3ff" stroke-width="3"/>`).join("")}</g>`,
+      tv: ERA_TV.twothousands, stand: ERA_STAND.glass, screen: "border-radius: 2px;", lamp: ERA_LAMP.steel, radiator: ERA_RAD.chrome,
+      sofa: { a: "#5a4a3a", c: "#8a7460", c2: "#907a66", e: "#a89078", g: ["#7a6654", "#3a3026"] }, chair: () => ERA_CHAIR.club("#c8b89a", "#a8987a"), view: "ville",
       obj: () => `<g transform="translate(880 470)"><rect x="-30" y="-8" width="60" height="8" rx="2" fill="#b8c0cc"/><path d="M-26 -8 L-22 -44 L22 -44 L26 -8 Z" fill="#c9d1dc"/><rect x="-18" y="-40" width="36" height="26" rx="2" fill="#1d2633"/><rect x="-18" y="-40" width="36" height="26" rx="2" fill="#7fa3d8" opacity=".25"/></g>
         <g transform="translate(940 470)"><rect x="-8" y="-24" width="16" height="24" rx="3" fill="#8a96a8"/><rect x="-6" y="-21" width="12" height="9" rx="1" fill="#9fd0ff"/><circle cx="0" cy="-7" r="3" fill="#5a6474"/></g>
         <g transform="translate(980 470)">${[0, 1, 2, 3].map(i => `<rect x="-16" y="${-5 - i * 5}" width="32" height="4.5" rx="1" fill="${["#2b3446", "#3a4560", "#1f2838", "#4a5878"][i]}"/>`).join("")}</g>` },
+    "Années 2010": { code: "2010", wall: ["#3a3d42", "#4a4e54"], wain: "#3e4248", trim: "#d8d4cc", rug: "#8a8a86", floor: ["#8a7458", "#4a3a28"], planks: "#6a5640", wood: ["#a88a64", "#c9a77a"],
+      pat: pat(30, (i, y) => `<path d="M${i * 90 + 20} ${y + (i % 2) * 40} l14 -24 l14 24 Z" fill="none" stroke="#d8d4cc" stroke-width="2"/>`),
+      tv: ERA_TV.tens, stand: ERA_STAND.oak, screen: "border-radius: 1px;", lamp: ERA_LAMP.scandi, radiator: ERA_RAD.blanc,
+      sofa: { a: "#5a5e64", c: "#7a7e86", c2: "#80848c", e: "#9a9ea6", g: ["#70747c", "#3a3c40"] }, chair: () => ERA_CHAIR.tulipe(), view: "moderne",
+      // une petite enceinte en tissu et une pile de livres
+      obj: () => `<g transform="translate(890 470)"><rect x="-12" y="-40" width="24" height="40" rx="10" fill="#8a8a8e"/>${EPN(6, i => `<path d="M-10 ${-34 + i * 5} h20" stroke="#7a7a7e" stroke-width="1.5"/>`)}<circle cx="0" cy="-38" r="1.6" fill="#e8e8e8"/></g>
+        <g transform="translate(950 470)">${EPN(3, i => `<rect x="${-20 + i * 2}" y="${-7 - i * 7}" width="${40 - i * 4}" height="6.5" rx="1" fill="${["#e8e4da", "#6a8a9a", "#d8a87a"][i]}"/>`)}</g>` },
+    "Aujourd'hui (minimaliste)": { code: "aujourdhui", wall: ["#2e2a27", "#3a3531"], wain: "#3a3531", trim: "#4a443e", rug: "#6a625a", floor: ["#7a6044", "#3a2a1c"], planks: "#5a4630", wood: ["#8a6e50", "#a8896a"],
+      pat: () => "",
+      tv: ERA_TV.wall, stand: ERA_STAND.float, screen: "border-radius: 1px;", lamp: ERA_LAMP.globe, radiator: ERA_RAD.blanc,
+      sofa: { a: "#6a6258", c: "#9a9084", c2: "#a0968a", e: "#b4aa9c", g: ["#8a8074", "#46403a"] }, chair: () => ERA_CHAIR.bouclette(), view: "moderne",
+      // une colonne d'enceinte à côté de l'écran, et une enceinte ronde posée
+      wallx: () => `<g aria-hidden="true"><rect x="1018" y="380" width="26" height="220" rx="4" fill="#1c1c20"/>${EPN(20, i => `<circle cx="1031" cy="${394 + i * 10}" r="2" fill="#2e2e34"/>`)}</g>`,
+      obj: () => `<g transform="translate(900 470)"><ellipse cx="0" cy="-16" rx="18" ry="16" fill="#d8d2c8"/><ellipse cx="0" cy="-16" rx="18" ry="16" fill="none" stroke="#c0b8aa"/><circle cx="0" cy="-30" r="2" fill="#ffcf8a"/></g>
+        <g transform="translate(956 470)">${EPN(2, i => `<rect x="${-18 + i * 3}" y="${-7 - i * 7}" width="${36 - i * 6}" height="6.5" rx="1" fill="${["#c9b9a0", "#3a3a3a"][i]}"/>`)}</g>` },
+    "Cyberpunk": { code: "cyberpunk", wall: ["#0d0b1a", "#1a1430"], wain: "#1a1d28", trim: "#2ef2ff", rug: "#1a0f2e", floor: ["#1e2030", "#0a0b12"], planks: "#2a3a4a", wood: ["#1e2028", "#34384a"],
+      pat: pat(26, (i, y) => `<path d="M${i * 100 + 10} ${y + (i % 3) * 26} h40 l10 10 h30" fill="none" stroke="${i % 2 ? "#2ef2ff" : "#ff3fb4"}" stroke-width="2"/><circle cx="${i * 100 + 92}" cy="${y + 10 + (i % 3) * 26}" r="3" fill="${i % 2 ? "#2ef2ff" : "#ff3fb4"}"/>`),
+      tv: ERA_TV.cyber, stand: ERA_STAND.metal, screen: "border-radius: 1px; box-shadow: 0 0 18px rgba(255,63,180,.35);", console: (d) => ERA_CONSOLE.sleek(d), lamp: ERA_LAMP.neon, radiator: ERA_RAD.chrome,
+      sofa: { a: "#14141e", c: "#24243a", c2: "#2a2a44", e: "#2ef2ff", g: ["#1e1e30", "#0a0a12"] }, chair: () => ERA_CHAIR.gamer(), view: "cyber",
+      css: `.salon.lamp-on .shade { fill: #ff7fd0; } .salon:not(.lamp-on) .shade { fill: #6a2a5a; }`,
+      // néons visibles (leur lueur vient d'eux), enseigne verticale, câbles, panneaux holographiques
+      wallx: () => `<g aria-hidden="true">${eraNeon("M1050 30 H1880", "#ff3fb4", 3)}${eraNeon("M1048 120 V470", "#2ef2ff", 3)}
+        <rect x="1718" y="96" width="62" height="150" rx="4" fill="#0a0a14" stroke="#ff3fb4" stroke-width="2"/><text x="1749" y="150" text-anchor="middle" font-size="40" font-weight="700" fill="#ff7fd0" font-family="sans-serif">夢</text><text x="1749" y="210" text-anchor="middle" font-size="40" font-weight="700" fill="#7ff8ff" font-family="sans-serif">映</text>${eraHalo(1749, 170, 70, "#ff3fb4", .3)}
+        <path d="M1110 0 C1120 60 1180 40 1190 120 M1150 0 C1150 90 1230 70 1260 200 M1320 0 C1310 80 1380 120 1388 230" stroke="#08080c" stroke-width="5" fill="none"/>
+        <g class="era-holo"><path d="M1436 300 L1500 300 L1506 232 L1430 232 Z" fill="rgba(46,242,255,.12)" stroke="#2ef2ff" stroke-width="1.2"/><path d="M1440 244 h40 M1440 254 h56 M1440 264 h30" stroke="#7ff8ff" stroke-width="2" opacity=".8"/><path d="M1442 290 l10 -12 l8 6 l12 -16 l12 8 l10 -10" stroke="#ff7fd0" stroke-width="1.6" fill="none"/></g></g>`,
+      obj: () => `<g transform="translate(900 470)"><ellipse cx="0" cy="-4" rx="20" ry="5" fill="#2a2c36"/><ellipse cx="0" cy="-7" rx="10" ry="2.5" fill="#2ef2ff"/><path d="M-10 -7 L-36 -76 L36 -76 L10 -7 Z" fill="rgba(46,242,255,.08)"/><g class="era-holo"><rect x="-30" y="-84" width="60" height="40" fill="rgba(46,242,255,.14)" stroke="#2ef2ff" stroke-width="1"/><circle cx="0" cy="-64" r="12" fill="none" stroke="#7ff8ff" stroke-width="1.5"/><path d="M-12 -64 h24 M0 -76 v24" stroke="#7ff8ff" stroke-width="1"/></g></g>
+        <g transform="translate(962 470)"><rect x="-16" y="-10" width="32" height="10" rx="2" fill="#24242e"/><rect x="-12" y="-7" width="24" height="3" fill="#ff3fb4"/></g>` },
+    "Post-apocalyptique": { code: "postapo", wall: ["#2b2a24", "#3a3830"], wain: "#3a3428", trim: "#5a5040", rug: "#4a4232", floor: ["#3a3a34", "#1a1a16"], planks: "#2a2a24", wood: ["#5a4a36", "#6a5a42"],
+      pat: pat(24, (i, y) => `<path d="M${i * 110 + 10} ${y - 20 + (i % 3) * 30} l14 18 l-6 14 l12 20" stroke="#14140f" stroke-width="2" fill="none"/><ellipse cx="${i * 110 + 70}" cy="${y + 30}" rx="30" ry="14" fill="#5a4a2a"/>`),
+      tv: ERA_TV.scrap, stand: ERA_STAND.crates, screen: "border-radius: 12% / 15%; filter: sepia(.35) contrast(1.05);", console: (d) => ERA_CONSOLE.patched(d), lamp: ERA_LAMP.oil, radiator: ERA_RAD.rouille,
+      sofa: { a: "#4a4230", c: "#6a5a3a", c2: "#5a6a4a", e: "#8a7a5a", g: ["#5a5038", "#26221a"] }, chair: () => ERA_CHAIR.carseat(), view: "postapo", life: { work: "typewriter" },
+      // planches clouées, bâche tendue, bidons
+      wallx: () => `<g aria-hidden="true"><path d="M1712 120 L1872 112 L1866 276 Q1790 300 1716 270 Z" fill="#2a5a8a" opacity=".9"/><path d="M1730 140 q30 60 10 120 M1800 130 q-20 70 10 140" stroke="#1e4a74" stroke-width="3" fill="none"/>${[[1714, 120], [1870, 112]].map(([x, y]) => `<circle cx="${x}" cy="${y}" r="4" fill="#8a8a8a"/>`).join("")}<path d="M1714 120 L1700 60 M1870 112 L1886 50" stroke="#a89a7a" stroke-width="2"/></g>`,
+      mid: () => `<g aria-hidden="true">${[[790, 170, -14], [784, 300, 12]].map(([x, y, a]) => `<rect x="${x}" y="${y}" width="230" height="22" fill="#7a6040" transform="rotate(${a} ${x + 115} ${y + 11})"/><circle cx="${x + 10}" cy="${y + 11}" r="2.5" fill="#3a3a3a" transform="rotate(${a} ${x + 115} ${y + 11})"/><circle cx="${x + 220}" cy="${y + 11}" r="2.5" fill="#3a3a3a" transform="rotate(${a} ${x + 115} ${y + 11})"/>`).join("")}
+        ${[[1716, "#6a3a1e"], [1790, "#3a5a3a"]].map(([x, c]) => `<g transform="translate(${x} 600)"><rect x="-22" y="-70" width="44" height="70" rx="4" fill="${c}"/><ellipse cx="0" cy="-70" rx="22" ry="5" fill="#2a2a24"/><path d="M-22 -48 h44 M-22 -22 h44" stroke="rgba(0,0,0,.3)" stroke-width="3"/></g>`).join("")}</g>`,
+      obj: () => `<g transform="translate(888 470)"><rect x="-26" y="-30" width="52" height="30" rx="3" fill="#4a4a3a"/><circle cx="-10" cy="-15" r="9" fill="#2a2a24"/><rect x="6" y="-24" width="14" height="6" fill="#c8b070"/><path d="M26 -20 h8 v10" stroke="#8a8a7a" stroke-width="2.5" fill="none"/><path d="M-20 -30 L-30 -58" stroke="#9a9a9a" stroke-width="2"/></g>
+        <g transform="translate(950 470)">${EPN(3, i => `<rect x="${-20 + i * 14}" y="-20" width="12" height="20" rx="2" fill="${["#8a8a7a", "#9a7a3a", "#7a8a8a"][i]}"/><rect x="${-20 + i * 14}" y="-14" width="12" height="7" fill="${["#c84a2a", "#e8d8a8", "#4a7a4a"][i]}"/>`)}</g>` },
+    "Chaumière magique": { code: "chaumiere", wall: ["#4a3e30", "#5a4a38"], wain: "#4a4440", trim: "#6a4a2a", rug: "#7a3a2a", floor: ["#4a3a2a", "#20180e"], wood: ["#4a3018", "#6a4626"],
+      pat: pat(40, (i, y) => `<ellipse cx="${(i * 67) % 2600}" cy="${y - 30 + (i % 5) * 22}" rx="${12 + (i % 3) * 6}" ry="5" fill="#7a6a52"/>`),
+      tv: ERA_TV.miroir, stand: ERA_STAND.coffre, screen: "border-radius: 50%; box-shadow: inset 0 0 26px rgba(150,200,255,.35);", console: () => ERA_CONSOLE.board("#5a3418"), lamp: ERA_LAMP.lantern, radiator: ERA_RAD.banc,
+      sofa: { a: "#5a2e22", c: "#8a4a3a", c2: "#6a7a4a", e: "#a8643a", g: ["#7a4232", "#3a1e16"] }, chair: () => ERA_CHAIR.wingquilt(), view: "foret", life: { work: "grimoire", gaming: "cards" },
+      // colombages, poutre et bouquets d'herbes séchées, pierre du soubassement
+      wallx: () => `<g aria-hidden="true">${[1046, 1440, 1712].map(x => `<rect x="${x}" y="0" width="18" height="516" fill="#3a2614"/>`).join("")}<path d="M1064 330 L1200 220 M1712 300 L1600 230" stroke="#3a2614" stroke-width="14"/><rect x="0" y="0" width="2600" height="22" fill="#3a2614"/><rect x="0" y="22" width="2600" height="4" fill="#2a1a0c"/>
+        ${[1090, 1170, 1250, 1330, 1640, 1690].map((x, i) => `<path d="M${x} 26 v16" stroke="#8a7a5a" stroke-width="1.5"/><g transform="translate(${x} 42)"><path d="M-3 0 h6 l8 40 q-11 8 -22 0 Z" fill="${["#6a8a4a", "#8a6aa8", "#9a8a4a", "#5a7a4a", "#8a6aa8", "#6a8a4a"][i]}"/><rect x="-4" y="-2" width="8" height="5" fill="#a0503a"/></g>`).join("")}
+        <g opacity=".5">${EPN(40, i => `<rect x="${(i * 131) % 2600}" y="${520 + (i % 4) * 18}" width="${40 + (i % 3) * 14}" height="14" rx="4" fill="#5a524c"/>`)}</g></g>`,
+      // un chaudron suspendu au-dessus du feu
+      mid: () => `<g aria-hidden="true"><path d="M1562 432 V512" stroke="#2a2a2a" stroke-width="3" stroke-dasharray="4 2"/><path d="M1530 520 Q1532 566 1562 568 Q1592 566 1594 520 Z" fill="#1a1a1c"/><ellipse cx="1562" cy="520" rx="34" ry="7" fill="#2a2a2e"/><ellipse cx="1562" cy="520" rx="27" ry="4.5" fill="#6aa86a"/><path d="M1530 520 Q1562 488 1594 520" stroke="#2a2a2a" stroke-width="2.5" fill="none"/><circle class="steam" cx="1554" cy="508" r="4" fill="rgba(220,240,220,.5)"/><circle class="steam s2" cx="1570" cy="504" r="3" fill="rgba(220,240,220,.5)"/></g>`,
+      // grimoires, une bougie (sa flamme est la seule lumière ajoutée) et une petite boule de cristal
+      obj: () => `<g transform="translate(884 470)">${EPN(3, i => `<rect x="${-26 + i * 2}" y="${-9 - i * 9}" width="${52 - i * 4}" height="8.5" rx="1.5" fill="${["#5a2a1e", "#2a3a5a", "#3a5a2a"][i]}"/><rect x="${-26 + i * 2}" y="${-7 - i * 9}" width="${52 - i * 4}" height="1.4" fill="#c9a24a"/>`)}<rect x="-6" y="-48" width="8" height="20" fill="#efe6d2"/><path class="rbs-fl" d="M-2 -50 c-3 -4 -1 -8 0 -11 c1 3 3 7 0 11 Z" fill="#ffc35a"/>${eraHalo(-2, -54, 20, "#ffc35a", .45)}</g>
+        <g transform="translate(956 470)"><path d="M-12 0 L-8 -8 H8 L12 0 Z" fill="#6a4a2a"/><circle cx="0" cy="-20" r="13" fill="rgba(170,210,255,.35)" stroke="rgba(220,235,255,.7)"/><circle cx="-4" cy="-24" r="3" fill="#fff" opacity=".6"/></g>` },
     // Gothique : un style (bois sombre, velours bordeaux, papier peint damassé, chandelier), rien d'effrayant.
     // La seule lumière ajoutée vient des flammes des bougies (source visible).
-    "Gothique": { wall: ["#1e0a11", "#2e1019"], wain: "#160a0c", trim: "#b08a3e", rug: "#4a0f18",
+    "Gothique": { code: "gothique", wall: ["#1e0a11", "#2e1019"], wain: "#160a0c", trim: "#b08a3e", rug: "#4a0f18", wood: ["#2a1a14", "#3e2820"], view: "cimetiere",
       pat: (y) => `<g opacity=".2" fill="#7a2c3a">${Array.from({ length: 58 }, (_, i) => { const r = i % 2, x = Math.floor(i / 2) * 92 + (r ? 46 : 0) + 20, yy = y - 40 + r * 70;
         return `<g transform="translate(${x} ${yy})"><path d="M0 -30 C9 -19 9 -10 0 -5 C-9 -10 -9 -19 0 -30 Z"/><path d="M0 5 C10 11 10 24 0 32 C-10 24 -10 11 0 5 Z"/><circle r="5"/><path d="M-6 -2 C-18 -14 -30 -4 -22 6 C-18 10 -13 6 -15 2 M6 -2 C18 -14 30 -4 22 6 C18 10 13 6 15 2" fill="none" stroke="#7a2c3a" stroke-width="3"/><path d="M-32 -34 Q-46 0 -32 34 M32 -34 Q46 0 32 34" fill="none" stroke="#7a2c3a" stroke-width="2"/></g>`; }).join("")}</g>`,
       obj: () => `<g transform="translate(886 470)"><rect x="-12" y="-6" width="24" height="6" rx="2" fill="#141012"/><rect x="-2.5" y="-44" width="5" height="40" fill="#1a1416"/><circle cy="-22" r="4.5" fill="#b08a3e"/><path d="M-26 -44 Q-26 -54 0 -54 Q26 -54 26 -44" fill="none" stroke="#1a1416" stroke-width="4"/>
@@ -10617,7 +10925,32 @@ ${notes.slice(0, 6).map(n => { const pc = Number(n.pct);
       fix: (h) => h.replace('stroke="#7a5d88" stroke-width="3" stroke-linecap="round"/>', `stroke="#7a5d88" stroke-width="3" stroke-linecap="round"/><g fill="#1a0408" opacity=".75">${Array.from({ length: 28 }, (_, i) => { const r = i % 2, x = 330 + Math.floor(i / 2) * 25 + (r ? 12 : 0); return `<circle cx="${x}" cy="${r ? 602 : 586}" r="2.2"/>`; }).join("")}</g>`)
         .replace(/#3e2c47/g, "#2a0a12").replace(/#6b5079/g, "#5a1424").replace(/#71557f/g, "#64182a").replace(/#7a5d88/g, "#7a2234").replace(/#57405f/g, "#3d0d18").replace(/#261b2b/g, "#1a050a").replace(/#6b2f3a/g, "#3a0b16") }
   };
-  const rbsEra = () => ERAS[C("salonEra", "Aujourd'hui")] || null;
+  // ordre chronologique du menu (« Aujourd'hui » = le salon habituel, sans époque)
+  const ERA_ORDER = ["Années 1930-40", "Années 50", "Années 60", "Années 70", "Années 80", "Années 90", "Années 2000", "Années 2010", "Aujourd'hui", "Aujourd'hui (minimaliste)", "Cyberpunk", "Post-apocalyptique", "Chaumière magique", "Gothique"];
+  function rbsEraCur() { const k = rbsEraOv || C("salonEra", "Aujourd'hui"); return ERAS[k] || null; }
+  const rbsEra = () => rbsEraCur();
+  // utilisé par le salon dessiné : la pièce d'époque si elle existe, sinon celle d'origine (def)
+  function rbsEraPart(k, def, a) {
+    try { const E = rbsEraCur(), f = E && E[k]; if (!f) return def; const v = typeof f === "function" ? f(def, a) : f; return v == null ? def : v; } catch (e) { return def; }
+  }
+  // objets de la table basse transposés selon l'époque (ordinateur → machine à écrire…)
+  function rbsEraLife(id, def) { try { const E = rbsEraCur(), m = E && E.life && E.life[id]; return m && ERA_LIFE[m] ? ERA_LIFE[m] : def; } catch (_) { return def; } }
+  function rbsEraView(def) { try { const E = rbsEraCur(); return E && E.view ? rbsView(E.view) : def; } catch (e) { console.warn("paysage d'époque", e); return def; } }
+  function rbsEraCss() {
+    let el = document.getElementById("rbsEraCss"); if (!el) { el = document.createElement("style"); el.id = "rbsEraCss"; document.head.appendChild(el); }
+    const E = rbsEraCur(), base = `.era-fly { animation: eraFly 12s linear infinite; } @keyframes eraFly { from { transform: translateX(0); } to { transform: translateX(260px); } }
+      .era-holo { animation: eraHolo 3.2s ease-in-out infinite alternate; } @keyframes eraHolo { from { opacity: .65; } to { opacity: 1; } }
+      .salon.still .era-fly, .salon.still .era-holo { animation: none; }
+      .rbs-eras { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 8px; margin: 6px 0 12px; }
+      .rbs-era-b { min-width: 0; overflow-wrap: anywhere; display: flex; flex-direction: column; gap: 4px; padding: 4px; border-radius: 8px; border: 2px solid var(--line); background: var(--surface); color: var(--fg); font: inherit; font-size: 13px; cursor: pointer; text-align: center; }
+      .rbs-era-b .th { display: block; aspect-ratio: 960 / 520; border-radius: 5px; overflow: hidden; background: #17141b; }
+      .rbs-era-b .th img { width: 100%; height: 100%; display: block; }
+      .rbs-era-b.on { border-color: var(--accent); }
+      .rbs-era-b:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+      @media (max-width: 640px) { .rbs-eras { grid-template-columns: repeat(2, minmax(0, 1fr)); } }`;
+    const css = base + (E && E.screen ? ` #salon .tvscreen { ${E.screen} }` : "") + (E && E.css ? " " + E.css : "");
+    if (el.textContent !== css) el.textContent = css;
+  }
 
   /* ---- S1. Soirée cinéma : silence, bande-annonce, film, salon de nuit ---- */
   skyPeriod = ((f) => function () { if (RBS.cine.on && !RBS.prevOn) return "night"; return f.apply(this, arguments); })(skyPeriod);
@@ -10780,6 +11113,7 @@ ${notes.slice(0, 6).map(n => { const pc = Number(n.pct);
   salonSvg = ((f) => function () {
     let h = f.apply(this, arguments); const E = rbsEra();
     try {
+      if (!rbsEraOv) rbsEraCss();
       if (E) {
         h = h.replace('<stop offset="0" stop-color="#17141b"/><stop offset="1" stop-color="#2a2129"/>', `<stop offset="0" stop-color="${E.wall[0]}"/><stop offset="1" stop-color="${E.wall[1]}"/>`)
           .replace('height="84" fill="#211920"/>', `height="84" fill="${E.wain}"/>`).replace('height="6" fill="#33282f"/>', `height="6" fill="${E.trim}"/>`).replace('fill="#3a2331" opacity=".9"/>', `fill="${E.rug}" opacity=".9"/>`);
@@ -10788,6 +11122,16 @@ ${notes.slice(0, 6).map(n => { const pc = Number(n.pct);
         const k = h.indexOf('<g mask="url(#mPlq)">');
         if (k > 0 && s !== "Noël" && s !== "Halloween") h = h.slice(0, k) + `<g aria-hidden="true" class="rbs-era-obj">${E.obj()}</g>` + h.slice(k);
         if (E.fix) h = E.fix(h);   // Gothique : canapé de velours capitonné, rideaux lourds
+        // sol (lattes ou moquette), bois des étagères, couleurs du canapé, décor du mur et du milieu, fauteuil
+        if (E.floor) h = h.replace('<stop offset="0" stop-color="#3b291d"/><stop offset="1" stop-color="#1b120c"/>', `<stop offset="0" stop-color="${E.floor[0]}"/><stop offset="1" stop-color="${E.floor[1]}"/>`);
+        if (E.planks !== undefined) h = h.replace(/stroke="#140d09" stroke-width="2" opacity=".55"/g, E.planks ? `stroke="${E.planks}" stroke-width="2" opacity=".55"` : 'stroke="none"');
+        if (E.wood) h = h.replace('<stop offset="0" stop-color="#4d3120"/><stop offset=".5" stop-color="#6b452d"/><stop offset="1" stop-color="#4d3120"/>', `<stop offset="0" stop-color="${E.wood[0]}"/><stop offset=".5" stop-color="${E.wood[1]}"/><stop offset="1" stop-color="${E.wood[0]}"/>`);
+        if (E.sofa) { const S = E.sofa, a = h.indexOf('data-hs="couch"'), b = a > 0 ? h.indexOf("</g>", a) : -1;
+          if (b > 0) h = h.slice(0, a) + h.slice(a, b).replace(/#3e2c47/g, S.a).replace(/#6b5079/g, S.c).replace(/#71557f/g, S.c2).replace(/#7a5d88/g, S.e).replace(/#57405f/g, S.a).replace(/#2a1f30/g, S.g[1]) + h.slice(b);
+          h = h.replace('<stop offset="0" stop-color="#57405f"/><stop offset="1" stop-color="#261b2b"/>', `<stop offset="0" stop-color="${S.g[0]}"/><stop offset="1" stop-color="${S.g[1]}"/>`); }
+        const defs = `<defs><filter id="eraBlur" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="5"/></filter></defs>`;
+        const jw = h.indexOf('<text x="1240" y="196"'); if (jw > 0 && E.wallx) h = h.slice(0, jw) + defs + E.wallx() + h.slice(jw); else if (jw > 0) h = h.slice(0, jw) + defs + h.slice(jw);
+        const jc = h.indexOf('<g id="cats">'); if (jc > 0) h = h.slice(0, jc) + `<g class="rbs-era-mid">${E.mid ? E.mid() : ""}${E.chair ? E.chair() : ""}</g>` + h.slice(jc);
       }
       const add = rbsBdaySvg() + rbsCineSvg(), i = h.indexOf('<g id="fx">');
       if (add && i > 0) h = h.slice(0, i) + add + h.slice(i);
@@ -10803,6 +11147,7 @@ ${notes.slice(0, 6).map(n => { const pc = Number(n.pct);
   customHtml = ((f) => function (id) {
     if (id === "rbsPreview") return rbsPreviewHtml();
     if (id === "rbsBday") return rbsBdayHtml();
+    if (id === "rbsEraPick") { const cur = C("salonEra", "Aujourd'hui"); return `<div class="rbs-eras" role="group" aria-label="Aperçu des époques du salon">${ERA_ORDER.map(k => `<button type="button" class="rbs-era-b${cur === k ? " on" : ""}" data-rbs-era="${esc(k)}" aria-pressed="${cur === k}"><span class="th" data-era-th="${esc(k)}"></span><span class="nm">${esc(k)}</span></button>`).join("")}</div>`; }
     if (id === "rbsBilan") return `<div class="row-btns"><button class="btn" type="button" data-rbs="bilan">Voir le bilan de l'année</button></div><p class="note">Heures regardées, jeu le plus joué, genre préféré… pour chaque profil, présenté comme une petite rétrospective. Mis en avant dans le salon du 15 décembre au 7 janvier.</p>`;
     if (id === "rbsWxNote") { const P = rbsWxPlace(), w = RBS.wx.cur; return `<p class="note">${rbsWxNet() ? `Position utilisée : ${esc(P.name || "?")} (${(+P.lat).toFixed(2)}, ${(+P.lon).toFixed(2)}).${w ? ` Dernier relevé : ${w.temp} °C.` : " Pas encore de relevé."} Une seule demande à open-meteo.com toutes les 30 minutes, sans compte ni clé.` : "Rien ne part sur internet. « Simulée » invente une météo plausible chaque jour (pluie, neige…)."} La pluie et la neige se voient derrière la vitre, sans changer la lumière de la pièce.</p>`; }
     return f.apply(this, arguments);
@@ -10811,7 +11156,8 @@ ${notes.slice(0, 6).map(n => { const pc = Number(n.pct);
     const ui = SETTINGS.find(s => s.id === "ui"), F = ui.fields, at = (key) => F.findIndex(x => x.key === key);
     F.splice(at("reduce") + 1, 0, { type: "select", key: "reduceHow", label: "Quand les animations sont réduites", help: "Coupées : rien ne bouge. Ralenties : le feu, la neige, les guirlandes bougent beaucoup plus lentement. Si l'appareil demande moins d'animations, elles sont coupées.", options: ["Coupées", "Ralenties"], def: "Coupées", live: true });
     F.splice(at("roomFire") + 1, 0,
-      { type: "select", key: "salonEra", label: "Époque du salon", help: "Couleurs et objets d'époque, sans marque. « Gothique » : bois sombre, velours, papier peint damassé et chandeliers (un style, rien d'effrayant), dans le salon. Les décorations de la fête du jour passent toujours par-dessus.", options: ["Aujourd'hui", "Années 80", "Années 90", "Années 2000", "Gothique"], def: "Aujourd'hui", live: true },
+      { type: "select", key: "salonEra", label: "Époque du salon", help: "Le salon change d'époque : papier peint, sol, meubles, téléviseur de l'époque, objets transposés (ordinateur → machine à écrire, console → jeu de société…) et paysage de la fenêtre. Tout est générique, sans marque. « Aujourd'hui » : le salon habituel. « Gothique » : bois sombre, velours, papier peint damassé et chandeliers (un style, rien d'effrayant). Les décorations de la fête du jour passent toujours par-dessus.", options: ERA_ORDER.slice(), def: "Aujourd'hui", live: true },
+      { type: "custom", id: "rbsEraPick" },
       { type: "select", key: "wxMode", label: "Météo à la fenêtre", help: "Selon la saison : le décor habituel. Simulée : pluie, neige ou orage inventés, sans internet. Réelle : la météo de ta ville (internet, désactivée par défaut).", options: ["Selon la saison", "Simulée (sans internet)", "Réelle (internet)"], def: "Selon la saison", live: true },
       { type: "text", key: "wxCity", label: "Ville de la météo", ph: "Lille", def: "Lille" },
       { type: "text", key: "wxPos", label: "Ou sa position (latitude, longitude)", help: "Facultatif, prioritaire sur la ville. Par exemple 50.63, 3.06.", ph: "50.63, 3.06", def: "" },
@@ -10828,6 +11174,7 @@ ${notes.slice(0, 6).map(n => { const pc = Number(n.pct);
   /* ---- clics et saisies du lot ---- */
   document.addEventListener("click", (e) => {
     const t = e.target; if (!t || !t.closest) return;
+    const eb = t.closest("[data-rbs-era]"); if (eb) { const sel = $("f-salonEra"); if (sel) { sel.value = eb.dataset.rbsEra; sel.dispatchEvent(new Event("input", { bubbles: true })); sel.dispatchEvent(new Event("change", { bubbles: true })); } document.querySelectorAll("[data-rbs-era]").forEach(b => { const on = b === eb; b.classList.toggle("on", on); b.setAttribute("aria-pressed", on); }); return; }
     const fp = t.closest(".fpv"); if (fp) { e.preventDefault(); e.stopPropagation(); rbsBigPreview(fp.dataset.fpv, fp.dataset.fpvl); return; }
     const q = t.closest("[data-rbs-q]"); if (q) { const i = $("rbsPrevAt"); if (i) i.value = q.dataset.rbsQ; return; }
     const g = t.closest("[data-rbs-go]"); if (g) { document.querySelectorAll(".rbs-ov").forEach(o => o.remove()); rbsPrevSet(new RBS.RealDate(+g.dataset.rbsGo)); try { closeSettings(); } catch (_) {} render(); return; }
