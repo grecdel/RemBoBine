@@ -10794,10 +10794,8 @@ ${notes.slice(0, 6).map(n => { const pc = Number(n.pct);
     scrap: () => `<path d="M900 282 L870 214 L900 230 L930 206" stroke="#8a8a8a" stroke-width="2.5" fill="none"/><rect x="884" y="276" width="34" height="10" fill="#4a4a44"/>
       <rect x="770" y="282" width="260" height="196" rx="10" fill="#4a4840" transform="rotate(-1.5 900 380)"/><rect x="784" y="296" width="190" height="160" rx="16" fill="#141412"/>${tvScr(792, 304, 174, 144, 18)}
       <rect x="980" y="302" width="40" height="150" rx="4" fill="#5a5448"/><circle cx="1000" cy="330" r="9" fill="#2a2a28"/><rect x="994" y="364" width="12" height="40" fill="#8a3a2a"/><rect x="780" y="286" width="44" height="12" fill="#b9ab8a" opacity=".9" transform="rotate(-24 802 292)"/><rect x="940" y="440" width="40" height="11" fill="#b9ab8a" opacity=".9" transform="rotate(16 960 445)"/><path d="M1020 420 q30 20 10 60" stroke="#2a2a2a" stroke-width="2.5" fill="none"/><circle cx="1012" cy="468" r="2" class="tvled"/>`,
-    // chaumière magique : un miroir enchanté au cadre de bois sculpté et doré, qui montre l'image
-    miroir: () => `<ellipse cx="900" cy="362" rx="146" ry="122" fill="#5a3418"/><ellipse cx="900" cy="362" rx="138" ry="114" fill="none" stroke="#c9a24a" stroke-width="4"/>${EPN(12, i => { const a = i / 12 * Math.PI * 2; return `<circle cx="${(900 + Math.cos(a) * 142).toFixed(1)}" cy="${(362 + Math.sin(a) * 118).toFixed(1)}" r="${i % 3 ? 4 : 7}" fill="#c9a24a"/>`; })}
-      <path d="M884 236 q16 -22 32 0 q-16 -8 -32 0 Z" fill="#c9a24a"/><circle cx="900" cy="228" r="5" fill="#8ad0ff"/>${tvScr(778, 262, 244, 200, 100)}
-      <path d="M836 494 h128 l-8 -22 h-112 Z" fill="#5a3418"/><circle cx="900" cy="478" r="2" class="tvled"/>`
+    // chaumière magique : un miroir enchanté ovale, cadre baroque en bronze sculpté (voir chmMirror)
+    miroir: () => chmMirror()
   };
   const ERA_STAND = {
     deco: `<rect x="712" y="500" width="376" height="90" rx="16" fill="#5a3820"/><rect x="712" y="500" width="376" height="7" rx="3" fill="#7a5030"/><rect x="730" y="516" width="162" height="62" rx="10" fill="#4a2c18"/><rect x="908" y="516" width="162" height="62" rx="10" fill="#4a2c18"/>${EPN(5, i => `<path d="M${746 + i * 30} 520 q8 26 0 54 M${924 + i * 30} 520 q8 26 0 54" stroke="#5e3a22" stroke-width="2" fill="none"/>`)}<rect x="878" y="540" width="6" height="16" rx="2" fill="#c9a26b"/><rect x="916" y="540" width="6" height="16" rx="2" fill="#c9a26b"/><rect x="726" y="590" width="20" height="10" rx="4" fill="#2a1a10"/><rect x="1054" y="590" width="20" height="10" rx="4" fill="#2a1a10"/>`,
@@ -10812,6 +10810,128 @@ ${notes.slice(0, 6).map(n => { const pc = Number(n.pct);
     coffre: `<rect x="712" y="504" width="376" height="90" rx="8" fill="#6a4426"/><path d="M712 520 Q900 496 1088 520" fill="none" stroke="#3a2a1e" stroke-width="2"/>${[740, 1060].map(x => `<rect x="${x - 6}" y="504" width="12" height="90" fill="#3a3a3a"/>`).join("")}<rect x="712" y="540" width="376" height="10" fill="#3a3a3a"/><rect x="890" y="534" width="20" height="24" rx="3" fill="#b08a4a"/><circle cx="900" cy="546" r="3" fill="#2a1a10"/><rect x="720" y="594" width="24" height="6" fill="#2a1a10"/><rect x="1056" y="594" width="24" height="6" fill="#2a1a10"/>`
   };
 
+  /* ---- Chaumière magique : miroir enchanté, bougies qui flottent, baguette, bouclier et armure (tout est générique) ---- */
+  // trait d'ornement en métal : ombre sombre, métal, petit reflet
+  const chmOrn = (d, w = 4.5) => `<path d="${d}" fill="none" stroke="#24160e" stroke-width="${w + 3}" stroke-linecap="round"/><path d="${d}" fill="none" stroke="url(#chmMet)" stroke-width="${w}" stroke-linecap="round"/><path d="${d}" fill="none" stroke="#f2bf84" stroke-width="1" stroke-linecap="round" opacity=".55"/>`;
+  // une feuille d'acanthe (petit rinceau) en (x, y), tournée de a degrés
+  const chmLeaf = (x, y, a, s = 1) => `<path d="M0 0 C-3 -8 -1 -15 4 -19 C3 -13 6 -9 10 -8 C6 -5 3 -2 0 0 Z" transform="translate(${x} ${y}) rotate(${a}) scale(${s})" fill="url(#chmMet)" stroke="#24160e" stroke-width="1.2"/>`;
+  // le miroir enchanté (coordonnées du groupe de la télé, centre x = 900) : cadre ovale baroque en bronze sculpté, crête, volutes et pied,
+  // et dans l'ovale une fumée bleue qui tourne doucement sur le bord ; l'image du film s'affiche par-dessus (#tvRect, forme ovale)
+  const CHM_CX = 900, CHM_CY = 362, CHM_RX = 80, CHM_RY = 100;
+  function chmMirror() {
+    const cx = CHM_CX, cy = CHM_CY, rx = CHM_RX, ry = CHM_RY;
+    // demi-ornement de gauche, recopié en miroir pour la droite
+    const half = `${chmOrn("M846 268 C818 262 796 280 800 304 C803 320 822 322 823 308 C824 298 812 296 811 305")}
+      ${chmOrn("M808 330 C784 340 774 372 788 396 C798 412 818 406 815 391 C812 378 798 382 801 392")}
+      ${chmOrn("M818 418 C796 418 786 438 794 452 C802 466 822 466 826 450 C830 436 812 430 806 440")}
+      ${chmOrn("M838 456 C846 470 860 474 872 472", 3.5)}
+      ${chmOrn("M884 474 C872 482 862 490 856 500 C852 506 844 506 842 500 C840 494 848 492 850 498", 4)}
+      ${chmLeaf(804, 300, -70, 1.1)}${chmLeaf(786, 360, -110, 1.1)}${chmLeaf(792, 420, -150)}${chmLeaf(830, 262, -20, .9)}${chmLeaf(806, 446, 160, .8)}
+      ${chmOrn("M872 250 C862 238 868 226 880 230", 3.5)}${chmLeaf(874, 246, -40, .9)}`;
+    const wisps = (n, seed, col, w) => EPN(n, i => { const a = (i / n) * 6.2832 + seed, b = a + 0.5 + (i % 3) * 0.18, k = 0.9 - (i % 4) * 0.05;
+      const p = (t, f) => `${(cx + Math.cos(t) * rx * f).toFixed(1)} ${(cy + Math.sin(t) * ry * f).toFixed(1)}`;
+      return `<path d="M${p(a, 1.02)} Q${p((a + b) / 2, k - 0.18)} ${p(b, 0.98)}" fill="none" stroke="${col}" stroke-width="${w + (i % 3) * 3}" stroke-linecap="round" opacity="${(0.45 + (i % 4) * 0.13).toFixed(2)}"/>`; });
+    return `<defs><linearGradient id="chmMet" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#e3a45e"/><stop offset=".3" stop-color="#8a5432"/><stop offset=".55" stop-color="#3e261a"/><stop offset=".8" stop-color="#a8683a"/><stop offset="1" stop-color="#5a3420"/></linearGradient>
+        <radialGradient id="chmDeep" cx=".5" cy=".5" r=".5"><stop offset="0" stop-color="#05080e"/><stop offset=".62" stop-color="#071422"/><stop offset=".86" stop-color="#0b3550"/><stop offset="1" stop-color="#1a7aa8"/></radialGradient>
+        <clipPath id="chmClip"><ellipse cx="${cx}" cy="${cy}" rx="${rx}" ry="${ry}"/></clipPath><filter id="chmBlur" x="-30%" y="-30%" width="160%" height="160%"><feGaussianBlur stdDeviation="3.2"/></filter></defs>
+      ${eraHalo(cx, cy, 120, "#3fc8ff", 0.12)}
+      <ellipse cx="${cx}" cy="${cy + 2}" rx="${rx + 17}" ry="${ry + 17}" fill="#1e120a"/>
+      <ellipse cx="${cx}" cy="${cy}" rx="${rx + 14}" ry="${ry + 14}" fill="url(#chmMet)" stroke="#24160e" stroke-width="2"/>
+      <ellipse cx="${cx}" cy="${cy}" rx="${rx + 8}" ry="${ry + 8}" fill="none" stroke="#24160e" stroke-width="1.5" stroke-dasharray="2 4" opacity=".8"/>
+      <ellipse cx="${cx}" cy="${cy}" rx="${rx + 3}" ry="${ry + 3}" fill="none" stroke="#f0b878" stroke-width="1.4" opacity=".7"/>
+      <ellipse cx="${cx}" cy="${cy}" rx="${rx}" ry="${ry}" fill="url(#chmDeep)"/>
+      <rect id="tvRect" x="${cx - rx}" y="${cy - ry}" width="${rx * 2}" height="${ry * 2}" rx="${rx}" ry="${ry}" fill="none"/>
+      <g clip-path="url(#chmClip)" aria-hidden="true"><g class="chm-smoke" filter="url(#chmBlur)">
+        <ellipse cx="${cx}" cy="${cy}" rx="${rx}" ry="${ry}" fill="none" stroke="#2fb8f0" stroke-width="16" opacity=".55"/>
+        <g class="chm-sw chm-sw1" style="transform-origin:${cx}px ${cy}px">${wisps(11, 0, "#5fd8ff", 5)}</g>
+        <g class="chm-sw chm-sw2" style="transform-origin:${cx}px ${cy}px">${wisps(9, 0.7, "#b8f2ff", 3)}</g>
+        <g class="chm-sw chm-sw3" style="transform-origin:${cx}px ${cy}px">${wisps(7, 2.1, "#1e90e0", 8)}</g></g>
+        <path d="M${cx - 46} ${cy - 70} q22 -18 52 -16" stroke="#fff" stroke-width="3" opacity=".08" fill="none" stroke-linecap="round"/></g>
+      <g aria-hidden="true">${half}<g transform="translate(${cx * 2} 0) scale(-1 1)">${half}</g>
+        ${chmOrn("M900 260 C892 246 884 238 886 226 C894 232 898 240 900 246 C902 240 906 232 914 226 C916 238 908 246 900 260", 3)}
+        <path d="M900 214 C906 222 906 230 900 238 C894 230 894 222 900 214 Z" fill="url(#chmMet)" stroke="#24160e" stroke-width="1.5"/>
+        <circle cx="900" cy="252" r="5" fill="#3a1a10" stroke="#e3a45e" stroke-width="1.5"/><circle cx="900" cy="252" r="2.2" class="tvled"/>
+        <path d="M884 472 Q900 492 916 472 Q908 482 900 482 Q892 482 884 472 Z" fill="url(#chmMet)" stroke="#24160e" stroke-width="1.5"/>
+        <path d="M900 482 V500" stroke="#24160e" stroke-width="7"/><path d="M900 482 V500" stroke="url(#chmMet)" stroke-width="4"/>
+        <ellipse cx="900" cy="502" rx="34" ry="3.5" fill="#24160e" opacity=".6"/></g>`;
+  }
+  // bougies qui flottent sous le plafond (coordonnées de la pièce) : leurs flammes éclairent le salon le soir (lueur locale et douce)
+  const CHM_CANDLES = [[792, 70, 24], [880, 58, 18], [962, 84, 28], [1128, 112, 22], [1212, 96, 30], [1300, 116, 20], [1474, 106, 26], [1716, 92, 22], [1792, 66, 28], [1858, 98, 18]];
+  function chmCandles() {
+    const night = eraNight();
+    const one = ([x, y, h], i) => `<g transform="translate(${x} ${y})"><g class="chm-float" style="animation-delay:-${(i * 0.73).toFixed(2)}s;animation-duration:${(4.6 + (i % 4) * 0.9).toFixed(1)}s">
+      ${night ? `<circle cx="0" cy="${-h - 8}" r="46" fill="url(#chmCandleL)" class="chm-glow" style="mix-blend-mode:screen"/>` : ""}${eraHalo(0, -h - 8, 12, "#ffc35a", night ? 0.6 : 0.35).replace("<circle ", '<circle class="chm-glow" ')}
+      <rect x="-4.5" y="${-h}" width="9" height="${h}" rx="2" fill="#efe6d2"/><rect x="-4.5" y="${-h}" width="3" height="${h}" fill="#fffaf0" opacity=".5"/><path d="M-4.5 ${-h + 2} q-1 6 1 9 q2 -3 1 -9 Z M3 ${-h + 1} q2 4 1 7" fill="#e2d6bc" stroke="#e2d6bc" stroke-width=".8"/>
+      <path d="M0 ${-h} v-4" stroke="#2a1a10" stroke-width="1.2"/>
+      <g class="chm-fl"><path class="rbs-fl" style="animation-delay:-${(i * 0.31).toFixed(2)}s" d="M0 ${-h - 2} c-4 -5 -2 -11 0 -15 c2 4 4 10 0 15 Z" fill="#ffb43a"/><path d="M0 ${-h - 3} c-2 -3 -1 -6 0 -8 c1 2 2 5 0 8 Z" fill="#fff3c4"/></g></g></g>`;
+    return `<g aria-hidden="true" class="chm-candles" pointer-events="none"><defs><radialGradient id="chmCandleL"><stop offset="0" stop-color="#ffd590" stop-opacity=".5"/><stop offset=".4" stop-color="#ffc77a" stop-opacity=".16"/><stop offset="1" stop-color="#ffc77a" stop-opacity="0"/></radialGradient>
+        <radialGradient id="chmWarm"><stop offset="0" stop-color="#ffcf8a" stop-opacity=".2"/><stop offset=".6" stop-color="#ffb860" stop-opacity=".06"/><stop offset="1" stop-color="#ffb860" stop-opacity="0"/></radialGradient></defs>
+      ${night ? `<ellipse class="chm-glow" cx="1320" cy="150" rx="720" ry="300" fill="url(#chmWarm)" style="mix-blend-mode:screen"/>` : ""}${CHM_CANDLES.map(one).join("")}</g>`;
+  }
+  // la baguette magique, posée sur le coffre (à la place d'une télécommande) : un clic allume ou éteint les bougies et le feu
+  const chmWandSvg = () => `<g ${hsAttrs("wand", 1384, 498, 474, "La baguette magique")}><rect x="1338" y="474" width="92" height="32" fill="transparent"/>
+      <path d="M1344 502 L1418 491 L1419 495 L1345 507.5 Z" fill="#8a5a30"/><path d="M1344 502 L1418 491" stroke="#c08a56" stroke-width=".8"/><path d="M1344 502 L1372 498 L1373 503 L1345 507.5 Z" fill="#3a2010"/>${[1352, 1360, 1368].map(x => `<path d="M${x} 501 l1 4.6" stroke="#c9a24a" stroke-width="1.4"/>`).join("")}
+      <circle cx="1346.5" cy="504.5" r="3" fill="#3a2010"/><g class="chm-tip"><path d="M1421 489 l1.3 3.2 l3.4 .4 l-2.6 2.2 l.8 3.3 l-2.9 -1.8 l-2.9 1.8 l.8 -3.3 l-2.6 -2.2 l3.4 -.4 Z" fill="#fff3c4"/></g></g>`;
+  function chmWand() {
+    const s = $("salon"), lit = !salon.magOff || !!salon.fire, on = !lit;
+    salon.magOff = !on; if (s) s.classList.toggle("mag-off", !on);
+    if (!!salon.fire !== on) setFire(on);
+    playRoom("bells");
+    addFx("fx", `<g class="chm-spk">${burst(1422, 493, "#fff3c4")}${on ? CHM_CANDLES.map(([x, y, h]) => burst(x, y - h - 8, "#ffe0a0")).join("") : ""}</g>`, 1400);
+    toast(on ? "Un coup de baguette : les bougies et le feu s'allument." : "Un coup de baguette : les bougies et le feu s'éteignent.");
+  }
+  // au mur : deux épées croisées derrière un bouclier (fleurs de lys et couronne, motifs génériques) ; rangé quand le sapin de Noël prend ce coin
+  function chmShield() {
+    const sword = (a) => `<g transform="rotate(${a})"><circle cx="0" cy="-92" r="6" fill="#8a8e94" stroke="#2a2a2e" stroke-width="1.5"/><path d="M-3 -92 h6 M0 -95 v6" stroke="#2a2a2e" stroke-width="1"/>
+      <rect x="-3.5" y="-86" width="7" height="24" rx="2" fill="#3a2418"/>${[-80, -74, -68].map(y => `<path d="M-3.5 ${y} h7" stroke="#a87a4a" stroke-width="1"/>`).join("")}
+      <path d="M-30 -58 Q-15 -64 0 -62 Q15 -64 30 -58 L30 -52 Q15 -57 0 -56 Q-15 -57 -30 -52 Z" fill="#8a8e94" stroke="#2a2a2e" stroke-width="1.5"/><circle cx="-30" cy="-55" r="3.5" fill="#6a6e74"/><circle cx="30" cy="-55" r="3.5" fill="#6a6e74"/>
+      <path d="M-5 -56 L5 -56 L4 70 L0 82 L-4 70 Z" fill="#b8bcc2" stroke="#4a4e54" stroke-width="1.2"/><path d="M0 -52 V66" stroke="#7a7e84" stroke-width="1.2"/></g>`;
+    const lys = (x, y, s) => `<g transform="translate(${x} ${y}) scale(${s})" fill="#e2d8bc" stroke="#5a5240" stroke-width=".8"><path d="M0 -15 C6 -9 6 -2 0 4 C-6 -2 -6 -9 0 -15 Z"/>
+      <path d="M-1.5 3 C-9 -2 -15 0 -13 6 C-12 10 -7 9 -7 5 C-5 8 -3 8 -1.5 6 Z"/><path d="M1.5 3 C9 -2 15 0 13 6 C12 10 7 9 7 5 C5 8 3 8 1.5 6 Z"/><rect x="-7" y="4" width="14" height="3.4" rx="1"/><path d="M-2 7.4 L-4.5 13 L4.5 13 L2 7.4 Z"/></g>`;
+    return `<g aria-hidden="true" transform="translate(1772 206)"><ellipse cx="0" cy="8" rx="64" ry="70" fill="#000" opacity=".12"/>${sword(-36)}${sword(36)}
+      <path d="M-40 -38 H40 V2 C40 36 18 56 0 66 C-18 56 -40 36 -40 2 Z" fill="#cfc4a4" stroke="#3a3428" stroke-width="2"/>
+      <path d="M-33 -31 H33 V2 C33 31 14 48 0 57 C-14 48 -33 31 -33 2 Z" fill="#3e4146" stroke="#1e2024" stroke-width="1.5"/>
+      <path d="M-33 -31 H0 V57 C-14 48 -33 31 -33 2 Z" fill="#4a4e54"/>${EPN(14, i => { const t = i / 13; return `<circle cx="${(-36.5 + 0).toFixed(1)}" cy="${(-34 + t * 36).toFixed(1)}" r="1" fill="#6a6250"/><circle cx="36.5" cy="${(-34 + t * 36).toFixed(1)}" r="1" fill="#6a6250"/>`; })}
+      ${lys(-14, -10, 0.9)}${lys(14, -10, 0.9)}${lys(0, 24, 0.9)}
+      <path d="M-30 -38 L-32 -56 L-20 -48 L-10 -62 L0 -50 L10 -62 L20 -48 L32 -56 L30 -38 Z" fill="#cfc4a4" stroke="#3a3428" stroke-width="1.6"/><path d="M-6 -60 L0 -76 L6 -60 Z" fill="#cfc4a4" stroke="#3a3428" stroke-width="1.4"/>
+      <path d="M-30 -42 H30" stroke="#8a7e60" stroke-width="2"/>${[-18, 0, 18].map(x => `<circle cx="${x}" cy="-46" r="2.6" fill="#f2ecd8" stroke="#6a6250" stroke-width=".8"/>`).join("")}<circle cx="0" cy="-66" r="2" fill="#f2ecd8"/></g>`;
+  }
+  // une armure de chevalier complète sur son socle de bois, dans le coin, devant le montant de l'étagère (décor seulement)
+  function chmArmor() {
+    const S = "url(#chmSteel)", L = "#2c3036";
+    const leg = (x) => `<rect x="${x - 11}" y="440" width="22" height="54" rx="8" fill="${S}" stroke="${L}" stroke-width="1.4"/><ellipse cx="${x}" cy="498" rx="12.5" ry="10" fill="${S}" stroke="${L}" stroke-width="1.4"/><path d="M${x - 7} 498 q7 -7 14 0" stroke="${L}" stroke-width="1" fill="none"/>
+      <path d="M${x - 11} 506 L${x - 9} 578 Q${x} 584 ${x + 9} 578 L${x + 11} 506 Z" fill="${S}" stroke="${L}" stroke-width="1.4"/><path d="M${x - 10} 522 h20 M${x - 9} 562 h18" stroke="${L}" stroke-width="1" opacity=".6"/>
+      <path d="M${x - 10} 578 Q${x - 11} 594 ${x + (x < 0 ? -16 : 16)} 596 L${x + (x < 0 ? -18 : 18)} 600 L${x - 11} 600 Z" fill="${S}" stroke="${L}" stroke-width="1.4"/>`;
+    const arm = (sx) => `<path d="M${sx * 30} 312 Q${sx * 40} 340 ${sx * 34} 362 L${sx * 24} 364 Q${sx * 26} 340 ${sx * 22} 318 Z" fill="${S}" stroke="${L}" stroke-width="1.4"/>
+      <ellipse cx="${sx * 30}" cy="366" rx="8" ry="7" fill="${S}" stroke="${L}" stroke-width="1.4"/><path d="M${sx * 34} 370 Q${sx * 26} 392 ${sx * 10} 400 L${sx * 6} 392 Q${sx * 20} 384 ${sx * 26} 370 Z" fill="${S}" stroke="${L}" stroke-width="1.4"/>
+      <path d="M${sx * 36} 296 Q${sx * 50} 302 ${sx * 48} 324 Q${sx * 40} 334 ${sx * 26} 330 Q${sx * 20} 306 ${sx * 36} 296 Z" fill="${S}" stroke="${L}" stroke-width="1.6"/><path d="M${sx * 44} 312 q${sx * -8} 6 ${sx * -18} 4 M${sx * 46} 320 q${sx * -10} 6 ${sx * -20} 4" stroke="${L}" stroke-width="1" fill="none"/>`;
+    return `<g aria-hidden="true" transform="translate(774 0)"><defs><linearGradient id="chmSteel" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#5a5e66"/><stop offset=".45" stop-color="#cfd3d8"/><stop offset=".7" stop-color="#9a9ea6"/><stop offset="1" stop-color="#4e525a"/></linearGradient></defs>
+      <ellipse cx="0" cy="616" rx="58" ry="6" fill="rgba(0,0,0,.35)"/><rect x="-48" y="598" width="96" height="14" rx="2" fill="#5a3a1e"/><rect x="-48" y="598" width="96" height="3" fill="#7a5430"/><rect x="-44" y="612" width="10" height="5" fill="#2a1a10"/><rect x="34" y="612" width="10" height="5" fill="#2a1a10"/>
+      <rect x="-1.5" y="404" width="3" height="196" fill="#9a9ea6" stroke="${L}" stroke-width=".6"/>
+      ${leg(-12)}${leg(12)}
+      <path d="M-30 404 L30 404 L34 444 Q0 452 -34 444 Z" fill="${S}" stroke="${L}" stroke-width="1.5"/><path d="M-31 416 Q0 422 31 416 M-32 430 Q0 436 32 430" stroke="${L}" stroke-width="1.2" fill="none"/>
+      <path d="M-28 300 Q0 290 28 300 L27 378 Q0 392 -27 378 Z" fill="${S}" stroke="${L}" stroke-width="1.6"/><path d="M0 296 V386" stroke="${L}" stroke-width="1" opacity=".6"/><path d="M-27 380 L27 380 L29 404 L-29 404 Z" fill="${S}" stroke="${L}" stroke-width="1.4"/><path d="M-28 392 h56" stroke="${L}" stroke-width="1"/>
+      <path d="M-16 300 Q0 316 16 300" stroke="${L}" stroke-width="1.2" fill="none"/>
+      ${arm(-1)}${arm(1)}
+      <rect x="-10" y="388" width="20" height="16" rx="5" fill="${S}" stroke="${L}" stroke-width="1.4"/><path d="M-8 394 h16 M-8 399 h16" stroke="${L}" stroke-width=".9"/><path d="M-16 384 h32" stroke="#6a6e74" stroke-width="4" stroke-linecap="round"/>
+      <path d="M-14 286 h28 l2 14 h-32 Z" fill="${S}" stroke="${L}" stroke-width="1.4"/>
+      <path d="M-18 288 L-20 252 Q-18 226 0 224 Q18 226 20 252 L18 288 Q0 294 -18 288 Z" fill="${S}" stroke="${L}" stroke-width="1.6"/><path d="M0 224 V288" stroke="${L}" stroke-width="1.2" opacity=".7"/>
+      <path d="M-17 252 Q0 246 17 252 L16 274 Q0 280 -16 274 Z" fill="#8a8e96" stroke="${L}" stroke-width="1.2"/>${EPN(5, i => `<path d="M-12 ${256 + i * 4} h24" stroke="#1a1c20" stroke-width="1.6"/>`)}
+      <path d="M-12 232 q6 -6 10 -7" stroke="#fff" stroke-width="2" opacity=".35" fill="none" stroke-linecap="round"/></g>`;
+  }
+  const CHM_CSS = `.chm-float { animation: chmFloat 5s ease-in-out infinite alternate; } @keyframes chmFloat { from { transform: translateY(0); } to { transform: translateY(-8px); } }
+      .chm-sw1 { animation: chmSpin 26s linear infinite; } .chm-sw2 { animation: chmSpin 34s linear infinite reverse; } .chm-sw3 { animation: chmSpin 41s linear infinite; }
+      @keyframes chmSpin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+      .chm-smoke { animation: chmPulse 3.6s ease-in-out infinite alternate; } @keyframes chmPulse { from { opacity: .72; } to { opacity: 1; } }
+      .chm-tip { transform-box: fill-box; transform-origin: center; animation: chmTw 1.8s ease-in-out infinite alternate; } @keyframes chmTw { from { opacity: .45; transform: scale(.8); } to { opacity: 1; transform: scale(1.15); } }
+      .chm-spk .burst { animation: chmSpk 1.2s ease-out forwards; } @keyframes chmSpk { from { transform: scale(.2); opacity: 1; } to { transform: scale(1.1); opacity: 0; } }
+      .salon.mag-off .chm-fl, .salon.mag-off .chm-glow { display: none; }
+      .salon.still .chm-float, .salon.still .chm-sw, .salon.still .chm-smoke, .salon.still .chm-tip { animation: none; }
+      #salon .tvscreen .tv-off { background: transparent; } #salon .tvscreen .tv-off::after { display: none; }
+      #salon .tvscreen .tv-show::before { content: ""; position: absolute; inset: 0; z-index: 3; border-radius: 50%; box-shadow: inset 0 0 16px 5px rgba(80,210,255,.55); pointer-events: none; }
+      #salon .tvscreen .tv-show b { left: 16%; right: 16%; bottom: 15%; text-align: center; font-size: clamp(10px, 1.1vw, 18px); }
+      #salon .tvscreen .tv-lbl { left: 50%; top: 11%; transform: translateX(-50%); white-space: nowrap; font-size: clamp(6px, .6vw, 9px); }
+      #salon .tvscreen .tv-boot b { font-size: clamp(10px, 1.2vw, 18px); letter-spacing: .08em; }`;
   const pat = (n, f) => (y) => `<g opacity=".18">${EPN(n, i => f(i, y))}</g>`;
   const ERAS = {
     "Années 1930-40": { code: "1930", wall: ["#3a3324", "#4b402c"], wain: "#2e1f14", trim: "#a07a48", rug: "#6a2a22", floor: ["#4a3020", "#22150c"], wood: ["#4a2c18", "#6a4228"],
@@ -10900,14 +11020,14 @@ ${notes.slice(0, 6).map(n => { const pc = Number(n.pct);
         <g transform="translate(950 470)">${EPN(3, i => `<rect x="${-20 + i * 14}" y="-20" width="12" height="20" rx="2" fill="${["#8a8a7a", "#9a7a3a", "#7a8a8a"][i]}"/><rect x="${-20 + i * 14}" y="-14" width="12" height="7" fill="${["#c84a2a", "#e8d8a8", "#4a7a4a"][i]}"/>`)}</g>` },
     "Chaumière magique": { code: "chaumiere", wall: ["#4a3e30", "#5a4a38"], wain: "#4a4440", trim: "#6a4a2a", rug: "#7a3a2a", floor: ["#4a3a2a", "#20180e"], wood: ["#4a3018", "#6a4626"],
       pat: pat(40, (i, y) => `<ellipse cx="${(i * 67) % 2600}" cy="${y - 30 + (i % 5) * 22}" rx="${12 + (i % 3) * 6}" ry="5" fill="#7a6a52"/>`),
-      tv: ERA_TV.miroir, stand: ERA_STAND.coffre, screen: "border-radius: 50%; box-shadow: inset 0 0 26px rgba(150,200,255,.35);", console: () => ERA_CONSOLE.board("#5a3418"), lamp: ERA_LAMP.lantern, radiator: ERA_RAD.banc,
-      sofa: { a: "#5a2e22", c: "#8a4a3a", c2: "#6a7a4a", e: "#a8643a", g: ["#7a4232", "#3a1e16"] }, chair: () => ERA_CHAIR.wingquilt(), view: "foret", life: { work: "grimoire", gaming: "cards" },
+      tv: ERA_TV.miroir, stand: ERA_STAND.coffre, screen: "border-radius: 50%;", css: CHM_CSS, console: () => `<g transform="translate(-26 0)">${ERA_CONSOLE.board("#5a3418").replace("translate(966 486)", "translate(992 486)")}</g>`, lamp: ERA_LAMP.lantern, radiator: ERA_RAD.banc,
+      sofa: { a: "#5a2e22", c: "#8a4a3a", c2: "#6a7a4a", e: "#a8643a", g: ["#7a4232", "#3a1e16"] }, chair: () => ERA_CHAIR.wingquilt().replace("translate(842 0)", "translate(870 0)"), view: "foret", life: { work: "grimoire", gaming: "cards" },
       // colombages, poutre et bouquets d'herbes séchées, pierre du soubassement
       wallx: () => `<g aria-hidden="true">${[1046, 1440, 1712].map(x => `<rect x="${x}" y="0" width="18" height="516" fill="#3a2614"/>`).join("")}<path d="M1064 330 L1200 220 M1712 300 L1600 230" stroke="#3a2614" stroke-width="14"/><rect x="0" y="0" width="2600" height="22" fill="#3a2614"/><rect x="0" y="22" width="2600" height="4" fill="#2a1a0c"/>
         ${[1090, 1170, 1250, 1330, 1640, 1690].map((x, i) => `<path d="M${x} 26 v16" stroke="#8a7a5a" stroke-width="1.5"/><g transform="translate(${x} 42)"><path d="M-3 0 h6 l8 40 q-11 8 -22 0 Z" fill="${["#6a8a4a", "#8a6aa8", "#9a8a4a", "#5a7a4a", "#8a6aa8", "#6a8a4a"][i]}"/><rect x="-4" y="-2" width="8" height="5" fill="#a0503a"/></g>`).join("")}
-        <g opacity=".5">${EPN(40, i => `<rect x="${(i * 131) % 2600}" y="${520 + (i % 4) * 18}" width="${40 + (i % 3) * 14}" height="14" rx="4" fill="#5a524c"/>`)}</g></g>`,
+        <g opacity=".5">${EPN(40, i => `<rect x="${(i * 131) % 2600}" y="${520 + (i % 4) * 18}" width="${40 + (i % 3) * 14}" height="14" rx="4" fill="#5a524c"/>`)}</g></g>${xmasTreeHere() ? "" : chmShield()}`,
       // un chaudron suspendu au-dessus du feu
-      mid: () => `<g aria-hidden="true"><path d="M1562 432 V512" stroke="#2a2a2a" stroke-width="3" stroke-dasharray="4 2"/><path d="M1530 520 Q1532 566 1562 568 Q1592 566 1594 520 Z" fill="#1a1a1c"/><ellipse cx="1562" cy="520" rx="34" ry="7" fill="#2a2a2e"/><ellipse cx="1562" cy="520" rx="27" ry="4.5" fill="#6aa86a"/><path d="M1530 520 Q1562 488 1594 520" stroke="#2a2a2a" stroke-width="2.5" fill="none"/><circle class="steam" cx="1554" cy="508" r="4" fill="rgba(220,240,220,.5)"/><circle class="steam s2" cx="1570" cy="504" r="3" fill="rgba(220,240,220,.5)"/></g>`,
+      mid: () => chmArmor() + `<g aria-hidden="true"><path d="M1562 432 V512" stroke="#2a2a2a" stroke-width="3" stroke-dasharray="4 2"/><path d="M1530 520 Q1532 566 1562 568 Q1592 566 1594 520 Z" fill="#1a1a1c"/><ellipse cx="1562" cy="520" rx="34" ry="7" fill="#2a2a2e"/><ellipse cx="1562" cy="520" rx="27" ry="4.5" fill="#6aa86a"/><path d="M1530 520 Q1562 488 1594 520" stroke="#2a2a2a" stroke-width="2.5" fill="none"/><circle class="steam" cx="1554" cy="508" r="4" fill="rgba(220,240,220,.5)"/><circle class="steam s2" cx="1570" cy="504" r="3" fill="rgba(220,240,220,.5)"/></g>` + chmCandles() + chmWandSvg(),
       // grimoires, une bougie (sa flamme est la seule lumière ajoutée) et une petite boule de cristal
       obj: () => `<g transform="translate(884 470)">${EPN(3, i => `<rect x="${-26 + i * 2}" y="${-9 - i * 9}" width="${52 - i * 4}" height="8.5" rx="1.5" fill="${["#5a2a1e", "#2a3a5a", "#3a5a2a"][i]}"/><rect x="${-26 + i * 2}" y="${-7 - i * 9}" width="${52 - i * 4}" height="1.4" fill="#c9a24a"/>`)}<rect x="-6" y="-48" width="8" height="20" fill="#efe6d2"/><path class="rbs-fl" d="M-2 -50 c-3 -4 -1 -8 0 -11 c1 3 3 7 0 11 Z" fill="#ffc35a"/>${eraHalo(-2, -54, 20, "#ffc35a", .45)}</g>
         <g transform="translate(956 470)"><path d="M-12 0 L-8 -8 H8 L12 0 Z" fill="#6a4a2a"/><circle cx="0" cy="-20" r="13" fill="rgba(170,210,255,.35)" stroke="rgba(220,235,255,.7)"/><circle cx="-4" cy="-24" r="3" fill="#fff" opacity=".6"/></g>` },
@@ -11324,6 +11444,8 @@ ${notes.slice(0, 6).map(n => { const pc = Number(n.pct);
     const d = new RBS.RealDate(), Y = d.getMonth() === 0 ? d.getFullYear() - 1 : d.getFullYear();
     return h.replace('<button class="sfs"', `<button class="s3d rbs-bilbtn" type="button" data-rbs="bilan" aria-label="Ton année ${Y} en rétrospective">Ton année ${Y}</button><button class="sfs"`);
   })(salonHtml);
+  // bougies éteintes d'un coup de baguette (chaumière magique) : gardé quand le salon se redessine
+  salonHtml = ((f) => function () { const h = f.apply(this, arguments); return salon.magOff ? h.replace('class="salon ', 'class="salon mag-off ') : h; })(salonHtml);
   salonMount = ((f) => function () { const r = f.apply(this, arguments); try { rbsCss(); rbsBdayToast(); rbsSlowTick(); } catch (_) {} return r; })(salonMount);
   customHtml = ((f) => function (id) {
     if (id === "rbsPreview") return rbsPreviewHtml();
@@ -14716,6 +14838,7 @@ FETES2D["saison:halloween"] = (() => {
     const L = {
       tv: salon.tv && salon.tv.item ? ["À l'écran", `« ${salon.tv.item.title} » : ouvrir la fiche`] : ["La télé", "L'allumer pour voir ce qui t'attend"],
       fire: ["La cheminée", salon.fire ? "Éteindre le feu" : "Allumer le feu"],
+      wand: ["La baguette magique", !salon.magOff || salon.fire ? "Un coup de baguette : éteindre les bougies et le feu" : "Un coup de baguette : allumer les bougies et le feu"],
       console: ["La console", last ? `L'allumer et reprendre « ${last.title} »` : "L'allumer"],
       lamp: ["La lampe", salon.lamp ? "Éteindre" : "Allumer"],
       sofa: ["La table basse", "Mode soirée : des idées pour ce soir"],
@@ -14805,6 +14928,7 @@ FETES2D["saison:halloween"] = (() => {
     if (k.startsWith("cons:")) { consoleList(k.slice(5)); return; }
     if (k === "tv") { const pick = tvPick(); if (pick) { tvOn(pick, inProgress(pick) ? "À reprendre" : "Surprise", false); setTimeout(() => openSheet(pick), 1500); } }
     else if (k === "fire") setFire(!salon.fire);
+    else if (k === "wand") chmWand();
     else if (k === "lamp") { salon.lamp = !salon.lamp; $("salon").classList.toggle("lamp-on", salon.lamp); playRoom("switch"); }
     else if (k === "console") consoleBoot();
     else if (k === "sofa" || k === "couch") openNight();
