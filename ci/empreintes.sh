@@ -5,10 +5,15 @@
 #   emp_ligne <clé>                  → « version sha256 adresse » (rien si la clé est absente)
 #   emp_telecharger <clé> <fichier> [agent]  → télécharge l'adresse figée, vérifie l'empreinte ; code 1 et fichier effacé sinon
 #   emp_verifier <fichier> <sha256>  → code 0 si le fichier a bien cette empreinte
-# Une empreinte « - » veut dire « pas encore relevée » : le fichier est refusé (ci/relever_empreintes.sh la remplit).
+#   emp_fige <clé>                   → code 0 si la ligne existe et porte une vraie empreinte
+# Une empreinte « - » veut dire « pas encore relevée » : emp_telecharger refuse ; les scripts de fabrication gardent
+# alors l'ancien comportement (dernière version, empreinte publiée par le projet si elle existe) avec un avertissement
+# « empreinte non figée ». Seules les lignes AVEC empreinte sont strictes. ci/relever_empreintes.sh les remplit.
 EMP_FICHIER="${EMP_FICHIER:-$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/empreintes.txt}"
 
 emp_ligne() { awk -v k="$1" '$1 == k { print $2, $3, $4; exit }' "$EMP_FICHIER"; }
+
+emp_fige() { local v h u; read -r v h u <<<"$(emp_ligne "$1")"; [[ "${h:-}" =~ ^[0-9a-f]{64}$ ]]; }
 
 emp_verifier() {
   local f=$1 h=$2

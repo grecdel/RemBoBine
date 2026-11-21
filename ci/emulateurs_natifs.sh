@@ -7,8 +7,10 @@
 # Linux : AppImage décompressée (marche sans FUSE) ; Windows : archive décompressée.
 # Et les outils dont Rembobine a besoin, pour ne rien avoir à installer : ffmpeg/ffprobe (conversion vidéo) et mpv (lecteur),
 # y compris pour le Raspberry (linux-arm64, outils seulement).
-# Sécurité : la fabrication ne prend QUE les versions figées dans ci/empreintes.txt, et refuse un fichier dont l'empreinte
-# SHA-256 ne correspond pas (fichier remplacé ou abîmé). Pour passer à des versions plus récentes : ci/relever_empreintes.sh.
+# Sécurité : quand ci/empreintes.txt donne une empreinte, la fabrication prend CETTE version et refuse un fichier dont
+# l'empreinte SHA-256 ne correspond pas (fichier remplacé ou abîmé). Empreinte « - » (pas encore relevée) : comme avant,
+# dernière version officielle, comparée à l'empreinte publiée (GitHub ou projet) quand elle existe, avec un avertissement
+# « empreinte non figée ». Pour figer ou passer à des versions plus récentes : ci/relever_empreintes.sh.
 # Chaque émulateur est facultatif : s'il manque ou est refusé, la fabrication continue et l'appli proposera de l'installer.
 set -uo pipefail
 . "$(dirname "$0")/empreintes.sh"
@@ -38,15 +40,16 @@ for d in rels:
     if d.get('draft'): continue
     for a in d.get('assets',[]):
         n=a['name']
-        if pat.search(n) and not re.search(excl,n,re.I): print(a['browser_download_url']); sys.exit(0)
+        if pat.search(n) and not re.search(excl,n,re.I): print(a['browser_download_url'] + ('\t' + a['digest'] if sys.argv[3:] and a.get('digest') else '')); sys.exit(0)
 print('  rien pour', sys.argv[2], 'dans', [a['name'] for d in rels[:2] for a in d.get('assets',[])][:20], file=sys.stderr)
-" "$2" "$1"; }
+" "$2" "$1" ${AVEC_DIGEST:+1}; }
 # premier lien d'une page web correspondant au motif
 page_link() { curl -fsSL -A "Mozilla/5.0 (X11; Linux x86_64) Rembobine" "$1" | grep -oE "$2" | head -1; }
 # ffmpeg : une version datée (le fichier « master-latest » est remplacé chaque jour, son empreinte changerait sans cesse)
 ffmpeg_asset() { local u; u=$(gh_asset BtbN/FFmpeg-Builds "^ffmpeg-N-[0-9]+-g[0-9a-f]+-$1-gpl-shared\.$2\$"); [ -n "$u" ] || u=$(gh_asset BtbN/FFmpeg-Builds "master-latest-$1-gpl-shared\.$2\$"); echo "$u"; }
 resoudre() {
-  local u
+  local u o="EMP_ADRESSE_${1}_${2//-/_}"
+  if [ -n "${!o:-}" ]; then echo "${!o}"; return; fi   # (essais : adresse imposée, voir ci/test_empreintes.sh)
   case "$1/$2" in
     pcsx2/linux-x64)  gh_asset PCSX2/pcsx2 'linux.*appimage.*\.AppImage$' ;;
     rpcs3/linux-x64)  gh_asset RPCS3/rpcs3-binaries-linux 'linux64.*\.AppImage$|\.AppImage$' ;;
@@ -112,10 +115,30 @@ archive() {   # id, fichier téléchargé (zip, 7z, tar.xz), plateforme
 
 for e in "${ENTREES[@]}"; do
   read -r id plat genre <<<"$e"; k="natif/$id/$plat"
-  read -r _v _h u <<<"$(emp_ligne "$k")"; n=$(basename "${u:-x}"); n=${n%%\?*}
-  case "$n" in *.tar.xz) f="$TMP/$id.tar.xz" ;; *.tar.gz) f="$TMP/$id.tar.gz" ;; *.AppImage) f="$TMP/$id.AppImage" ;; *) f="$TMP/$id.${n##*.}" ;; esac
+  # (essais : seulement les fichiers nommés dans EMP_ESSAI_SEUL, sans rien demander à internet pour les autres)
+  if [ -n "${EMP_ESSAI_SEUL:-}" ] && [[ " $EMP_ESSAI_SEUL " != *" $id/$plat "* ]]; then continue; fi
   ua="Mozilla/5.0 (X11; Linux x86_64) Rembobine"; [ "$plat" = win-x64 ] && ua="Mozilla/5.0 (Windows NT 10.0; Win64; x64) Rembobine"
-  emp_telecharger "$k" "$f" "$ua" || { manque+=("$id ($plat)"); continue; }
+  if emp_fige "$k"; then
+    read -r _v _h u <<<"$(emp_ligne "$k")"
+  else   # pas encore figée : comme avant, la dernière version officielle
+    r=$(AVEC_DIGEST=1 resoudre "$id" "$plat"); u=${r%%$'\t'*}; dg=""; [[ "$r" == *$'\t'* ]] && dg=${r#*$'\t'}
+    echo "::warning::$k : empreinte non figée dans ci/empreintes.txt — dernière version prise (${u:-introuvable}) ; la figer : bash ci/relever_empreintes.sh natifs"
+    [ -n "$u" ] || { manque+=("$id ($plat)"); continue; }
+  fi
+  n=$(basename "${u:-x}"); n=${n%%\?*}
+  case "$n" in *.tar.xz) f="$TMP/$id.tar.xz" ;; *.tar.gz) f="$TMP/$id.tar.gz" ;; *.AppImage) f="$TMP/$id.AppImage" ;; *) f="$TMP/$id.${n##*.}" ;; esac
+  if emp_fige "$k"; then
+    emp_telecharger "$k" "$f" "$ua" || { manque+=("$id ($plat)"); continue; }
+  else
+    curl -fsSL --retry 2 -A "$ua" -o "$f" "$u" || { echo "  téléchargement refusé : $u"; manque+=("$id ($plat)"); continue; }
+    # empreinte publiée : celle que GitHub donne pour le fichier, sinon « <fichier>.sha256 » publié à côté
+    pub=""; [[ "$dg" =~ ^sha256:([0-9a-f]{64})$ ]] && pub=${BASH_REMATCH[1]}
+    [ -n "$pub" ] || pub=$(curl -fsSL --max-time 30 -A "$ua" "$u.sha256" 2>/dev/null | grep -oE '^[0-9a-f]{64}' | head -1)
+    if [ -n "$pub" ]; then
+      emp_verifier "$f" "$pub" || { echo "::error::$k : empreinte différente de celle publiée par le projet — fichier refusé"; rm -f "$f"; manque+=("$id ($plat)"); continue; }
+      echo "  $k : empreinte publiée vérifiée"
+    else echo "  $k : aucune empreinte publiée (vérifié seulement par HTTPS)"; fi
+  fi
   if [ "$genre" = appimage ]; then appimage "$id" "$f" "$plat"; else archive "$id" "$f" "$plat"; fi
 done
 

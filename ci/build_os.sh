@@ -18,7 +18,7 @@ if [ -f "$WORK/base.img.xz" ] && emp_verifier "$WORK/base.img.xz" "${BASE_SHA:-}
 elif [ -n "${BASE_SHA:-}" ] && [ "$BASE_SHA" != "-" ]; then
   emp_telecharger os/raspios_lite_arm64 "$WORK/base.img.xz" || exit 1
 else
-  echo "::warning::image Raspberry Pi OS : empreinte pas encore figée (bash ci/relever_empreintes.sh os) — vérification par l'empreinte publiée"
+  echo "::warning::image Raspberry Pi OS : empreinte non figée dans ci/empreintes.txt — dernière image prise, vérifiée par l'empreinte publiée ; la figer : bash ci/relever_empreintes.sh os"
   BASE_URL=$(curl -fsSIL -o /dev/null -w '%{url_effective}' https://downloads.raspberrypi.com/raspios_lite_arm64_latest)
   case "$BASE_URL" in https://downloads.raspberrypi.com/*.img.xz) ;; *) echo "::error::adresse de l'image inattendue : $BASE_URL"; exit 1 ;; esac
   curl -fsSL -o "$WORK/base.img.xz" "$BASE_URL"
@@ -66,11 +66,17 @@ CH "apt-get install -y -q --no-install-recommends $AVAIL"
 # la clé du dépôt et son adresse sont téléchargées ici, comparées à ci/empreintes.txt, puis posées dans l'image
 # (la clé est ce qui garantit tous les paquets Tailscale ensuite : elle ne doit pas pouvoir être remplacée en route)
 TSC=$(. "$R/etc/os-release" && echo "$VERSION_CODENAME")
-if emp_telecharger "tailscale/$TSC.noarmor.gpg" "$WORK/ts.gpg" && emp_telecharger "tailscale/$TSC.tailscale-keyring.list" "$WORK/ts.list"; then
-  sudo install -m 644 "$WORK/ts.gpg" "$R/usr/share/keyrings/tailscale-archive-keyring.gpg"
-  sudo install -m 644 "$WORK/ts.list" "$R/etc/apt/sources.list.d/tailscale.list"
-  CH "set -e; apt-get update -q && apt-get install -y -q tailscale && systemctl enable tailscaled" || echo "Tailscale non installé (dépôt injoignable)"
-else echo "::warning::Tailscale non installé : clé du dépôt ($TSC) absente de ci/empreintes.txt ou différente"; fi
+if emp_fige "tailscale/$TSC.noarmor.gpg" && emp_fige "tailscale/$TSC.tailscale-keyring.list"; then
+  if emp_telecharger "tailscale/$TSC.noarmor.gpg" "$WORK/ts.gpg" && emp_telecharger "tailscale/$TSC.tailscale-keyring.list" "$WORK/ts.list"; then
+    sudo install -m 644 "$WORK/ts.gpg" "$R/usr/share/keyrings/tailscale-archive-keyring.gpg"
+    sudo install -m 644 "$WORK/ts.list" "$R/etc/apt/sources.list.d/tailscale.list"
+    CH "set -e; apt-get update -q && apt-get install -y -q tailscale && systemctl enable tailscaled" || echo "Tailscale non installé (dépôt injoignable)"
+  else echo "::error::Tailscale non installé : clé du dépôt ($TSC) différente de celle figée dans ci/empreintes.txt"; fi
+else
+  # pas encore figée : comme avant (adresse habituelle du dépôt officiel), avec un avertissement
+  echo "::warning::Tailscale ($TSC) : empreinte non figée dans ci/empreintes.txt — clé du dépôt prise à l'adresse habituelle ; la figer : bash ci/relever_empreintes.sh tailscale"
+  CH "set -e; curl -fsSL https://pkgs.tailscale.com/stable/debian/$TSC.noarmor.gpg -o /usr/share/keyrings/tailscale-archive-keyring.gpg && curl -fsSL https://pkgs.tailscale.com/stable/debian/$TSC.tailscale-keyring.list -o /etc/apt/sources.list.d/tailscale.list && apt-get update -q && apt-get install -y -q tailscale && systemctl enable tailscaled" || echo "Tailscale non installé (dépôt injoignable)"
+fi
 # le serveur de Rembobine (utilisateur rembobine) peut connecter / couper Tailscale, et rien d'autre
 # (commande exacte, sans « * » : pas d'autres options comme --ssh, --advertise-routes ou --exit-node)
 #  (dans sudoers, le « = » des arguments s'écrit « \= »)
