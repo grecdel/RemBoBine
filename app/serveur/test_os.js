@@ -4,6 +4,8 @@
 //  - mises à jour avec un FAUX GitHub : vérification, téléchargement vérifié, installation à côté, bascule,
 //    gardien qui confirme une version qui démarre et REVIENT à l'ancienne quand la nouvelle ne répond pas ;
 //    mise à jour par fichier (clé USB) ; Windows : simple téléchargement ;
+//    signature : fausses versions signées par une paire de clés JETABLE (option « publicKey » de createMaj, réservée
+//    aux essais) ; non signée ou signée par une autre clé : refusée (internet et clé USB) ;
 //  - sauvegarde complète (page, serveur, sauvegardes de jeux) sur le disque et sur une « clé USB », restauration.
 "use strict";
 process.env.REMBOBINE_FICHES = "0";   // aucun internet pendant les essais (fiches cherchées sur internet : activées par défaut)
@@ -13,6 +15,7 @@ const { createServer } = require("./serveur");
 const { createMaj } = require("./maj");
 const { createSysteme, diskLow } = require("./systeme");
 const { createSauvegarde } = require("./sauvegarde");
+const SIG = require("./maj-signature");
 
 const T = fs.mkdtempSync(path.join(os.tmpdir(), "rbb-os-"));
 let ok = 0, ko = 0;
@@ -20,6 +23,9 @@ const check = (c, w) => { if (c) ok++; else { ko++; console.log("ÉCHEC :", w); 
 const wait = (ms) => new Promise((r) => setTimeout(r, ms));
 const mk = (f, data, mode) => { fs.mkdirSync(path.dirname(f), { recursive: true }); fs.writeFileSync(f, data); if (mode) fs.chmodSync(f, mode); };
 const GO = 1e9;
+// paire de clés d'essai (jetable, jamais écrite sur le disque) : elle signe les fausses versions de ce test
+const ESSAI_PEM = crypto.generateKeyPairSync("ed25519").privateKey.export({ format: "pem", type: "pkcs8" }), ESSAI_PUB = SIG.rawPublic(ESSAI_PEM);
+const AUTRE_PEM = crypto.generateKeyPairSync("ed25519").privateKey.export({ format: "pem", type: "pkcs8" });
 
 // ---------- une « version » de Rembobine : son lanceur démarre un faux serveur qui répond /api/info avec son numéro ----------
 const FAKEAPP = path.join(T, "fakeapp.js");
@@ -33,9 +39,12 @@ function version(dir, label, port, mode = "") {
   mk(path.join(dir, "resources", "app", "main.js"), "// faux");
   mk(path.join(dir, "resources", "app", "build.json"), JSON.stringify({ version: "1.0.0", build: Number(label.split("+")[1]), label, date: "2026-11-0" + label.split("+")[1] }));
 }
-function archive(label, port, mode) {
-  const src = path.join(T, "src-" + label, "Rembobine-Linux-x64"); version(src, label, port, mode);
-  const out = path.join(T, `arch-${label}.tar.gz`); spawnSync("tar", ["czf", out, "-C", path.dirname(src), "Rembobine-Linux-x64"]);
+// signée par la clé d'essai, sauf { signer: null } (non signée) ou { signer: <autre clé PEM> }
+async function archive(label, port, mode, opts = {}) {
+  const tag = opts.tag || "", src = path.join(T, "src-" + label + tag, "Rembobine-Linux-x64"); version(src, label, port, mode);
+  const signer = opts.signer === undefined ? ESSAI_PEM : opts.signer;
+  if (signer) await SIG.signDir(src, signer);
+  const out = path.join(T, `arch-${label}${tag}.tar.gz`); spawnSync("tar", ["czf", out, "-C", path.dirname(src), "Rembobine-Linux-x64"]);
   return out;
 }
 
@@ -116,7 +125,7 @@ function archive(label, port, mode) {
   const dummy = () => spawn(process.execPath, ["-e", "setTimeout(()=>{},300)"]).pid;   // « l'ancienne appli » qui se ferme
   const cfg = { update: { auto: false } }; const quits = [];
   const mkMaj = (cur, extra = {}) => createMaj({ data: path.join(T, "data-" + cur), build: { version: "1.0.0", build: Number(cur.split("+")[1]), label: cur }, appDir: path.join(B, "versions", cur),
-    roots: [M], port: APPPORT, kiosk: false, cfg: () => cfg, api: API, quit: () => quits.push(cur), node: process.execPath, pid: dummy(), gardeTimeout: 6000, quitDelay: 0, platform: "linux", arch: "x64", usbDirs: [USB], mountsFile: "/nonexistent", ...extra });
+    roots: [M], port: APPPORT, kiosk: false, cfg: () => cfg, api: API, quit: () => quits.push(cur), node: process.execPath, pid: dummy(), gardeTimeout: 6000, quitDelay: 0, platform: "linux", arch: "x64", usbDirs: [USB], mountsFile: "/nonexistent", publicKey: ESSAI_PUB, ...extra });
   const link = () => fs.readlinkSync(path.join(B, "actuelle"));
   const etat = () => JSON.parse(fs.readFileSync(path.join(B, "maj-etat.json"), "utf8"));
   const until = async (f, ms = 15000) => { for (let t = 0; t < ms; t += 200) { if (f()) return true; await wait(200); } return false; };
@@ -125,12 +134,20 @@ function archive(label, port, mode) {
   fs.mkdirSync(path.join(T, "data-1.0.0+1"), { recursive: true });
   let MJ = mkMaj("1.0.0+1");
   check(MJ.layout.versioned && MJ.status().canInstall, "installation versionnée reconnue (dossier versions/ + raccourci « actuelle »)");
-  publish("1.0.0+1", archive("1.0.0+1x", APPPORT));
+  publish("1.0.0+1", await archive("1.0.0+1x", APPPORT));
   check((await MJ.check()).available === false, "même numéro de fabrication : rien à installer");
-  publish("1.0.0+2", archive("1.0.0+2", APPPORT), { badSha: true });
+  publish("1.0.0+2", await archive("1.0.0+2", APPPORT), { badSha: true });
   const bad = await MJ.apply();
   check(!bad.ok && /abîmé/.test(bad.err) && link() === "versions/1.0.0+1", "fichier téléchargé abîmé (empreinte) : refusé, rien ne change");
-  publish("1.0.0+2", archive("1.0.0+2", APPPORT));
+  // signature : non signée, ou signée par une autre clé → refusée avant de toucher à la version actuelle
+  const rien = () => link() === "versions/1.0.0+1" && !fs.existsSync(path.join(B, "versions", "1.0.0+2")) && !essai() && !fs.readdirSync(path.join(B, "versions")).some((n) => n.startsWith(".nouvelle"));
+  publish("1.0.0+2", await archive("1.0.0+2", APPPORT, "", { signer: null, tag: "-ns" }));
+  const ns = await MJ.apply();
+  check(!ns.ok && /pas signée/.test(ns.err) && rien() && quits.length === 0, "par internet : version non signée (empreinte pourtant correcte) refusée, rien ne change");
+  publish("1.0.0+2", await archive("1.0.0+2", APPPORT, "", { signer: AUTRE_PEM, tag: "-autre" }));
+  const au = await MJ.apply();
+  check(!au.ok && /fausse/.test(au.err) && rien() && quits.length === 0, "par internet : version signée par une autre clé refusée, rien ne change");
+  publish("1.0.0+2", await archive("1.0.0+2", APPPORT));
   const c = await MJ.check();
   check(c.available && c.latest === "1.0.0+2" && c.notes === "Nouveautés de test" && c.asset.name === "Rembobine-Linux-PC.tar.gz", "nouvelle fabrication trouvée sur GitHub (bonne archive pour un PC)");
   const a1 = await MJ.apply(); if (!a1.ok) console.log(a1);
@@ -144,7 +161,7 @@ function archive(label, port, mode) {
   // version 3 cassée : le gardien remet la 2
   fs.mkdirSync(path.join(T, "data-1.0.0+2"), { recursive: true });
   MJ.stop(); MJ = mkMaj("1.0.0+2");
-  publish("1.0.0+3", archive("1.0.0+3", APPPORT, "casse"));
+  publish("1.0.0+3", await archive("1.0.0+3", APPPORT, "casse"));
   const a2 = await MJ.apply();
   check(a2.ok && link() === "versions/1.0.0+3", "version 3 installée et essayée");
   check(await until(() => !essai(), 20000), "le gardien a fini (60 s en vrai, 6 s ici)");
@@ -165,8 +182,14 @@ function archive(label, port, mode) {
   check(createMaj({ data: T, build: { label: "x", build: 1 }, cfg: () => ({}), isOs: true, platform: "linux" }).status().config.auto === true
     && createMaj({ data: T, build: { label: "x", build: 1 }, cfg: () => ({}), isOs: false, platform: "linux" }).status().config.auto === false, "par défaut : automatique sur Rembobine OS, pas ailleurs");
 
-  // mise à jour par fichier (clé USB)
-  fs.copyFileSync(archive("1.0.0+4", APPPORT), path.join(USB, "Rembobine-Linux-PC.tar.gz"));
+  // mise à jour par fichier (clé USB) : non signée ou signée par une autre clé, refusée ; signée par la bonne, installée
+  fs.copyFileSync(await archive("1.0.0+4", APPPORT, "", { signer: null, tag: "-ns" }), path.join(USB, "Rembobine-Linux-PC.tar.gz"));
+  const uns = await MJ.fromFile(MJ.status().usb[0].file);
+  check(!uns.ok && /pas signée/.test(uns.err) && link() === "versions/1.0.0+2" && !fs.existsSync(path.join(B, "versions", "1.0.0+4")), "clé USB : version non signée refusée, rien ne change");
+  fs.copyFileSync(await archive("1.0.0+4", APPPORT, "", { signer: AUTRE_PEM, tag: "-autre" }), path.join(USB, "Rembobine-Linux-PC.tar.gz"));
+  const uau = await MJ.fromFile(MJ.status().usb[0].file);
+  check(!uau.ok && /fausse/.test(uau.err) && link() === "versions/1.0.0+2" && !fs.existsSync(path.join(B, "versions", "1.0.0+4")), "clé USB : version signée par une autre clé refusée");
+  fs.copyFileSync(await archive("1.0.0+4", APPPORT), path.join(USB, "Rembobine-Linux-PC.tar.gz"));
   const st = MJ.status();
   check(st.usb.length === 1 && st.usb[0].where === "clé USB", "archive trouvée sur la clé USB");
   check((await MJ.fromFile("/etc/passwd")).ok === false, "un fichier hors de la liste est refusé");

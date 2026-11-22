@@ -1,7 +1,7 @@
 // Rembobine — application de bureau (Linux, Raspberry Pi, Windows).
-// Affiche le logiciel Rembobine et, s'il est installé, le module 3D facultatif (Godot) quand la page le demande.
+// Affiche le logiciel Rembobine et, s'il est installé, le module facultatif quand la page le demande.
 // Linux : thème sombre pour ce que dessine la fenêtre elle-même (avant que la page soit dessinée, par exemple au
-// retour de la 3D) ; sans lui, on voit un instant le fond clair du système. Avant tout le reste (GTK le lit au démarrage).
+// retour du module) ; sans lui, on voit un instant le fond clair du système. Avant tout le reste (GTK le lit au démarrage).
 if (process.platform === "linux" && !process.env.GTK_THEME) process.env.GTK_THEME = "Adwaita:dark";
 const { app, BrowserWindow, ipcMain, protocol } = require("electron");
 const path = require("path");
@@ -67,7 +67,7 @@ function createWindow() {
   if (serveur && serveur.kioskKey) {
     const own = new RegExp(`^http://(127\\.0\\.0\\.1|localhost):${serveur.port}/`), wid = win.webContents.id;
     win.webContents.session.webRequest.onBeforeSendHeaders((d, cb) => {
-      if ((d.webContentsId === wid || d.webContentsId === M3DW.viewId()) && own.test(d.url)) d.requestHeaders["X-Rembobine-Ecran"] = serveur.kioskKey;
+      if ((d.webContentsId === wid || d.webContentsId === MODW.viewId()) && own.test(d.url)) d.requestHeaders["X-Rembobine-Ecran"] = serveur.kioskKey;
       cb({ requestHeaders: d.requestHeaders });
     });
   }
@@ -83,16 +83,16 @@ function openOutside(url) {
   if (u.protocol === "https:" || (u.protocol === "http:" && home)) require("electron").shell.openExternal(u.href).catch(() => {});
 }
 
-// où se trouve le module 3D (Godot), selon la machine
+// où se trouve le module, selon la machine
 function godotBin() {
-  const base = app.isPackaged || fs.existsSync(path.join(process.resourcesPath, "gamebox3d")) ? path.join(process.resourcesPath, "gamebox3d") : path.join(__dirname, "gamebox3d");
-  const name = process.platform === "win32" ? "Rembobine-3D.exe" : process.arch === "arm64" ? "Rembobine-3D.arm64" : "Rembobine-3D.x86_64";
+  const base = app.isPackaged || fs.existsSync(path.join(process.resourcesPath, "module")) ? path.join(process.resourcesPath, "module") : path.join(__dirname, "module");
+  const name = process.platform === "win32" ? "rembobine-module.exe" : process.arch === "arm64" ? "rembobine-module.arm64" : "rembobine-module.x86_64";
   return path.join(base, name);
 }
 
-// la version Web du module 3D (export « Web » de Godot), affichée dans la fenêtre même du logiciel
+// la version Web du module, affichée dans la fenêtre même du logiciel
 function godotWebDir() {
-  return app.isPackaged || fs.existsSync(path.join(process.resourcesPath, "gamebox3d-web")) ? path.join(process.resourcesPath, "gamebox3d-web") : path.join(__dirname, "gamebox3d-web");
+  return app.isPackaged || fs.existsSync(path.join(process.resourcesPath, "module-web")) ? path.join(process.resourcesPath, "module-web") : path.join(__dirname, "module-web");
 }
 
 function which(prog) {
@@ -116,7 +116,7 @@ async function startServer() {
         args: process.argv.includes("--kiosk") ? ["--kiosk"] : [], home: os.homedir(),
         licencesDir: app.isPackaged ? path.join(path.dirname(process.execPath), "licences") : path.join(__dirname, "..", "licences") },
       // les vrais émulateurs des consoles récentes, livrés avec l'appli (ci/emulateurs_natifs.sh)
-      web3dDir: godotWebDir(),
+      moduleWebDir: godotWebDir(),
       emusDir: app.isPackaged ? path.join(process.resourcesPath, "emulateurs") : path.join(__dirname, "emulateurs") });
     await serveur.start();
   } catch (e) { console.error("serveur Rembobine :", e.message); serveur = null; }
@@ -124,37 +124,37 @@ async function startServer() {
 
 ipcMain.handle("gbx:info", () => ({ platform: process.platform, arch: process.arch, home: os.homedir(), version: app.getVersion(), build: BUILD ? BUILD.label : "", kiosk, server: serveur ? serveur.port : 0 }));
 
-// Le module 3D (Godot) : préparé à l'avance, caché, puis montré par un fondu (voir monde3d.js).
-// La page demande la préparation quand le logiciel est au repos (gbx:prepare3d), jamais pendant un film.
+// Le module : préparé à l'avance, caché, puis montré par un fondu (voir module_natif.js).
+// La page demande la préparation quand le logiciel est au repos (gbx:module-preparer), jamais pendant un film.
 let mpvBusy = 0;
-const M3D = require("./monde3d")({ app, win: () => win, bin: godotBin, serveur: () => serveur, kiosk, quit: () => app.quit(),
+const MOD = require("./module_natif")({ app, win: () => win, bin: godotBin, serveur: () => serveur, kiosk, quit: () => app.quit(),
   busy: () => mpvBusy > 0 || !!(serveur && serveur.player) });
-// Sur PC (Windows, Linux avec un bureau) : la 3D DANS la fenêtre du logiciel (version Web du jeu, monde3d_web.js) ;
-// Raspberry, Rembobine OS (plein écran sans bureau) ou si elle ne peut pas marcher ici : le jeu séparé ci-dessus.
-// REMBOBINE_3D=natif force le jeu séparé.
-const M3DW = require("./monde3d_web")({ app, win: () => win, serveur: () => serveur, webDir: godotWebDir, quit: () => app.quit(), dir3d: () => M3D.dir3d(),
+// Sur PC (Windows, Linux avec un bureau) : le module DANS la fenêtre du logiciel (sa version Web, module_web.js) ;
+// Raspberry, Rembobine OS (plein écran sans bureau) ou s'il ne peut pas marcher ici : le programme séparé ci-dessus.
+// REMBOBINE_MODULE=natif force le programme séparé.
+const MODW = require("./module_web")({ app, win: () => win, serveur: () => serveur, webDir: godotWebDir, quit: () => app.quit(), dossier: () => MOD.dossier(),
   busy: () => mpvBusy > 0 || !!(serveur && serveur.player) });
-const web3d = () => process.env.REMBOBINE_3D !== "natif" && !kiosk && process.arch !== "arm64" && M3DW.available();
-// La page demande la préparation dès son ouverture. La 3D intégrée (une vue de la fenêtre, avec son propre processus)
+const modWeb = () => process.env.REMBOBINE_MODULE !== "natif" && !kiosk && process.arch !== "arm64" && MODW.available();
+// La page demande la préparation dès son ouverture. La version intégrée (une vue de la fenêtre, avec son propre processus)
 // démarre tout de suite ; le jeu séparé (Raspberry, Rembobine OS) attend que le logiciel ait fini de démarrer, il a
 // besoin de toute la machine : « tot » = redemander dans « dans » millisecondes.
 const T_APPLI = Date.now();
-ipcMain.handle("gbx:prepare3d", (e, args) => {
-  if (web3d()) return M3DW.prepare(args);
+ipcMain.handle("gbx:module-preparer", (e, args) => {
+  if (modWeb()) return MODW.prepare(args);
   const dans = 15000 - (Date.now() - T_APPLI);
   if (dans > 0) return { ok: false, why: "tot", dans: dans + 200 };
-  return M3D.prepare(args);
+  return MOD.prepare(args);
 });
 // « Réessayer en mode simplifié » après un plantage : rendu compatible et qualité économie, retenus pour la suite
-ipcMain.handle("gbx:simple3d", (e, on) => M3D.simple(on));
-ipcMain.handle("gbx:launch3d", async (e, args, maison) => {
-  if (!web3d()) return M3D.launch(args, maison);
-  const r = await M3DW.launch(args, maison);
+ipcMain.handle("gbx:module-simple", (e, on) => MOD.simple(on));
+ipcMain.handle("gbx:module-lancer", async (e, args, maison) => {
+  if (!modWeb()) return MOD.launch(args, maison);
+  const r = await MODW.launch(args, maison);
   // la version intégrée ne peut pas démarrer ici (pas de WebGL 2…) : le jeu séparé, sans rien demander
-  if (!r.ok && r.quick && M3DW.broken()) return M3D.launch(args, maison);
+  if (!r.ok && r.quick && MODW.broken()) return MOD.launch(args, maison);
   return r;
 });
-// « Quitter Rembobine » (menu du logiciel, ou menu de la 3D)
+// « Quitter Rembobine » (menu du logiciel, ou menu du module)
 ipcMain.handle("gbx:quit", () => { setTimeout(() => app.quit(), 50); return true; });
 
 // mpv se pilote par un petit « tuyau » : afficher un message à l'écran, s'arrêter.
@@ -257,7 +257,7 @@ function mpvBin() {
 function mpvJouer(file, o) {
   const mpv = mpvBin();
   if (!mpv) return { fin: Promise.resolve({ ok: false, err: "mpv" }), kill() {} };
-  M3D.film();
+  MOD.film();
   // reprise connue de la page (un autre appareil, par exemple) : mpv part de là ; sinon il reprend où il s'était arrêté
   const pct = o && Number(o.startPct), sec = o && Number(o.start);
   const start = pct >= 2 && pct < 95 ? [`--start=${pct.toFixed(1)}%`] : sec > 0 ? [`--start=${sec.toFixed(1)}`] : [];
@@ -377,7 +377,7 @@ ipcMain.handle("gbx:tvOn", () => new Promise((resolve) => {
 
 app.whenReady().then(async () => {
   // thème sombre pour ce que dessine l'appli elle-même (fond de fenêtre, boîtes de dialogue) : sans lui, l'espace d'un
-  // instant au retour de la 3D, la fenêtre montre le fond clair du système avant que la page soit redessinée
+  // instant au retour du module, la fenêtre montre le fond clair du système avant que la page soit redessinée
   try { require("electron").nativeTheme.themeSource = "dark"; } catch (_) {}
   // permissions demandées par la page (micro pour la voix, plein écran, manettes…) : seulement pour la page de Rembobine elle-même
   const { session } = require("electron");
@@ -400,5 +400,5 @@ function demarrerComplet() {
   complet = (async () => { await startServer(); createWindow(); setTimeout(inscrireOuvrirAvec, 15000); })();
   return complet;
 }
-app.on("before-quit", () => { LS.stop(); M3D.stop(); M3DW.stop(); if (serveur) serveur.stop().catch(() => {}); });
+app.on("before-quit", () => { LS.stop(); MOD.stop(); MODW.stop(); if (serveur) serveur.stop().catch(() => {}); });
 app.on("window-all-closed", () => app.quit());

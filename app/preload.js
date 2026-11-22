@@ -3,14 +3,14 @@ const { contextBridge, ipcRenderer, webUtils } = require("electron");
 contextBridge.exposeInMainWorld("gamebox", {
   app: true,
   info: () => ipcRenderer.invoke("gbx:info"),
-  // maison : la progression du module gardée par le serveur de la maison (la 3D prend la plus récente)
-  launch3D: (args, maison) => ipcRenderer.invoke("gbx:launch3d", args, maison),
-  // préparer la 3D à l'avance (cachée, en pause) pour qu'elle s'ouvre par un simple fondu
-  prepare3D: (args) => ipcRenderer.invoke("gbx:prepare3d", args),
-  // la 3D est à l'écran (« visible ») : la page retire sa petite cassette d'attente
-  on3D: (cb) => { if (typeof cb === "function") ipcRenderer.on("m3d:etat", (e, s) => cb(String(s))); },
-  // après un plantage de la 3D : la relancer en mode simplifié (rendu compatible, qualité économie)
-  simple3D: (on) => ipcRenderer.invoke("gbx:simple3d", !!on),
+  // maison : la progression du module gardée par le serveur de la maison (le module prend la plus récente)
+  ouvrirModule: (args, maison) => ipcRenderer.invoke("gbx:module-lancer", args, maison),
+  // préparer le module à l'avance (caché, en pause) pour qu'il s'ouvre par un simple fondu
+  preparerModule: (args) => ipcRenderer.invoke("gbx:module-preparer", args),
+  // le module est à l'écran (« visible ») : la page retire sa petite cassette d'attente
+  surModule: (cb) => { if (typeof cb === "function") ipcRenderer.on("gbx:module-etat", (e, s) => cb(String(s))); },
+  // après un plantage du module : le relancer en mode simplifié (rendu compatible, qualité économie)
+  moduleSimple: (on) => ipcRenderer.invoke("gbx:module-simple", !!on),
   // « Quitter Rembobine »
   quit: () => ipcRenderer.invoke("gbx:quit"),
   tvOn: () => ipcRenderer.invoke("gbx:tvOn"),

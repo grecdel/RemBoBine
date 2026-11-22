@@ -19,7 +19,7 @@ esac
 ln -sfn "versions/$LABEL" "$BASE/actuelle"
 ln -sfn "actuelle/rembobine" "$BASE/rembobine"
 ln -sfn "actuelle/rembobine.png" "$BASE/rembobine.png"
-chmod +x "$BASE/versions/$LABEL/rembobine" "$BASE/versions/$LABEL/rembobine-bin" "$BASE/versions/$LABEL/resources/gamebox3d/"* 2>/dev/null || true
+chmod +x "$BASE/versions/$LABEL/rembobine" "$BASE/versions/$LABEL/rembobine-bin" "$BASE/versions/$LABEL/resources/module/"* 2>/dev/null || true
 ln -sf "$BASE/rembobine" "$HOME/.local/bin/rembobine"
 cat > "$HOME/.local/share/applications/rembobine.desktop" <<EOD
 [Desktop Entry]

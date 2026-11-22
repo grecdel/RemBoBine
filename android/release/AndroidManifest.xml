@@ -18,7 +18,7 @@
     <application android:usesCleartextTraffic="true">
         <activity
             android:name="com.godot.game.GodotApp"
-            android:process=":monde3d"
+            android:process=":module"
             android:exported="false"
             tools:replace="android:exported">
             <intent-filter tools:node="removeAll" />
@@ -38,7 +38,8 @@
                 <category android:name="android.intent.category.LAUNCHER" />
                 <category android:name="android.intent.category.LEANBACK_LAUNCHER" />
             </intent-filter>
-            <!-- le module rend la main sans se fermer (lien rembobine-retour://monde3d) ;
+            <!-- le module rend la main sans se fermer (lien rembobine-retour://module, avec le jeton
+                 donné au module à son lancement : un lien venu d'une autre appli est ignoré) ;
                  sans catégorie BROWSABLE : aucun site web ne peut l'utiliser -->
             <intent-filter>
                 <action android:name="android.intent.action.VIEW" />

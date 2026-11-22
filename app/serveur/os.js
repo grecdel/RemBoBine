@@ -43,6 +43,7 @@ function createOs(S, H, opt = {}) {
   const licDir = opt.licencesDir || "";
   const refuse = (res) => H.send(res, 403, { ok: false, err: "Réservé à la maison (accès invité)." });
 
+  const NON_SIGNE = { ok: false, tv: true, err: "Par sécurité, une mise à jour par fichier s'installe seulement sur l'écran de la TV (clé USB branchée sur la TV), pas depuis un téléphone ou un autre appareil." };
   const TV_ONLY = { ok: false, tv: true, err: "Par sécurité, ce réglage se change seulement sur l'écran de la TV (Rembobine OS → Avancé), pas depuis un téléphone." };
   async function route(req, res, p, url, W) {
     const { send } = H, post = req.method === "POST";
@@ -95,11 +96,14 @@ function createOs(S, H, opt = {}) {
       if (a === "rollback") return send(res, 200, await MJ.rollback());
       // appli décompressée relancée alors que Rembobine est déjà installé (~/.local/share/rembobine) : on passe à celui-là
       if (a === "installee") return send(res, 200, MJ.ouvrirInstallee ? MJ.ouvrirInstallee() : { ok: false, err: "Action inconnue." });
-      if (a === "file") return send(res, 200, await MJ.fromFile(String(b.file || "")));
+      if (a === "file") return send(res, 200, !W.local && !MJ.signee() ? NON_SIGNE : await MJ.fromFile(String(b.file || "")));
       if (a === "os") return send(res, 200, { ok: false, err: "Le système (Debian) se met à jour en réinstallant l'image Rembobine OS : tes réglages se gardent avec une sauvegarde sur clé USB." });
       return send(res, 200, { ok: false, err: "Action inconnue." });
     }
+    // sans signature des mises à jour (pas encore de clé publique), un fichier ne s'installe que depuis l'écran de la TV :
+    // un téléphone relié, perdu ou volé, ne doit pas pouvoir remplacer Rembobine par n'importe quel programme
     if (p === "/api/update/upload" && post) {
+      if (!W.local && !MJ.signee()) return send(res, 200, NON_SIGNE);
       const r = await saveBody(req, MJ.uploaded(), 2e9); if (!r.ok) return send(res, 200, r);
       return send(res, 200, await MJ.fromFile(MJ.uploaded()));
     }

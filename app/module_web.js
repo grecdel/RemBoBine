@@ -1,26 +1,26 @@
-// Rembobine — le module 3D DANS la fenêtre du logiciel (PC Windows et Linux avec un bureau).
+// Rembobine — le module DANS la fenêtre du logiciel (PC Windows et Linux avec un bureau).
 //
-// Demande du propriétaire (impérative) : passer de la 2D à la 3D par un simple fondu, dans la MÊME application,
+// Demande du propriétaire (impérative) : passer du logiciel au module par un simple fondu, dans la MÊME application,
 // sans fenêtre qui se ferme ni une autre qui s'ouvre. Ici, il n'y a qu'une fenêtre :
-//  1. peu après le démarrage (logiciel au repos), la version Web du module (rembobine3d.html, export « Web »)
+//  1. peu après le démarrage (logiciel au repos), la version Web du module (rembobine-module.html)
 //     est chargée dans une VUE de la fenêtre (WebContentsView), cachée sous la page du logiciel ; elle construit tout
 //     derrière un voile noir, puis se met en pause (mode « web » du module) ;
 //  2. à l'ouverture : la page fond au noir, la vue passe devant (encore noire), le jeu apparaît en fondu ;
 //  3. « Retour au logiciel » : le jeu fond au noir, la vue repasse dessous (le jeu en pause, PAS fermé), la page
 //     fond depuis le noir. La barre de titre, la taille de la fenêtre, l'icône dans la barre des tâches ne bougent pas.
 // La vue a son propre processus (la page du logiciel reste fluide pendant la construction).
-// Les fichiers du jeu sont servis par le serveur de la maison (/monde3d/, seulement pour cette machine) : même origine
+// Les fichiers du module sont servis par le serveur de la maison (/module/, seulement pour cette machine) : même origine
 // que la bibliothèque, que le module lit aussi.
-// Si quelque chose manque (pas de serveur, pas de WebGL 2, plantage), app/main.js garde l'ancien chemin (monde3d.js).
-// Même interface que monde3d.js : prepare, launch, simple, film, state, stop, dir3d.
+// Si quelque chose manque (pas de serveur, pas de WebGL 2, plantage), app/main.js garde l'ancien chemin (module_natif.js).
+// Même interface que module_natif.js : prepare, launch, simple, film, state, stop, dossier.
 "use strict";
 const path = require("path");
 const fs = require("fs");
 
-module.exports = function monde3dWeb(o) {
-  // o : { app, win(), serveur(), webDir(), busy(), log(), quit(), dir3d() }
+module.exports = function moduleWeb(o) {
+  // o : { app, win(), serveur(), webDir(), busy(), log(), quit(), dossier() }
   const { WebContentsView, ipcMain } = require("electron");
-  const log = o.log || ((t) => console.log("[monde3d] " + t));
+  const log = o.log || ((t) => console.log("[module] " + t));
   let V = null;            // { view, key, args, state, t0, wait: {ev: [fn]}, lines }
   let broken = "";         // raison pour laquelle la version intégrée ne marche pas ici (on passe alors à l'autre)
   let quitting = false;
@@ -36,7 +36,7 @@ module.exports = function monde3dWeb(o) {
   function available() {
     if (broken || quitting) return false;
     const S = o.serveur(), d = o.webDir();
-    return !!(S && S.port && d && fs.existsSync(path.join(d, "rembobine3d.wasm")) && fs.existsSync(path.join(d, "rembobine3d.pck")));
+    return !!(S && S.port && d && fs.existsSync(path.join(d, "rembobine-module.wasm")) && fs.existsSync(path.join(d, "rembobine-module.pck")));
   }
 
   // la vue occupe toute la zone de la fenêtre (sous la barre de titre), et suit ses changements de taille
@@ -51,8 +51,8 @@ module.exports = function monde3dWeb(o) {
     V.view.setVisible(!!on);
   }
 
-  // dire à la page du logiciel où en est la 3D (« visible », ou l'avancement de la préparation quand on l'attend)
-  function tell(t) { try { const w = o.win(); if (w && !w.isDestroyed()) w.webContents.send("m3d:etat", t); } catch (_) {} }
+  // dire à la page du logiciel où en est le module (« visible », ou l'avancement de la préparation quand on l'attend)
+  function tell(t) { try { const w = o.win(); if (w && !w.isDestroyed()) w.webContents.send("gbx:module-etat", t); } catch (_) {} }
   // l'empreinte de la bibliothèque du serveur (lue aussi par le module) : si elle change, on re-prépare
   function libSig() {
     try {
@@ -66,14 +66,14 @@ module.exports = function monde3dWeb(o) {
 
   function event(v, j) {
     if (!j || typeof j !== "object") return;
-    if (j.ev === "pret") { v.state = "pret"; v.calme = j.calme !== false; fails = 0; log(`3D intégrée prête en ${((Date.now() - v.t0) / 1000).toFixed(1)} s` + (v.calme ? "" : " (des sons restent à fabriquer)")); }
-    if (j.ev === "calme") { if (!v.calme) log(`3D intégrée : sons prêts à ${((Date.now() - v.t0) / 1000).toFixed(1)} s`); v.calme = true; }
+    if (j.ev === "pret") { v.state = "pret"; v.calme = j.calme !== false; fails = 0; log(`module intégré prêt en ${((Date.now() - v.t0) / 1000).toFixed(1)} s` + (v.calme ? "" : " (des sons restent à fabriquer)")); }
+    if (j.ev === "calme") { if (!v.calme) log(`module intégré : sons prêts à ${((Date.now() - v.t0) / 1000).toFixed(1)} s`); v.calme = true; }
     // avancement de la préparation : montré par la page seulement si quelqu'un attend (ouverture demandée avant la fin)
     if (j.ev === "etape") { const p = Number(j.p); if (p > 0 && p <= 1 && p > (v.p || 0)) { v.p = p; if (v.inUse && v.state !== "montre") tell("progres:" + p.toFixed(3)); } return; }
     // la bibliothèque que le jeu vient de lire (au moment où il démarre) : on retient son empreinte
     // (t = 0 : le jeu a démarré sans bibliothèque — analyse des dossiers pas finie — : dès qu'il y en a une, on re-prépare)
     if (j.ev === "biblio") { v.lib = Number(j.t) > 0 ? libSig() : ""; return; }
-    if (j.ev === "erreur") { log("3D intégrée : " + String(j.msg || "").slice(0, 200)); if (/WebGL/.test(String(j.msg))) broken = "webgl"; end(v, "erreur"); return; }
+    if (j.ev === "erreur") { log("module intégré : " + String(j.msg || "").slice(0, 200)); if (/WebGL/.test(String(j.msg))) broken = "webgl"; end(v, "erreur"); return; }
     if (j.ev === "quitter") { quitting = true; try { o.quit(); } catch (_) {} return; }
     const l = v.wait[j.ev]; if (l) { delete v.wait[j.ev]; l.forEach(f => f(j)); }
   }
@@ -101,7 +101,7 @@ module.exports = function monde3dWeb(o) {
     v.view.webContents.executeJavaScript(`window.rbbVeilleCmd && window.rbbVeilleCmd(${JSON.stringify(JSON.stringify(cmd))})`, true).catch(() => {});
   }
 
-  ipcMain.on("m3d:web", (e, s) => {
+  ipcMain.on("gbx:module-web", (e, s) => {
     const v = V; if (!v || e.sender !== v.view.webContents) return;
     let j = null; try { j = JSON.parse(String(s)); } catch (_) {}
     event(v, j);
@@ -110,7 +110,7 @@ module.exports = function monde3dWeb(o) {
   function start(args) {
     const S = o.serveur(), w = o.win();
     const view = new WebContentsView({ webPreferences: {
-      preload: path.join(__dirname, "preload3d.js"), contextIsolation: true, sandbox: true, nodeIntegration: false,
+      preload: path.join(__dirname, "preload_module.js"), contextIsolation: true, sandbox: true, nodeIntegration: false,
       backgroundThrottling: false, autoplayPolicy: "no-user-gesture-required", spellcheck: false } });
     view.setBackgroundColor("#000000");
     const v = { view, key: keyOf(args), args, state: "demarrage", t0: Date.now(), wait: {}, exited: false };
@@ -119,9 +119,9 @@ module.exports = function monde3dWeb(o) {
     // le jeu ne quitte jamais sa page ; aucune fenêtre ne s'ouvre depuis lui
     wc.setWindowOpenHandler(() => ({ action: "deny" }));
     wc.on("will-navigate", (e) => e.preventDefault());
-    wc.on("render-process-gone", (e, d) => { log("3D intégrée : processus perdu (" + (d && d.reason) + ")"); v.crash = d && d.reason; end(v, "plantage"); });
-    wc.on("did-fail-load", (e, code, desc) => { log("3D intégrée : chargement impossible (" + desc + ")"); end(v, "chargement"); });
-    wc.on("console-message", (e, level, msg) => { if (/\[(veille|démarrage)\]/.test(msg) && process.env.REMBOBINE_3D_JOURNAL) log("godot " + msg); });
+    wc.on("render-process-gone", (e, d) => { log("module intégré : processus perdu (" + (d && d.reason) + ")"); v.crash = d && d.reason; end(v, "plantage"); });
+    wc.on("did-fail-load", (e, code, desc) => { log("module intégré : chargement impossible (" + desc + ")"); end(v, "chargement"); });
+    wc.on("console-message", (e, level, msg) => { if (/\[(veille|démarrage)\]/.test(msg) && process.env.REMBOBINE_MODULE_JOURNAL) log("godot " + msg); });
     // Échap, F11 : comme dans la page du logiciel
     wc.on("before-input-event", (e, input) => { if (input.type === "keyDown" && input.key === "F11" && w) { w.setFullScreen(!w.isFullScreen()); e.preventDefault(); } });
     view.setVisible(false);
@@ -134,10 +134,10 @@ module.exports = function monde3dWeb(o) {
       S.tvTaps.add(v.tap);
     }
     const a = ["--", "--embarque", ...args, `--serveur=${S.port}`, "--veille=web"];
-    wc.loadURL(`http://127.0.0.1:${S.port}/monde3d/rembobine3d.html#${encodeURIComponent(JSON.stringify(a))}`);
+    wc.loadURL(`http://127.0.0.1:${S.port}/module/rembobine-module.html#${encodeURIComponent(JSON.stringify(a))}`);
     // pas de nouvelles au bout de 3 minutes : on abandonne cette préparation
-    waitFor(v, ["pret"], 180000).then((j) => { if (j.ev === "delai" && v.state !== "pret" && v.state !== "montre") { log("3D intégrée : trop lente à se préparer"); fails++; end(v, "delai"); } });
-    log("3D intégrée : préparation");
+    waitFor(v, ["pret"], 180000).then((j) => { if (j.ev === "delai" && v.state !== "pret" && v.state !== "montre") { log("module intégré : trop lent à se préparer"); fails++; end(v, "delai"); } });
+    log("module intégré : préparation");
     return v;
   }
 
@@ -150,12 +150,12 @@ module.exports = function monde3dWeb(o) {
       // la bibliothèque du serveur a changé depuis que le jeu l'a lue (analyse finie après coup, films ajoutés) :
       // ses étagères ne seraient plus les bonnes
       let why = V.key !== k ? "réglages changés" : "";
-      // (au plus une fois toutes les 5 minutes : une bibliothèque qui bouge sans cesse ne doit pas relancer la 3D en boucle)
+      // (au plus une fois toutes les 5 minutes : une bibliothèque qui bouge sans cesse ne doit pas relancer le module en boucle)
       if (!why && V.state === "pret" && V.lib !== undefined && Date.now() - libRelance > 300000) { const sig = libSig(); if (sig && sig !== V.lib) { why = "bibliothèque changée"; libRelance = Date.now(); } }
       if (!why) return { ok: true, state: V.state };
       if (o.busy && o.busy()) return { ok: true, state: V.state };   // pendant un film : on ne touche à rien, on verra après
       // (tout de suite, même si l'ancienne préparation n'était pas finie : avant, il fallait attendre deux tours de 45 s)
-      log(why + " : nouvelle préparation (3D intégrée)"); end(V, "relance");
+      log(why + " : nouvelle préparation (module intégré)"); end(V, "relance");
     }
     if (o.busy && o.busy()) return { ok: false, why: "film" };
     start(args);
@@ -189,35 +189,35 @@ module.exports = function monde3dWeb(o) {
     // la vue passe devant (le jeu est encore tout noir), prend le clavier, et le jeu apparaît en fondu
     front(true);
     try { v.view.webContents.focus(); } catch (_) {}
-    send(v, { cmd: "montre", meteo: h.meteo, ville: h.ville, maison: m, essai_retour: process.env.REMBOBINE_3D_ESSAI_RETOUR || "" });
+    send(v, { cmd: "montre", meteo: h.meteo, ville: h.ville, maison: m, essai_retour: process.env.REMBOBINE_MODULE_ESSAI_RETOUR || "" });
     const vis = await waitFor(v, ["visible"], 15000);
     if (vis.ev === "fin") return finish(v, { tClick });
     v.state = "montre";
     const tVisible = Date.now();
     const w = o.win();
     tell("visible");
-    log(`clic → 3D visible (intégrée) : ${tVisible - tClick} ms (dont attente de la préparation ${tReady - tClick} ms)`);
+    log(`clic → module visible (intégré) : ${tVisible - tClick} ms (dont attente de la préparation ${tReady - tClick} ms)`);
     const r = await waitFor(v, ["retour"], 0);
     if (r.ev === "fin") return finish(v, { tClick, tVisible });
     // la progression (rangée par le jeu dans sa page) rejoint celle de la version séparée
-    if (typeof r.monde3d === "string" && r.monde3d.length < 2000000) { try { fs.writeFileSync(path.join(o.dir3d(), "monde3d.json"), r.monde3d); } catch (_) {} }
+    if (typeof r.progres === "string" && r.progres.length < 2000000) { try { fs.writeFileSync(path.join(o.dossier(), "module.json"), r.progres); } catch (_) {} }
     v.state = "pret"; v.inUse = false;
     front(false);
     try { w.webContents.focus(); } catch (_) {}
     send(v, { cmd: "cache" });
     const res = { ok: true, integre: true, preloaded: tReady - tClick < 50, ms: { visible: tVisible - tClick } };
     readProgress(res);
-    log(`retour au logiciel (${Math.round((Date.now() - tVisible) / 1000)} s dans la 3D), 3D gardée en pause`);
+    log(`retour au logiciel (${Math.round((Date.now() - tVisible) / 1000)} s dans le module), module gardé en pause`);
     return res;
   }
   function readProgress(r) {
-    try { const f = path.join(o.dir3d(), "monde3d.json"); if (fs.statSync(f).size < 2000000) { const j = JSON.parse(fs.readFileSync(f, "utf8")); if (j && typeof j === "object") r.monde3d = j; } } catch (_) {}
+    try { const f = path.join(o.dossier(), "module.json"); if (fs.statSync(f).size < 2000000) { const j = JSON.parse(fs.readFileSync(f, "utf8")); if (j && typeof j === "object") r.progres = j; } } catch (_) {}
   }
   function finish(v, t) {
     const w = o.win();
     try { if (w) w.webContents.focus(); } catch (_) {}
     const r = { ok: !v.crash && v.why !== "erreur", quick: !t.tVisible, integre: true };
-    if (v.crash) r.crash = { file: "", lines: ["La 3D intégrée s'est arrêtée (" + v.crash + ")."] };
+    if (v.crash) r.crash = { file: "", lines: ["Le module intégré s'est arrêté (" + v.crash + ")."] };
     readProgress(r);
     if (!v.exited) end(v, "fin");
     return r;

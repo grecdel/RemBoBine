@@ -87,6 +87,8 @@ CH "visudo -cf /etc/sudoers.d/rembobine-tailscale"
 sudo tee "$R/etc/sudoers.d/rembobine-systeme" >/dev/null <<'EOF'
 rembobine ALL=(root) NOPASSWD: /usr/bin/systemctl poweroff, /usr/bin/systemctl reboot
 rembobine ALL=(root) NOPASSWD: /usr/bin/systemctl enable --now smbd, /usr/bin/systemctl disable --now smbd, /usr/bin/systemctl enable --now nmbd, /usr/bin/systemctl disable --now nmbd
+rembobine ALL=(root) NOPASSWD: /usr/bin/systemctl enable --now wsdd, /usr/bin/systemctl disable --now wsdd
+rembobine ALL=(root) NOPASSWD: /usr/bin/systemctl enable --now rembobine-partage-annonce, /usr/bin/systemctl disable --now rembobine-partage-annonce
 rembobine ALL=(root) NOPASSWD: /usr/bin/systemctl enable --now ssh, /usr/bin/systemctl disable --now ssh
 EOF
 sudo chmod 440 "$R/etc/sudoers.d/rembobine-systeme"
@@ -101,7 +103,7 @@ sudo rm -rf "$B"; sudo mkdir -p "$B/versions"
 sudo cp -a "$APP" "$B/versions/$LABEL"
 sudo ln -sfn "versions/$LABEL" "$B/actuelle"
 sudo ln -sfn "actuelle/rembobine" "$B/rembobine"
-sudo chmod +x "$B/versions/$LABEL/rembobine" "$B/versions/$LABEL/rembobine-bin" "$B/versions/$LABEL"/resources/gamebox3d/* || true
+sudo chmod +x "$B/versions/$LABEL/rembobine" "$B/versions/$LABEL/rembobine-bin" "$B/versions/$LABEL"/resources/module/* || true
 # c'est Rembobine OS (le serveur active alors les mises à jour automatiques la nuit, l'extinction depuis la télécommande…)
 echo "Rembobine OS $LABEL" | sudo tee "$R/etc/rembobine-os" >/dev/null
 
@@ -137,7 +139,7 @@ CH "chown -R rembobine:rembobine /opt/rembobine"
 sudo tee "$R/home/rembobine/.bash_profile" >/dev/null <<'EOF'
 # Rembobine OS : sur l'écran principal, on démarre directement Rembobine
 if [ -z "$DISPLAY" ] && [ "$(tty)" = "/dev/tty1" ]; then
-  # +bs : le serveur X garde l'image des fenêtres cachées (passage d'une fenêtre à l'autre sans éclair blanc, voir app/monde3d.js)
+  # +bs : le serveur X garde l'image des fenêtres cachées (passage d'une fenêtre à l'autre sans éclair blanc, voir app/module_natif.js)
   exec startx /opt/rembobine/session.sh -- -nocursor +bs vt1 >/tmp/rembobine-x.log 2>&1
 fi
 EOF
@@ -175,13 +177,33 @@ if [ -f "$R/etc/samba/smb.conf" ]; then
    follow symlinks = no
 EOF
   # (le compte Samba est créé au premier démarrage, avec le mot de passe tiré au hasard)
+  # ALLUMÉ par défaut (décision du propriétaire) ; se coupe et se rallume depuis l'écran de la TV (Rembobine OS → Avancé →
+  # Partage sur le réseau) : systemctl enable/disable --now smbd nmbd wsdd rembobine-partage-annonce, choix gardé au redémarrage.
   CH "systemctl enable smbd nmbd 2>/dev/null; systemctl enable wsdd 2>/dev/null || true"
-  sudo mkdir -p "$R/etc/avahi/services"
-  sudo tee "$R/etc/avahi/services/rembobine-partage.service" >/dev/null <<'EOF'
+  # annonce Bonjour du partage (un Mac voit « Rembobine » dans le Finder) : elle suit le partage, sinon un Mac verrait un
+  # dossier où il ne peut pas entrer. Le modèle reste dans /usr/share/rembobine ; la petite unité rembobine-partage-annonce
+  # le pose dans /etc/avahi/services quand elle démarre et l'enlève quand elle s'arrête (avahi relit ce dossier tout seul).
+  sudo mkdir -p "$R/etc/avahi/services" "$R/usr/share/rembobine"
+  sudo tee "$R/usr/share/rembobine/rembobine-partage.service" >/dev/null <<'EOF'
 <?xml version="1.0" standalone='no'?>
 <!DOCTYPE service-group SYSTEM "avahi-service.dtd">
 <service-group><name replace-wildcards="yes">Rembobine (%h)</name><service><type>_smb._tcp</type><port>445</port></service></service-group>
 EOF
+  sudo tee "$R/etc/systemd/system/rembobine-partage-annonce.service" >/dev/null <<'EOF'
+[Unit]
+Description=Rembobine : annonce Bonjour du partage réseau (suit le partage)
+After=local-fs.target
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/usr/bin/install -m 644 /usr/share/rembobine/rembobine-partage.service /etc/avahi/services/rembobine-partage.service
+ExecStop=/usr/bin/rm -f /etc/avahi/services/rembobine-partage.service
+
+[Install]
+WantedBy=multi-user.target
+EOF
+  CH "systemctl enable rembobine-partage-annonce.service"
 else echo "Samba non installé (paquet indisponible)"; fi
 # le nom « rembobine.local » sur le réseau de la maison (le téléphone trouve la TV tout seul)
 CH "systemctl enable avahi-daemon 2>/dev/null || true"

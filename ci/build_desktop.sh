@@ -33,8 +33,8 @@ done
 # copie d'un fichier du module : obligatoire, sauf avec RBB_SANS_MODULE=1
 cpm() { if [ "${RBB_SANS_MODULE:-0}" = 1 ] && [ ! -e "$1" ]; then return 0; fi; cp "$1" "$2"; }
 mkapp() {
-  mkdir -p "$1/app" "$1/gamebox3d"
-  cp app/main.js app/monde3d.js app/monde3d_web.js app/preload.js app/preload3d.js app/seul.js app/seul_main.js app/preload_seul.js app/package.json app/icon.png "$1/app/"
+  mkdir -p "$1/app" "$1/module"
+  cp app/main.js app/module_natif.js app/module_web.js app/preload.js app/preload_module.js app/seul.js app/seul_main.js app/preload_seul.js app/package.json app/icon.png "$1/app/"
   # l'interface de lecture des films (script pour mpv) et le lecteur seul (« Ouvrir avec Rembobine »)
   mkdir -p "$1/app/lecteur"; cp app/lecteur/*.lua app/lecteur/seul.html "$1/app/lecteur/"
   # le serveur de la maison : tous ses fichiers, sauf les tests
@@ -66,14 +66,14 @@ for arch in x64 arm64; do
   mv "$d/electron" "$d/rembobine-bin"
   slim "$d"
   mkapp "$d/resources"
-  # PC : le module DANS la fenêtre du logiciel (sa version Web, app/monde3d_web.js) ; le Raspberry garde le programme séparé
-  if [ $arch = x64 ] && [ -d "$G/web" ]; then mkdir -p "$d/resources/gamebox3d-web"; cp "$G"/web/rembobine3d.* "$d/resources/gamebox3d-web/"; fi
-  if [ $arch = x64 ]; then cpm "$G/Rembobine-3D.x86_64" "$d/resources/gamebox3d/"; else cpm "$G/Rembobine-3D.arm64" "$d/resources/gamebox3d/"; fi
+  # PC : le module DANS la fenêtre du logiciel (sa version Web, app/module_web.js) ; le Raspberry garde le programme séparé
+  if [ $arch = x64 ] && [ -d "$G/web" ]; then mkdir -p "$d/resources/module-web"; cp "$G"/web/rembobine-module.* "$d/resources/module-web/"; fi
+  if [ $arch = x64 ]; then cpm "$G/rembobine-module.x86_64" "$d/resources/module/"; else cpm "$G/rembobine-module.arm64" "$d/resources/module/"; fi
   # les vrais émulateurs des consoles récentes (PC seulement : le Raspberry n'est pas assez puissant)
   if [ $arch = x64 ] && [ -d build/natifs/linux-x64 ]; then mkdir -p "$d/resources/emulateurs"; cp -a build/natifs/linux-x64/. "$d/resources/emulateurs/"; fi
   # Raspberry : seulement les outils (ffmpeg, mpv), les consoles lourdes n'y tournent pas
   if [ $arch = arm64 ] && [ -d build/natifs/linux-arm64 ]; then mkdir -p "$d/resources/emulateurs"; cp -a build/natifs/linux-arm64/. "$d/resources/emulateurs/"; fi
-  if [ "${RBB_SANS_MODULE:-0}" = 1 ]; then chmod +x "$d/resources/gamebox3d/"* 2>/dev/null || true; else chmod +x "$d/resources/gamebox3d/"*; fi
+  if [ "${RBB_SANS_MODULE:-0}" = 1 ]; then chmod +x "$d/resources/module/"* 2>/dev/null || true; else chmod +x "$d/resources/module/"*; fi
   cp app/icon.png "$d/rembobine.png"; cp app/linux/* "$d/"; cp LISEZ-MOI.md LICENSE "$d/"
   chmod +x "$d/rembobine" "$d/installer.sh" "$d/desinstaller.sh"
   bash ci/licences.sh "$d" "linux-$arch"
@@ -85,8 +85,8 @@ d="$OUT/Rembobine-Windows"; rm -rf "$d"; mkdir -p "$d"; unzip -q "$DL/electron-w
 mv "$d/electron.exe" "$d/Rembobine.exe"
 slim "$d"
 mkapp "$d/resources"
-if [ -d "$G/web" ]; then mkdir -p "$d/resources/gamebox3d-web"; cp "$G"/web/rembobine3d.* "$d/resources/gamebox3d-web/"; fi
-cpm "$G/Rembobine-3D.exe" "$d/resources/gamebox3d/"; cp LISEZ-MOI.md LICENSE "$d/"
+if [ -d "$G/web" ]; then mkdir -p "$d/resources/module-web"; cp "$G"/web/rembobine-module.* "$d/resources/module-web/"; fi
+cpm "$G/rembobine-module.exe" "$d/resources/module/"; cp LISEZ-MOI.md LICENSE "$d/"
 if [ -d build/natifs/win-x64 ]; then mkdir -p "$d/resources/emulateurs"; cp -a build/natifs/win-x64/. "$d/resources/emulateurs/"; fi
 bash ci/licences.sh "$d" win-x64
 # signature des mises à jour, comme pour Linux (vérifiée par l'appli avant d'échanger les dossiers)

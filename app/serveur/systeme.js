@@ -99,6 +99,7 @@ function createSysteme(o = {}) {
   }
 
   // ---------- partage du dossier Rembobine (Samba, Rembobine OS) ----------
+  const SHARE_SVCS = ["smbd", "nmbd", "wsdd", "rembobine-partage-annonce"];
   const smbd = () => fs.existsSync("/usr/sbin/smbd") || !!which("smbd");
   function share() {
     if (process.platform !== "linux" || !smbd()) return { installed: false, on: false };
@@ -110,8 +111,11 @@ function createSysteme(o = {}) {
   }
   function setShare(on) {
     if (!share().installed) return { ok: false, err: "Le partage réseau (Samba) n'est pas installé sur cet appareil." };
+    // « enable/disable --now » : changé tout de suite ET gardé au redémarrage (systemd s'en souvient).
+    // wsdd (le dossier visible dans le « Réseau » de Windows) et rembobine-partage-annonce (l'annonce Bonjour pour les Mac,
+    // build_os.sh) suivent le partage ; nmbd, wsdd et l'annonce peuvent manquer : seul smbd compte.
     let ok = true;
-    for (const svc of ["smbd", "nmbd"]) { const r = run("sudo", ["-n", "/usr/bin/systemctl", on ? "enable" : "disable", "--now", svc]); if (r.status !== 0 && svc === "smbd") ok = false; }
+    for (const svc of SHARE_SVCS) { const r = run("sudo", ["-n", "/usr/bin/systemctl", on ? "enable" : "disable", "--now", svc]); if (r.status !== 0 && svc === "smbd") ok = false; }
     return ok ? { ok: true, ...share() } : { ok: false, err: "Le système a refusé de changer le partage." };
   }
   // SSH (Avancé) : même principe

@@ -109,11 +109,11 @@ check(ch.length === 1 && ch[0].desc === "Argent" && ch[0].code === "8001+FFFF" &
   check(!j2.ok && /déjà prise/.test(j2.err), "manette 1 déjà prise");
   const j3 = (await req("/api/pad", { body: { dev: "tel-tom", name: "Tom", seat: 2 }, tok })).json;
   check(j3.ok && j3.seat === 2, "un ami prend la manette 2");
-  const taps = []; const tap = (ev) => taps.push(ev); S.tvTaps.add(tap);   // le relais vers le module 3D (app/main.js)
+  const taps = []; const tap = (ev) => taps.push(ev); S.tvTaps.add(tap);   // le relais vers le module (app/main.js)
   await req("/api/pad/in", { body: { s: 2, e: [[8, 1], [8, 0], [99, 1]] }, tok });
   await wait(200);
   S.tvTaps.delete(tap);
-  check(taps.some((e) => e.type === "padin" && e.s === 2 && e.e.length === 3), "le module 3D peut recevoir les touches du téléphone (relais local)");
+  check(taps.some((e) => e.type === "padin" && e.s === 2 && e.e.length === 3), "le module peut recevoir les touches du téléphone (relais local)");
   const pin = tvEv.find((e) => e.type === "padin");
   check(pin && pin.s === 2 && pin.e.length === 3 && pin.e[0][0] === 8 && pin.e[0][1] === 1 && pin.e[2][0] === 29, "la TV reçoit les touches du joueur 2 (bornées)");
   check(tvEv.some((e) => e.type === "pads" && e.seats.length === 2), "la TV sait qui tient quelle manette");

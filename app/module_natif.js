@@ -1,13 +1,13 @@
-// Rembobine — le module 3D (Godot) préparé À L'AVANCE et montré par un simple fondu (PC Linux, Windows, Raspberry).
+// Rembobine — le module préparé À L'AVANCE et montré par un simple fondu (PC Linux, Windows, Raspberry).
 //
 // Avant : l'ouverture lançait le jeu comme un autre programme ; la fenêtre du logiciel disparaissait
-// et la 3D s'ouvrait longtemps après (construction, sons, shaders). Maintenant :
+// et le module s'ouvrait longtemps après (construction, sons, shaders). Maintenant :
 //  1. peu après le démarrage du logiciel (quand il est au repos, pas pendant un film, et s'il y a assez de mémoire),
 //     le jeu est lancé EN ARRIÈRE-PLAN (--veille=PORT:JETON, voir le module) : fenêtre hors de l'écran,
 //     tout construit derrière un voile noir, puis en pause, sans son, sans image dessinée, priorité basse ;
 //  2. à l'ouverture, la page fond au noir, on dit « montre » au jeu : il passe devant (encore noir), répond
-//     « visible », la fenêtre du logiciel se cache, et l'image 3D apparaît en fondu ;
-//  3. « Retour au logiciel » dans la 3D : le jeu fond au noir et répond « retour » ; la fenêtre du logiciel revient
+//     « visible », la fenêtre du logiciel se cache, et son image apparaît en fondu ;
+//  3. « Retour au logiciel » dans le module : le jeu fond au noir et répond « retour » ; la fenêtre du logiciel revient
 //     devant (sa page est noire), on dit « cache » au jeu (il se remet hors de l'écran, en pause, SANS quitter),
 //     et la page fond depuis le noir, au même endroit du salon.
 // Si le jeu n'est pas encore prêt au moment du clic (premier lancement, mémoire faible), la page reste noire avec
@@ -19,7 +19,7 @@
 // téléphone (UDP 127.0.0.1 + jeton), gardé ici pour toute la vie du jeu et actif seulement quand il est à l'écran.
 //
 // Gardés comme avant : mode compatible (OpenGL) essayé tout seul si Vulkan échoue au démarrage, puis retenu ;
-// mode simplifié après un plantage ; rapport de plantage (monde3d/dernier-plantage.txt) ; progression monde3d.json.
+// mode simplifié après un plantage ; rapport de plantage (module/dernier-plantage.txt) ; progression module.json.
 "use strict";
 const path = require("path");
 const fs = require("fs");
@@ -28,19 +28,19 @@ const net = require("net");
 const crypto = require("crypto");
 const { spawn } = require("child_process");
 
-module.exports = function monde3d(o) {
+module.exports = function moduleNatif(o) {
   // o : { app, win(), bin(), serveur(), kiosk, busy() (film en cours ?), log(texte) }
   const { app } = o;
-  const log = o.log || ((t) => console.log("[monde3d] " + t));
-  const dbg = (t) => { if (process.env.REMBOBINE_3D_JOURNAL) log(t); };   // détails (essais : outils du module)
-  const COMPAT_FILE = () => path.join(app.getPath("userData"), "monde3d-compat");
-  const SIMPLE_FILE = () => path.join(app.getPath("userData"), "monde3d-simple");
+  const log = o.log || ((t) => console.log("[module] " + t));
+  const dbg = (t) => { if (process.env.REMBOBINE_MODULE_JOURNAL) log(t); };   // détails (essais : outils du module)
+  const COMPAT_FILE = () => path.join(app.getPath("userData"), "module-compat");
+  const SIMPLE_FILE = () => path.join(app.getPath("userData"), "module-simple");
   let forceCompat = process.arch === "arm64" || process.env.REMBOBINE_GL === "compat";
   let forceSimple = false;
   try { if (fs.existsSync(COMPAT_FILE())) forceCompat = true; } catch (_) {}
   try { if (fs.existsSync(SIMPLE_FILE())) forceSimple = true; } catch (_) {}
-  // REMBOBINE_3D_PRECHARGE=0 : jamais de préparation à l'avance (lancement au clic, avec la même transition)
-  const allowPreload = process.env.REMBOBINE_3D_PRECHARGE !== "0";
+  // REMBOBINE_MODULE_PRECHARGE=0 : jamais de préparation à l'avance (lancement au clic, avec la même transition)
+  const allowPreload = process.env.REMBOBINE_MODULE_PRECHARGE !== "0";
 
   let G = null;            // le jeu lancé : { p, key, compat, state, lines, t0, sock, pad, wait: {ev: [fn]}, ... }
   let fails = 0;           // préparations ratées de suite (au bout de 3 : plus de préparation pendant cette session)
@@ -48,8 +48,8 @@ module.exports = function monde3d(o) {
   let compatNotice = false; // Vulkan a échoué pendant une préparation : à dire au logiciel au prochain retour
   let quitting = false;
 
-  // la progression du module (monde3d.json) : le jeu l'écrit ici ; on y dépose aussi la copie du serveur de la maison
-  function dir3d() { const d = path.join(app.getPath("userData"), "monde3d"); try { fs.mkdirSync(d, { recursive: true }); } catch (_) {} return d; }
+  // la progression du module (module.json) : il l'écrit ici ; on y dépose aussi la copie du serveur de la maison
+  function dossier() { const d = path.join(app.getPath("userData"), "module"); try { fs.mkdirSync(d, { recursive: true }); } catch (_) {} return d; }
 
   // ---------- mémoire : préparer seulement s'il y a de la place (Raspberry 2-4 Go) ----------
   function memAvailable() {
@@ -69,12 +69,12 @@ module.exports = function monde3d(o) {
   function hot(args) { const g = (k) => { const a = args.find(x => x.startsWith("--" + k + "=")); return a ? a.slice(k.length + 3) : ""; }; return { meteo: g("meteo"), ville: g("ville") }; }
   function clean(args) { return (Array.isArray(args) ? args : []).filter(a => typeof a === "string" && a.length <= 400 && /^--[a-z]+=[\p{L}\p{N}_:,' \-]*$/iu.test(a) && !/^--(veille|manette)=/.test(a)); }
 
-  // ---------- journal de Godot (rapport de plantage) ----------
+  // ---------- journal du module (rapport de plantage) ----------
   function godotLogFile() {
     const base = process.platform === "win32" ? path.join(process.env.APPDATA || "", "Godot")
       : process.platform === "darwin" ? path.join(os.homedir(), "Library/Application Support/Godot")
       : path.join(process.env.XDG_DATA_HOME || path.join(os.homedir(), ".local/share"), "godot");
-    return path.join(base, "app_userdata", "Rembobine 3D", "logs", "godot.log");
+    return path.join(base, "app_userdata", "Rembobine", "logs", "godot.log");
   }
   function tailFile(f, n) {
     try {
@@ -85,11 +85,11 @@ module.exports = function monde3d(o) {
   }
   function crashReport(r, g) {
     const glog = godotLogFile(), gl = tailFile(glog, 60), lines = g.lines;
-    const txt = ["Rapport de plantage du module 3D de Rembobine", "Date : " + new Date().toISOString(), "Durée : " + Math.round((Date.now() - g.t0) / 1000) + " s",
+    const txt = ["Rapport de plantage du module de Rembobine", "Date : " + new Date().toISOString(), "Durée : " + Math.round((Date.now() - g.t0) / 1000) + " s",
       "Code de sortie : " + r.code + (r.signal ? " (signal " + r.signal + ")" : ""), "État : " + g.state + (g.preload ? " (préparé à l'avance)" : ""), "Arguments : " + g.a.join(" ").replace(/--veille=\S+|--manette=\S+/g, (x) => x.split("=")[0] + "=…"),
       "Machine : " + process.platform + " " + process.arch + ", " + os.cpus().length + " cœurs, " + Math.round(os.totalmem() / 1073741824) + " Go",
-      "", "--- Dernières lignes affichées par la 3D ---", ...lines.slice(-80), "", "--- Fin du journal de Godot (" + glog + ") ---", ...gl].join("\n");
-    const file = path.join(dir3d(), "dernier-plantage.txt");
+      "", "--- Dernières lignes affichées par le module ---", ...lines.slice(-80), "", "--- Fin du journal du module (" + glog + ") ---", ...gl].join("\n");
+    const file = path.join(dossier(), "dernier-plantage.txt");
     try { fs.writeFileSync(file, txt); } catch (_) {}
     const all = lines.concat(gl);
     const errs = all.filter(l => /ERROR|SCRIPT|[Ee]rror|signal|crash|Segmentation|Vulkan|OpenGL/.test(l));
@@ -156,11 +156,15 @@ module.exports = function monde3d(o) {
     g.a = a;
     const keep = (d) => {
       g.rest += d.toString("utf8"); const parts = g.rest.split(/\r?\n/); g.rest = parts.pop();
-      for (const l of parts) if (l.trim()) { g.lines.push(l); if (/^\[(veille|démarrage)\]/.test(l) && process.env.REMBOBINE_3D_JOURNAL) log("godot " + l); }
+      for (const l of parts) if (l.trim()) { g.lines.push(l); if (/^\[(veille|démarrage)\]/.test(l) && process.env.REMBOBINE_MODULE_JOURNAL) log("godot " + l); }
       if (g.lines.length > 400) g.lines.splice(0, g.lines.length - 300);
       if (g.rest.length > 4000) g.rest = g.rest.slice(-4000);
     };
-    try { g.p = spawn(bin, a, { stdio: ["ignore", "pipe", "pipe"], cwd: path.dirname(bin), env: { ...process.env, REMBOBINE_3D_DIR: dir3d() } }); }
+    // Linux : deux réserves de mémoire au plus pour les fils de calcul du module (MALLOC_ARENA_MAX) au lieu d'une par
+    // fil ; la mémoire libérée après la préparation n'y reste pas éparpillée (mesuré : 180 Mo de moins une fois prêt)
+    const env = { ...process.env, REMBOBINE_MODULE_DIR: dossier() };
+    if (process.platform === "linux" && !env.MALLOC_ARENA_MAX) env.MALLOC_ARENA_MAX = "2";
+    try { g.p = spawn(bin, a, { stdio: ["ignore", "pipe", "pipe"], cwd: path.dirname(bin), env }); }
     catch (err) { cleanup(g); g.exited = true; g.state = "fin"; g.err = String(err); return g; }
     g.p.stdout.on("data", keep); g.p.stderr.on("data", keep);
     // préparation à l'avance : priorité basse (le logiciel reste fluide pendant la construction)
@@ -186,10 +190,18 @@ module.exports = function monde3d(o) {
       if (g.compat && compatNotice) { try { fs.writeFileSync(COMPAT_FILE(), "OpenGL\n"); } catch (_) {} }
     }
     else if (j.ev === "quitter") { quitting = true; if (o.quit) o.quit(); return; }
+    // Vulkan calculé par le processeur (aucune carte graphique pour Vulkan) : le module se ferme tout de suite et on le
+    // relance en mode compatible (OpenGL), retenu pour la suite. Mesuré sans carte graphique : 0,8 Go de mémoire en
+    // moins une fois prêt, préparation deux fois plus courte ; et une vieille carte sans Vulkan mais avec OpenGL est
+    // enfin utilisée.
+    else if (j.ev === "logiciel") {
+      if (!g.compat) { g.versCompat = true; forceCompat = true; log("Vulkan sans carte graphique : mode compatible (OpenGL), retenu"); try { fs.writeFileSync(COMPAT_FILE(), "OpenGL\n"); } catch (_) {} }
+      return;
+    }
     else if (j.ev === "bonjour") { const w = o.win(); if (w && w.isVisible() && g.state !== "montre") { try { w.moveTop(); } catch (_) {} } }
     const l = g.wait[j.ev]; if (l) { delete g.wait[j.ev]; l.forEach(f => f(j)); }
     const any = g.wait["*"]; if (any) any.forEach(f => f(j));
-    if (j.ev === "fin" && G === g) { G = null; if (j.was !== "montre" && g.preload && !quitting) fails++; }
+    if (j.ev === "fin" && G === g) { G = null; if (j.was !== "montre" && g.preload && !quitting && !g.versCompat) fails++; }
   }
   function waitFor(g, evs, ms) {
     return new Promise((resolve) => {
@@ -225,6 +237,7 @@ module.exports = function monde3d(o) {
     if (g.exited) { if (G === g) G = null; return { ok: false, why: "lancement" }; }
     // Vulkan qui échoue tout de suite : on passe au mode compatible (retenu dès qu'il marche)
     waitFor(g, ["pret"], 0).then((j) => {
+      if (j.ev === "fin" && g.versCompat && !quitting && !g.inUse) { setTimeout(() => prepare(g.args), 300); return; }
       if (j.ev === "fin" && !g.hello && Date.now() - g.t0 < 20000 && !g.compat && !quitting && !g.inUse) { forceCompat = true; compatNotice = true; fails = 0; log("Vulkan indisponible : préparation en mode compatible"); setTimeout(() => prepare(g.args), 500); }
     });
     return { ok: true, state: G ? G.state : "fin" };
@@ -234,7 +247,7 @@ module.exports = function monde3d(o) {
   async function launch(args, maison) {
     const bin = o.bin();
     if (!fs.existsSync(bin)) return { ok: false, err: "absent" };
-    try { const t = maison && typeof maison === "object" && !Array.isArray(maison) ? JSON.stringify(maison) : ""; if (t && t.length < 1500000) fs.writeFileSync(path.join(dir3d(), "monde3d_maison.json"), t); } catch (_) {}
+    try { const t = maison && typeof maison === "object" && !Array.isArray(maison) ? JSON.stringify(maison) : ""; if (t && t.length < 1500000) fs.writeFileSync(path.join(dossier(), "module_maison.json"), t); } catch (_) {}
     args = clean(args);
     const tClick = Date.now(), k = keyOf(args);
     if (startP) { try { await startP; } catch (_) {} }
@@ -249,7 +262,7 @@ module.exports = function monde3d(o) {
       const j = await waitFor(g, ["pret"], 0);
       if (j.ev === "fin") {
         // Vulkan refusé au démarrage : on réessaie aussitôt en mode compatible, et on s'en souvient
-        if (!g.hello && Date.now() - g.t0 < 20000 && !g.compat) {
+        if ((g.versCompat || (!g.hello && Date.now() - g.t0 < 20000)) && !g.compat) {
           forceCompat = true; G = g = await start(args, true, false); g.inUse = true;
           const j2 = await waitFor(g, ["pret"], 0);
           if (j2.ev === "pret") { compat1 = true; compatNotice = false; try { fs.writeFileSync(COMPAT_FILE(), "OpenGL\n"); } catch (_) {} }
@@ -267,7 +280,7 @@ module.exports = function monde3d(o) {
     g.state = "montre";
     const w = o.win();
     unpin();
-    try { w.webContents.send("m3d:etat", "visible"); } catch (_) {}
+    try { w.webContents.send("gbx:module-etat", "visible"); } catch (_) {}
     hideWin();
     log(`clic → jeu visible : ${tVisible - tClick} ms (dont attente de la préparation ${tReady - tClick} ms)`);
     // et maintenant : « retour » (le jeu reste ouvert, caché) ou fin du jeu (fermé, ou plantage)
@@ -280,7 +293,7 @@ module.exports = function monde3d(o) {
     try { if (g.p && g.p.pid) os.setPriority(g.p.pid, 10); } catch (_) {}
     const res = { ok: true, compat1, preloaded: tReady - tClick < 50, ms: { visible: tVisible - tClick } };
     readProgress(res);
-    log(`retour au logiciel (${Math.round((tBack - tVisible) / 1000)} s dans la 3D), jeu gardé en veille`);
+    log(`retour au logiciel (${Math.round((tBack - tVisible) / 1000)} s dans le module), module gardé en veille`);
     return res;
   }
   // Cacher / remontrer la fenêtre du logiciel.
@@ -322,9 +335,9 @@ module.exports = function monde3d(o) {
     if (cacher) setTimeout(cacher, 80);
   }
   function readProgress(r) {
-    try { const f = path.join(dir3d(), "monde3d.json"); if (fs.statSync(f).size < 2000000) { const j = JSON.parse(fs.readFileSync(f, "utf8")); if (j && typeof j === "object") r.monde3d = j; } } catch (_) {}
+    try { const f = path.join(dossier(), "module.json"); if (fs.statSync(f).size < 2000000) { const j = JSON.parse(fs.readFileSync(f, "utf8")); if (j && typeof j === "object") r.progres = j; } } catch (_) {}
   }
-  // le jeu s'est fermé (quitté depuis la 3D, plantage, ou démarrage impossible)
+  // le jeu s'est fermé (quitté depuis le module, plantage, ou démarrage impossible)
   function finish(g, t) {
     showWin();
     const r = { ok: !g.err && (g.code === 0 || (g.code === null && !g.signal)), code: g.code, signal: g.signal, quick: !t.tVisible || Date.now() - t.tVisible < 8000 };
@@ -351,6 +364,6 @@ module.exports = function monde3d(o) {
     film() { unpin(); },
     state() { return G ? G.state : "absent"; },
     stop() { quitting = true; if (G) { kill(G); } },
-    dir3d
+    dossier
   };
 };

@@ -23,7 +23,7 @@ trap fin EXIT
 
 echo "== L'appli, rangée comme dans la fabrication"
 mkdir -p "$APP/lecteur" "$APP/serveur" "$APP/web"
-cp "$ROOT"/app/{main.js,monde3d.js,monde3d_web.js,preload.js,preload3d.js,seul.js,seul_main.js,preload_seul.js,package.json,icon.png} "$APP/"
+cp "$ROOT"/app/{main.js,module_natif.js,module_web.js,preload.js,preload_module.js,seul.js,seul_main.js,preload_seul.js,package.json,icon.png} "$APP/"
 cp "$ROOT"/app/lecteur/*.lua "$ROOT/app/lecteur/seul.html" "$APP/lecteur/"
 for f in "$ROOT"/app/serveur/*.js; do case "$f" in */test_*) ;; *) cp "$f" "$APP/serveur/" ;; esac; done
 cp "$ROOT/web/index.html" "$APP/web/index.html"

@@ -6,4 +6,4 @@
 // Pour créer la paire de clés : node outils/maj/creer_cle.js  (il remplit ce fichier et affiche la clé privée à mettre
 // dans le secret GitHub ; mode d'emploi en tête de ce script).
 "use strict";
-module.exports = { PUBLIC_KEY: "" };
+module.exports = { PUBLIC_KEY: "SFfavmDVkSX4cEbAgJQIEfQphqNJDHKrwLeC8l/SGWg=" };

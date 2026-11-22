@@ -9,7 +9,10 @@
 //  - Windows : nouvelle version décompressée et vérifiée à côté, script PowerShell produit (contenu vérifié),
 //    signature vérifiée avant, résultat du script relu au démarrage ;
 //  - Android : choix de Rembobine.apk et de son empreinte ; l'appli Android (Java) et le manifeste suivent le même contrat ;
-//  - un invité (séance à distance) ne voit ni ne lance aucune mise à jour (routes et évènements).
+//  - un invité (séance à distance) ne voit ni ne lance aucune mise à jour (routes et évènements) ;
+//  - signature : les fausses versions sont signées par une paire de clés JETABLE, créée pour cet essai (sa clé
+//    publique est donnée à createMaj par l'option « publicKey », réservée aux essais) ; non signée, ou signée par une
+//    autre clé : refusée ; sans l'option, c'est la vraie clé de maj-cle.js qui vérifie (et refuse la clé d'essai).
 "use strict";
 process.env.REMBOBINE_FICHES = "0";
 const fs = require("fs"), path = require("path"), os = require("os"), http = require("http"), crypto = require("crypto");
@@ -26,6 +29,9 @@ const wait = (ms) => new Promise((r) => setTimeout(r, ms));
 const mk = (f, data, mode) => { fs.mkdirSync(path.dirname(f), { recursive: true }); fs.writeFileSync(f, data); if (mode) fs.chmodSync(f, mode); };
 const until = async (f, ms = 15000) => { for (let t = 0; t < ms; t += 200) { if (await f()) return true; await wait(200); } return false; };
 const sha = (b) => crypto.createHash("sha256").update(b).digest("hex");
+// paire de clés d'essai (jetable, jamais écrite sur le disque) : elle signe les fausses versions de ce test
+const ESSAI_PEM = crypto.generateKeyPairSync("ed25519").privateKey.export({ format: "pem", type: "pkcs8" }), ESSAI_PUB = SIG.rawPublic(ESSAI_PEM);
+const AUTRE_PEM = crypto.generateKeyPairSync("ed25519").privateKey.export({ format: "pem", type: "pkcs8" });
 
 // ---------- une « version » de Rembobine : son lanceur démarre un faux serveur qui répond /api/info avec son numéro ----------
 const FAKEAPP = path.join(T, "fakeapp.js");
@@ -40,9 +46,12 @@ function linuxVersion(dir, label, port, mode = "") {
   mk(path.join(dir, "resources", "app", "main.js"), "// faux");
   mk(path.join(dir, "resources", "app", "build.json"), JSON.stringify({ version: "1.0.0", build: Number(label.split("+")[1]), label, date: "2026-11-14", depot: REPO }));
 }
-function linuxArchive(label, port, mode) {
-  const src = path.join(T, "src-" + label, "Rembobine-Linux-x64"); linuxVersion(src, label, port, mode);
-  const out = path.join(T, `arch-${label}.tar.gz`); spawnSync("tar", ["czf", out, "-C", path.dirname(src), "Rembobine-Linux-x64"]);
+// signée par la clé d'essai, sauf { signer: null } (non signée) ou { signer: <autre clé PEM> }
+async function linuxArchive(label, port, mode, opts = {}) {
+  const tag = opts.tag || "", src = path.join(T, "src-" + label + tag, "Rembobine-Linux-x64"); linuxVersion(src, label, port, mode);
+  const signer = opts.signer === undefined ? ESSAI_PEM : opts.signer;
+  if (signer) await SIG.signDir(src, signer);
+  const out = path.join(T, `arch-${label}${tag}.tar.gz`); spawnSync("tar", ["czf", out, "-C", path.dirname(src), "Rembobine-Linux-x64"]);
   return fs.readFileSync(out);
 }
 function winVersion(dir, label) {
@@ -87,7 +96,7 @@ const kill = () => { spawnSync("pkill", ["-f", FAKEAPP]); };
   await new Promise((r) => gh.listen(0, "127.0.0.1", r));
   const API = `http://127.0.0.1:${gh.address().port}/gh`;
   const PORT = 19100 + Math.floor(Math.random() * 800);
-  const base = (extra) => ({ data: fs.mkdtempSync(path.join(T, "data-")), cfg: () => ({}), api: API, quitDelay: 0, gardeTimeout: 6000, node: process.execPath, port: PORT, platform: "linux", arch: "x64", mountsFile: "/nonexistent", ...extra });
+  const base = (extra) => ({ data: fs.mkdtempSync(path.join(T, "data-")), cfg: () => ({}), api: API, quitDelay: 0, gardeTimeout: 6000, node: process.execPath, port: PORT, platform: "linux", arch: "x64", mountsFile: "/nonexistent", publicKey: ESSAI_PUB, ...extra });
 
   // ================= 1. quel fichier pour quel appareil =================
   check(archiveName("linux", "x64") === "Rembobine-Linux-PC.tar.gz" && archiveName("linux", "arm64") === "Rembobine-RaspberryPi.tar.gz" && archiveName("win32", "x64") === "Rembobine-Windows.zip" && archiveName("android") === "Rembobine.apk", "un fichier par appareil (PC, Raspberry, Windows, Android)");
@@ -178,7 +187,7 @@ const kill = () => { spawnSync("pkill", ["-f", FAKEAPP]); };
   linuxVersion(V5, "1.0.0+1", PORT); fs.symlinkSync(path.join("versions", "1.0.0+1"), path.join(B5, "actuelle"));
   const ev5 = []; M = createMaj(base({ build: { label: "1.0.0+1", build: 1 }, appDir: V5, emit: (e) => ev5.push(e), pid: dummy(), quit: () => {} }));
   check(M.mode() === "versionne", "installation versionnée reconnue");
-  publish(2, { "Rembobine-Linux-PC.tar.gz": linuxArchive("1.0.0+2", PORT) }); GH.abime = true;
+  publish(2, { "Rembobine-Linux-PC.tar.gz": await linuxArchive("1.0.0+2", PORT) }); GH.abime = true;
   let a5 = await M.apply();
   check(!a5.ok && /abîmé/.test(a5.err) && fs.readlinkSync(path.join(B5, "actuelle")) === "versions/1.0.0+1" && !fs.existsSync(path.join(B5, "versions", "1.0.0+2")), "fichier abîmé (empreinte) : refusé, rien ne change");
   check(ev5.some((e) => e.etape === "echec" && /abîmé/.test(e.err)) && M.status().prog.etape === "echec", "la page voit l'échec, en clair");
@@ -188,15 +197,40 @@ const kill = () => { spawnSync("pkill", ["-f", FAKEAPP]); };
   M.stop();
 
   // le gardien ne peut pas démarrer (son journal est inutilisable) : pas de bascule, rien ne change
-  publish(2, { "Rembobine-Linux-PC.tar.gz": linuxArchive("1.0.0+2", PORT) });
+  publish(2, { "Rembobine-Linux-PC.tar.gz": await linuxArchive("1.0.0+2", PORT) });
   fs.mkdirSync(path.join(B5, "maj-garde.log"));
   let quit5 = 0; M = createMaj(base({ build: { label: "1.0.0+1", build: 1 }, appDir: V5, pid: dummy(), quit: () => quit5++ }));
   a5 = await M.apply(); await wait(100);
   check(!a5.ok && /n'a pas pu démarrer/.test(a5.err) && fs.readlinkSync(path.join(B5, "actuelle")) === "versions/1.0.0+1" && !fs.existsSync(path.join(B5, "maj-essai.json")) && quit5 === 0, "le gardien ne démarre pas : la version actuelle reste, Rembobine ne se ferme pas");
   M.stop(); fs.rmdirSync(path.join(B5, "maj-garde.log")); fs.rmSync(path.join(B5, "versions", "1.0.0+2"), { recursive: true, force: true });
 
+  // signature des versions téléchargées : refusées AVANT de toucher à la version actuelle (rien de lancé, rien qui traîne)
+  const rien5 = () => fs.readlinkSync(path.join(B5, "actuelle")) === "versions/1.0.0+1" && !fs.existsSync(path.join(B5, "versions", "1.0.0+2")) && !fs.existsSync(path.join(B5, "maj-essai.json"))
+    && !fs.readdirSync(path.join(B5, "versions")).some((n) => n.startsWith(".nouvelle"));
+  publish(2, { "Rembobine-Linux-PC.tar.gz": await linuxArchive("1.0.0+2", PORT, "", { signer: null, tag: "-ns" }) });
+  let quitS = 0; M = createMaj(base({ build: { label: "1.0.0+1", build: 1 }, appDir: V5, pid: dummy(), quit: () => quitS++ }));
+  a5 = await M.apply(); await wait(100);
+  check(!a5.ok && /pas signée/.test(a5.err) && rien5() && quitS === 0, "version non signée (empreinte pourtant correcte) : refusée, rien ne change, Rembobine reste ouvert");
+  M.stop();
+  publish(2, { "Rembobine-Linux-PC.tar.gz": await linuxArchive("1.0.0+2", PORT, "", { signer: AUTRE_PEM, tag: "-autre" }) });
+  M = createMaj(base({ build: { label: "1.0.0+1", build: 1 }, appDir: V5, pid: dummy(), quit: () => quitS++ }));
+  a5 = await M.apply(); await wait(100);
+  check(!a5.ok && /signature/.test(a5.err) && /fausse/.test(a5.err) && rien5() && quitS === 0, "version signée par une autre clé : refusée, rien ne change");
+  M.stop();
+  // sans l'option « publicKey » : la vraie clé publique de maj-cle.js vérifie (comme dans l'appli livrée)
+  publish(2, { "Rembobine-Linux-PC.tar.gz": await linuxArchive("1.0.0+2", PORT) });
+  M = createMaj(base({ build: { label: "1.0.0+1", build: 1 }, appDir: V5, pid: dummy(), quit: () => quitS++, publicKey: undefined }));
+  a5 = await M.apply(); await wait(100);
+  check(require("./maj-cle").PUBLIC_KEY && !a5.ok && /fausse/.test(a5.err) && rien5() && quitS === 0, "appli livrée (clé de maj-cle.js) : une version signée par la clé d'essai est refusée");
+  M.stop();
+  publish(2, { "Rembobine-Linux-PC.tar.gz": await linuxArchive("1.0.0+2", PORT, "", { signer: null, tag: "-ns" }) });
+  M = createMaj(base({ build: { label: "1.0.0+1", build: 1 }, appDir: V5, pid: dummy(), quit: () => quitS++, publicKey: undefined }));
+  a5 = await M.apply(); await wait(100);
+  check(!a5.ok && /pas signée/.test(a5.err) && rien5() && quitS === 0, "appli livrée (clé de maj-cle.js) : une version non signée est refusée");
+  M.stop();
+
   // ================= 6. « Mettre à jour maintenant » : progression puis redémarrage =================
-  publish(2, { "Rembobine-Linux-PC.tar.gz": linuxArchive("1.0.0+2", PORT) });
+  publish(2, { "Rembobine-Linux-PC.tar.gz": await linuxArchive("1.0.0+2", PORT) });
   const ev6 = []; let quit6 = 0;
   M = createMaj(base({ build: { label: "1.0.0+1", build: 1 }, appDir: V5, emit: (e) => ev6.push(e), pid: dummy(), quit: () => quit6++ }));
   const s6 = M.start();
@@ -224,7 +258,7 @@ const kill = () => { spawnSync("pkill", ["-f", FAKEAPP]); };
   const H7 = path.join(T, "home7"), D7 = path.join(T, "Telechargements", "Rembobine-Linux-x64"); fs.mkdirSync(H7, { recursive: true });
   linuxVersion(D7, "1.0.0+5", PORT);
   const avant = fs.readdirSync(D7).sort().join(",");
-  publish(6, { "Rembobine-Linux-PC.tar.gz": linuxArchive("1.0.0+6", PORT) });
+  publish(6, { "Rembobine-Linux-PC.tar.gz": await linuxArchive("1.0.0+6", PORT) });
   let quit7 = 0;
   M = createMaj(base({ build: { label: "1.0.0+5", build: 5 }, appDir: D7, home: H7, pid: dummy(), quit: () => quit7++ }));
   const IB = path.join(H7, ".local", "share", "rembobine");
@@ -252,7 +286,7 @@ const kill = () => { spawnSync("pkill", ["-f", FAKEAPP]); };
   M7b.stop();
   // la nouvelle version ne démarre pas : retour à l'appli décompressée, ce que l'installation a créé est enlevé
   const H8 = path.join(T, "home8"); fs.mkdirSync(H8, { recursive: true });
-  publish(7, { "Rembobine-Linux-PC.tar.gz": linuxArchive("1.0.0+7", PORT, "casse") });
+  publish(7, { "Rembobine-Linux-PC.tar.gz": await linuxArchive("1.0.0+7", PORT, "casse") });
   M = createMaj(base({ build: { label: "1.0.0+5", build: 5 }, appDir: D7, home: H8, pid: dummy(), quit: () => {} }));
   const a8 = await M.apply();
   const IB8 = path.join(H8, ".local", "share", "rembobine");

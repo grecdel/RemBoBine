@@ -15,6 +15,8 @@ cp "$ROOT/LICENSE" "$L/Rembobine-LICENSE.txt"
 
 # 1 bis. polices embarquées dans la page (SIL Open Font License 1.1)
 [ -f "$ROOT/ci/licences/Polices-OFL.txt" ] && cp "$ROOT/ci/licences/Polices-OFL.txt" "$L/Polices-OFL.txt"
+# polices des époques du salon (OFL, et Go Sans, TeX Gyre Adventor, DejaVu Sans, Special Elite : leurs textes)
+[ -f "$ROOT/ci/licences/Polices-epoques.txt" ] && cp "$ROOT/ci/licences/Polices-epoques.txt" "$L/Polices-epoques.txt"
 
 # 1 ter. sons d'ambiance enregistrés libres (feu, eau, vent : CC0, liste et adresses de chaque fichier), s'ils sont livrés
 [ -f "$ROOT/godot/son/CREDITS-sons.md" ] && cp "$ROOT/godot/son/CREDITS-sons.md" "$L/Sons-libres-CREDITS.txt"

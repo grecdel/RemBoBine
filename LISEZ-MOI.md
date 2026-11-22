@@ -185,7 +185,7 @@ Utilisateur `rembobine` ; le mot de passe (propre à ton Raspberry) s'affiche da
 La musique : un dossier `Musique` (mp3, flac, ogg…), rangé par dossier d'album ; on l'ajoute dans Paramètres › Bibliothèque › Mes dossiers.
 
 Les photos : un dossier d'images (sans vidéos, jeux ni musique dedans) devient un album. Les livres : EPUB, PDF ou bandes dessinées CBZ. Les livres audio : un dossier « Livres audio », avec un sous-dossier par livre (ou un fichier `.m4b`).
-Pour couper le partage : Rembobine OS → Avancé → Partage sur le réseau.
+Le partage est allumé au départ. Pour le couper (ou le rallumer) : Rembobine OS → Avancé → Partage sur le réseau, **sur l'écran de la TV** (pas depuis un téléphone, par sécurité). Le choix est gardé après un redémarrage.
 
 ## Éteindre proprement
 
@@ -216,4 +216,4 @@ Le dépôt `rembobine` contient tout :
 
 Chaque envoi sur GitHub fabrique les quatre versions (onglet **Actions**).
 Chaque envoi sur main met à jour la version du fichier `VERSION` dans **Releases** (pour une nouvelle version : changer `VERSION`).
-La clé de signature Android reste dans le secret GitHub `RBB_SIGNING_KEY` — jamais dans le dépôt.
+La clé de signature Android reste dans le secret GitHub `RBB_SIGNING_KEY`, et la clé de chiffrement du module dans le secret `RBB_PCK_KEY` — jamais dans le dépôt.

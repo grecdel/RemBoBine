@@ -36,7 +36,7 @@ import java.util.HashMap;
 
 /**
  * Rembobine sur Android : affiche le logiciel Rembobine (page HTML embarquée),
- * et ouvre le module 3D facultatif (Godot, dans son propre processus) quand la page le demande.
+ * et ouvre le module facultatif (dans son propre processus) quand la page le demande.
  */
 public class RembobineActivity extends Activity {
 	private static final int PICK_FILES = 4242;
@@ -47,7 +47,7 @@ public class RembobineActivity extends Activity {
 	private volatile boolean volKeys = false;
 	private WebView web;
 	private ValueCallback<Uri[]> pending;
-	private boolean in3d = false;
+	private boolean dansModule = false;
 	// Cartouches NFC : le téléphone n'écoute les puces que quand la page le demande
 	// (télécommande ouverte, ou écran « Écrire une cartouche »), jamais dans le salon.
 	private static final String CARTOUCHE_MIME = "application/vnd.rembobine.cartouche";
@@ -133,7 +133,7 @@ public class RembobineActivity extends Activity {
 					// résultats arrivent par window.rbbMajAndroid({ type: 'check', last } | { type: 'prog', prog })
 					" maj: { etat: function () { try { return JSON.parse(GbxAndroid.majEtat(K)); } catch (e) { return null; } }," +
 					"  verifier: function () { GbxAndroid.majVerifier(K); }, installer: function () { GbxAndroid.majInstaller(K); } }," +
-					" launch3D: function (a, m) { return new Promise(function (r) { window.__gbx3dDone = r; GbxAndroid.launch3D(K, JSON.stringify(a || []), m ? JSON.stringify(m) : ''); }); }," +
+					" ouvrirModule: function (a, m) { return new Promise(function (r) { window.__rbbModuleFini = r; GbxAndroid.ouvrirModule(K, JSON.stringify(a || []), m ? JSON.stringify(m) : ''); }); }," +
 					" playExternal: function () { return Promise.resolve({ ok: false, err: 'android' }); }," +
 					// NFC du téléphone : nfc() → 'absent' | 'off' | 'ok' ; nfcWatch(true/false) ; nfcWrite(texte) arme l'écriture de la prochaine puce.
 					// Chaque puce touchée appelle window.rbbPhoneTag({ uid, data, written, err }).
@@ -232,11 +232,14 @@ public class RembobineActivity extends Activity {
 		super.onNewIntent(i);
 		setIntent(i);
 		// le module rend la main sans se fermer (« Retour au logiciel ») : il reste en mémoire pour la prochaine fois
-		if (i != null && i.getData() != null && RETOUR_3D.equals(i.getData().getScheme())) {
+		if (i != null && i.getData() != null && SCHEMA_RETOUR.equals(i.getData().getScheme())) {
+			// ce lien peut être envoyé par n'importe quelle appli du téléphone : on ne le suit que s'il porte le jeton
+			// donné au module à son lancement (sinon : ignoré, comme sur PC)
+			if (!jetonRetourValable(i.getData())) return;
 			// « Quitter Rembobine » depuis le module : tout se ferme (le module et le logiciel)
 			if ("quitter".equals(i.getData().getHost())) { finishAffinity(); return; }
-			alive3d = true;
-			back3dIntent = true;
+			moduleVivant = true;
+			retourDemande = true;
 			overridePendingTransition(android.R.anim.fade_in, android.R.anim.fade_out);
 			return;
 		}
@@ -620,19 +623,19 @@ public class RembobineActivity extends Activity {
 		}
 
 		@JavascriptInterface
-		public void launch3D(String k, final String json, final String maison) {
+		public void ouvrirModule(String k, final String json, final String maison) {
 			if (!ok(k)) return;
 			// la progression du module gardée par le serveur de la maison : il prend la plus récente
 			// (le module lit et écrit dans le dossier de l'appli, son « user:// »)
 			if (maison != null && maison.startsWith("{") && maison.length() < 1500000) {
-				try (java.io.FileOutputStream o = new java.io.FileOutputStream(new java.io.File(getFilesDir(), "monde3d_maison.json"))) {
+				try (java.io.FileOutputStream o = new java.io.FileOutputStream(new java.io.File(getFilesDir(), "module_maison.json"))) {
 					o.write(maison.getBytes(StandardCharsets.UTF_8));
 				} catch (Exception ignored) {
 				}
 			}
 			runOnUiThread(new Runnable() {
 				public void run() {
-					start3D(json, Maison.prefs(RembobineActivity.this).getBoolean("monde3dCompat", false), false);
+					lancerModule(json, Maison.prefs(RembobineActivity.this).getBoolean("moduleCompat", false), false);
 				}
 			});
 		}
@@ -772,21 +775,45 @@ public class RembobineActivity extends Activity {
 		}
 	}
 
-	// Ouvre le module 3D (Godot, dans son propre processus). compat : mode graphique simplifié (OpenGL),
-	// essayé tout seul si la 3D se ferme aussitôt (carte graphique trop ancienne pour Vulkan) puis retenu.
+	// Ouvre le module (dans son propre processus). compat : mode graphique simplifié (OpenGL),
+	// essayé tout seul si le module se ferme aussitôt (carte graphique trop ancienne pour Vulkan) puis retenu.
 	// « --veille=android » : au « Retour au logiciel », le jeu ne se ferme pas ; il fond au noir, se met
-	// en pause et nous rend la main par le lien rembobine-retour://monde3d. La fois suivante, on le ramène simplement
+	// en pause et nous rend la main par le lien rembobine-retour://module?k=<jeton>. La fois suivante, on le ramène simplement
 	// devant (même activité, encore en mémoire) : il reprend là où on était, par un fondu, sans rien recharger.
 	// Si Android l'a fermé entre-temps (mémoire), il redémarre normalement avec les mêmes arguments.
-	private static final String RETOUR_3D = "rembobine-retour";
-	private String json3d = "[]";
-	private boolean compat3d = false, retry3d = false, alive3d = false, back3dIntent = false;
-	private long t3d = 0;
+	private static final String SCHEMA_RETOUR = "rembobine-retour";
+	private String jsonModule = "[]";
+	private boolean compatModule = false, reessaiModule = false, moduleVivant = false, retourDemande = false;
+	private long tModule = 0;
 
-	private void start3D(String json, boolean compat, boolean retry) {
-		json3d = json;
-		compat3d = compat;
-		retry3d = retry;
+	// Jeton des liens rembobine-retour:// (module → logiciel) : tiré au hasard à chaque nouveau lancement du module, donné
+	// au module seul (--veille=android:<jeton>, dans l'intention envoyée à son activité non exportée), gardé dans les
+	// réglages privés de l'appli. On garde aussi les deux précédents : si Android a fermé puis recréé le logiciel pendant
+	// que le module restait en mémoire, celui-ci porte encore l'ancien.
+	private static final String PREF_JETONS = "moduleJetons";
+	private String jetonRetour(boolean nouveau) {
+		String[] l = Maison.prefs(this).getString(PREF_JETONS, "").split(",");
+		if (!nouveau && l.length > 0 && l[0].matches("^[0-9a-f]{48}$")) return l[0];
+		String t = nouvelleCle();
+		StringBuilder garde = new StringBuilder(t);
+		for (int k = 0, n = 0; k < l.length && n < 2; k++) if (l[k].matches("^[0-9a-f]{48}$")) { garde.append(',').append(l[k]); n++; }
+		Maison.prefs(this).edit().putString(PREF_JETONS, garde.toString()).commit();
+		return t;
+	}
+	private boolean jetonRetourValable(Uri u) {
+		String k = null;
+		try { k = u.getQueryParameter("k"); } catch (Exception ignored) {}
+		if (k == null || !k.matches("^[0-9a-f]{48}$")) return false;
+		boolean bon = false;
+		for (String t : Maison.prefs(this).getString(PREF_JETONS, "").split(","))
+			if (t.length() == k.length() && java.security.MessageDigest.isEqual(t.getBytes(StandardCharsets.UTF_8), k.getBytes(StandardCharsets.UTF_8))) bon = true;
+		return bon;
+	}
+
+	private void lancerModule(String json, boolean compat, boolean retry) {
+		jsonModule = json;
+		compatModule = compat;
+		reessaiModule = retry;
 		ArrayList<String> args = new ArrayList<>();
 		if (compat) {
 			args.add("--rendering-driver");
@@ -796,7 +823,7 @@ public class RembobineActivity extends Activity {
 		}
 		args.add("--");
 		args.add("--embarque");
-		args.add("--veille=android");
+		args.add("--veille=android:" + jetonRetour(!moduleVivant));
 		JSONObject chaud = new JSONObject();
 		try {
 			JSONArray a = new JSONArray(json);
@@ -812,60 +839,60 @@ public class RembobineActivity extends Activity {
 		} catch (Exception ignored) {
 		}
 		if (compat) args.add("--simplifie=1");
-		if (alive3d) {
+		if (moduleVivant) {
 			for (java.io.File d : new java.io.File[] { getFilesDir(), getExternalFilesDir(null) }) {
 				if (d == null) continue;
-				try (java.io.FileOutputStream o = new java.io.FileOutputStream(new java.io.File(d, "monde3d_montre.json"))) {
+				try (java.io.FileOutputStream o = new java.io.FileOutputStream(new java.io.File(d, "module_montre.json"))) {
 					o.write(chaud.toString().getBytes(StandardCharsets.UTF_8));
 				} catch (Exception ignored) {
 				}
 			}
 		} else {
-			for (java.io.File f : ok3dFiles()) f.delete();
+			for (java.io.File f : fichiersOkModule()) f.delete();
 		}
 		Intent i = new Intent();
 		i.setClassName(getPackageName(), "com.godot.game.GodotApp");
 		i.putExtra("command_line_params", args.toArray(new String[0]));
 		// (le jeu a sa propre tâche : s'il est encore en mémoire, il revient simplement devant)
 		i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-		in3d = true;
-		back3dIntent = false;
-		t3d = System.currentTimeMillis();
+		dansModule = true;
+		retourDemande = false;
+		tModule = System.currentTimeMillis();
 		startActivity(i);
 		overridePendingTransition(android.R.anim.fade_in, android.R.anim.fade_out);
 	}
 
-	// le module écrit « monde3d_ok » (dans user://) dès qu'il a affiché ses premières images
-	private java.io.File[] ok3dFiles() {
+	// le module écrit « module_ok » (dans user://) dès qu'il a affiché ses premières images
+	private java.io.File[] fichiersOkModule() {
 		ArrayList<java.io.File> l = new ArrayList<>();
-		l.add(new java.io.File(getFilesDir(), "monde3d_ok"));
+		l.add(new java.io.File(getFilesDir(), "module_ok"));
 		java.io.File ext = getExternalFilesDir(null);
-		if (ext != null) l.add(new java.io.File(ext, "monde3d_ok"));
+		if (ext != null) l.add(new java.io.File(ext, "module_ok"));
 		return l.toArray(new java.io.File[0]);
 	}
 
-	private boolean ok3d() {
-		for (java.io.File f : ok3dFiles()) if (f.exists()) return true;
+	private boolean moduleOk() {
+		for (java.io.File f : fichiersOkModule()) if (f.exists()) return true;
 		return false;
 	}
 
 	// retour du module : s'il s'est refermé aussitôt sans rien afficher, on réessaie en mode simplifié
-	private void back3D() {
+	private void retourModule() {
 		// rendu par « Retour au logiciel » : le jeu reste en mémoire ; sinon il s'est fermé (ou a planté)
-		boolean viaRetour = back3dIntent;
-		back3dIntent = false;
-		if (!viaRetour) alive3d = false;
-		boolean quick = !viaRetour && System.currentTimeMillis() - t3d < 8000 && !ok3d();
-		if (quick && !compat3d) {
-			Maison.prefs(this).edit().putBoolean("monde3dCompat", true).apply();
-			start3D(json3d, true, true);
+		boolean viaRetour = retourDemande;
+		retourDemande = false;
+		if (!viaRetour) moduleVivant = false;
+		boolean quick = !viaRetour && System.currentTimeMillis() - tModule < 8000 && !moduleOk();
+		if (quick && !compatModule) {
+			Maison.prefs(this).edit().putBoolean("moduleCompat", true).apply();
+			lancerModule(jsonModule, true, true);
 			return;
 		}
 		// au retour : la progression du module (succès pour le bilan de l'année, copie pour le serveur de la maison)
-		String m3 = quick ? "" : read3d();
-		String mj = "monde3d: (function () { try { return JSON.parse(" + JSONObject.quote(m3) + "); } catch (e) { return null; } })()";
-		String r = quick ? "{ ok: false, err: 'gpu' }" : (retry3d ? "{ ok: true, compat1: true, " + mj + " }" : "{ ok: true, " + mj + " }");
-		web.evaluateJavascript("window.__gbx3dDone && window.__gbx3dDone(" + r + ");", null);
+		String prog = quick ? "" : lireProgres();
+		String mj = "progres: (function () { try { return JSON.parse(" + JSONObject.quote(prog) + "); } catch (e) { return null; } })()";
+		String r = quick ? "{ ok: false, err: 'gpu' }" : (reessaiModule ? "{ ok: true, compat1: true, " + mj + " }" : "{ ok: true, " + mj + " }");
+		web.evaluateJavascript("window.__rbbModuleFini && window.__rbbModuleFini(" + r + ");", null);
 	}
 
 	// lecture des puces seulement quand la page l'a demandé et que l'appli est au premier plan
@@ -963,14 +990,14 @@ public class RembobineActivity extends Activity {
 			if (Build.VERSION.SDK_INT < 26 || getPackageManager().canRequestPackageInstalls()) majLancerInstallation(apk);
 			else { majEnAttente = null; majBusy = false; majEtape("echec", 0, "Sans l'autorisation d'installer des applis, Android ne peut pas mettre Rembobine à jour. Tu peux réessayer quand tu veux."); }
 		}
-		if (in3d) {
-			in3d = false;
-			back3D();
+		if (dansModule) {
+			dansModule = false;
+			retourModule();
 		}
 	}
 
-	private String read3d() {
-		java.io.File f = new java.io.File(getFilesDir(), "monde3d.json");
+	private String lireProgres() {
+		java.io.File f = new java.io.File(getFilesDir(), "module.json");
 		if (!f.isFile() || f.length() > 2000000) return "";
 		try (java.io.FileInputStream in = new java.io.FileInputStream(f)) {
 			byte[] b = new byte[(int) f.length()];

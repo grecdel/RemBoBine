@@ -30,7 +30,7 @@ const { createLecture } = require("./lecture");
 const { createOs } = require("./os");
 const { createTelephone } = require("./telephone");
 const { createMaison } = require("./maison");
-const { createMonde3d } = require("./monde3d");
+const { createModuleProgres } = require("./module_progres");
 const { createCollection } = require("./collection");
 const { createFichePlus } = require("./fiche_plus");
 const { createMemoire } = require("./memoire");
@@ -108,7 +108,7 @@ function createServer(opt = {}) {
   function emit(ev) { const line = `data: ${JSON.stringify(ev)}\n\n`; for (const c of S.clients) { try { c.write(line); } catch (_) {} } }
   S.emit = emit;
   // seulement l'écran de la TV elle-même (manette virtuelle du téléphone : le moins de trafic possible)
-  // (S.tvTaps : l'application de bureau y écoute la manette du téléphone pour la relayer au module 3D, sur la même machine)
+  // (S.tvTaps : l'application de bureau y écoute la manette du téléphone pour la relayer au module, sur la même machine)
   S.tvTaps = new Set();
   function emitTv(ev) { const line = `data: ${JSON.stringify(ev)}\n\n`; for (const c of S.clients) if (c.rbbTv) { try { c.write(line); } catch (_) {} } for (const f of S.tvTaps) { try { f(ev); } catch (_) {} } }
   // les jeux : sauvegardes synchronisées, manette du téléphone, BIOS, triche, aperçus, tournoi (voir jeux.js)
@@ -386,8 +386,8 @@ function createServer(opt = {}) {
   }
 
   // disques USB branchés, CD/DVD dans le lecteur, « Tout va bien ? » (voir maison.js)
-  // la progression du module 3D, partagée entre le PC et le Raspberry : la plus récente gagne (voir monde3d.js)
-  const M3D = createMonde3d({ dataDir: S.data, emit });
+  // la progression du module, partagée entre le PC et le Raspberry : la plus récente gagne (voir module_progres.js)
+  const MP = createModuleProgres({ dataDir: S.data, emit });
   const MA = createMaison({ S, emit, log, playOnTv, rescan, saveCfg, opt: { usbBases: opt.usbBases, usbPoll: opt.usbPoll, discProbe: opt.discProbe, discPoll: opt.discPoll, discDevice: opt.discDevice, discCheckMs: opt.discCheckMs, mpv: opt.mpv, retroarch: opt.retroarch, lookup: opt.lookup } });
   S.maison = MA;
 
@@ -533,16 +533,16 @@ function createServer(opt = {}) {
     if (p.startsWith("/ejs/")) { res.setHeader("Cache-Control", "public, max-age=604800"); return serveStatic(res, req, p.slice(1)); }
     // le lecteur de manuels PDF (pdf.js, code public) : pareil, pour les téléphones qui ouvrent la page du serveur
     if (p.startsWith("/pdfjs/")) { if (p.includes("..") || p.includes("\0")) return send(res, 403, { ok: false }); res.setHeader("Cache-Control", "public, max-age=604800"); return serveStatic(res, req, p.slice(1)); }
-    // le module 3D DANS la fenêtre du logiciel (sa version Web, app/monde3d_web.js) : seulement pour l'écran de
+    // le module DANS la fenêtre du logiciel (sa version Web, app/module_web.js) : seulement pour l'écran de
     // cette machine (127.0.0.1), jamais pour les autres appareils de la maison
-    if (p.startsWith("/monde3d/") && opt.web3dDir) {
+    if (p.startsWith("/module/") && opt.moduleWebDir) {
       if (!loopback(req)) return send(res, 403, { ok: false });
-      const rel = p.slice(9);
+      const rel = p.slice(8);
       if (!/^[\w.-]+$/.test(rel)) return send(res, 404, { ok: false });
       const T = { html: "text/html; charset=utf-8", js: "text/javascript", wasm: "application/wasm", pck: "application/octet-stream", png: "image/png" };
       const ext = path.extname(rel).slice(1).toLowerCase(); if (!T[ext]) return send(res, 404, { ok: false });
       res.setHeader("Cache-Control", "no-cache");
-      return sendFile(req, res, path.join(opt.web3dDir, rel), T[ext]);
+      return sendFile(req, res, path.join(opt.moduleWebDir, rel), T[ext]);
     }
     // bande-annonce d'internet (YouTube, Dailymotion ou Vimeo, trouvée par les fiches) : la page de l'application est un
     // fichier local, les lecteurs veulent une vraie page web qui les intègre → cette petite page, rien d'autre (aucune
@@ -892,7 +892,7 @@ function createServer(opt = {}) {
         .map((x) => ({ active: x[0] === "yes", ssid: x[1], signal: Number(x[2]) || 0 })));
     }
     if (/^\/api\/(usb|disque|sante)(\/|$)/.test(p) && (await MA.route(req, res, p, url, W, { send, body })) !== false) return;
-    if (p === "/api/monde3d") return M3D.route(req, res, p, url, W, { send, body });
+    if (p === "/api/module") return MP.route(req, res, p, url, W, { send, body });
     if (p.startsWith("/api/jeux/collection/")) { const r = await COL.route(req, res, p, url, W, { send, sendFile, body }); if (r !== false) return; }
     if (/^\/api\/(jeux|saves|pad)(\/|$)/.test(p)) { const r = await JX.route(req, res, p, url, W, { send, sendFile, body }); if (r !== false) return; }
     if (p === "/api/poke" || p === "/api/health/ui") return send(res, 200, { ok: true });

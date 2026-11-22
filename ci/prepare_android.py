@@ -52,7 +52,7 @@ def rbbManifeste = {
             def el = t.substring(s0, e0 + '</activity>'.length())
             def tete = el.substring(0, el.indexOf('>') + 1)
             tete = tete.replace('tools:replace="', 'tools:replace="android:exported,')
-            tete = tete.replaceFirst(/>$/, ' android:process=":monde3d" android:exported="false">')
+            tete = tete.replaceFirst(/>$/, ' android:process=":module" android:exported="false">')
             if (tete.endsWith('/>')) tete = tete
             t = t.substring(0, s0) + tete + '\n        </activity>' + t.substring(e0 + '</activity>'.length())
         }

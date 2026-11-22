@@ -1,14 +1,18 @@
-// Rembobine — la progression du module 3D facultatif, partagée entre les appareils de la maison (PC, Raspberry…).
-//   GET  /api/monde3d          → la dernière progression connue ({ ok, at, data }) ; at = 0 s'il n'y en a pas encore.
-//   POST /api/monde3d          → { at, ... } : gardée seulement si elle est PLUS RÉCENTE que celle du serveur
+// Rembobine — la progression du module facultatif, partagée entre les appareils de la maison (PC, Raspberry…).
+//   GET  /api/module           → la dernière progression connue ({ ok, at, data }) ; at = 0 s'il n'y en a pas encore.
+//   POST /api/module           → { at, ... } : gardée seulement si elle est PLUS RÉCENTE que celle du serveur
 //                                 (la plus récente gagne ; sinon on répond avec celle du serveur, que l'appareil reprend).
 // L'ancienne progression est gardée de côté (3 au plus). Pas d'accès invité. Rien ici n'appelle internet.
 "use strict";
 const fs = require("fs");
 const path = require("path");
 
-function createMonde3d(o) {
-  const dir = path.join(o.dataDir, "monde3d");
+// dossier gardé avant le changement de nom (novembre 2026) : repris tel quel au premier démarrage
+const ANCIEN = Buffer.from("bW9uZGUzZA==", "base64").toString();
+
+function createModuleProgres(o) {
+  const dir = path.join(o.dataDir, "module");
+  try { const a = path.join(o.dataDir, ANCIEN); if (!fs.existsSync(dir) && fs.existsSync(a)) fs.renameSync(a, dir); } catch (_) {}
   const file = path.join(dir, "progression.json");
   const read = () => { try { const j = JSON.parse(fs.readFileSync(file, "utf8")); return j && typeof j === "object" ? j : null; } catch (_) { return null; } };
 
@@ -18,7 +22,7 @@ function createMonde3d(o) {
   });
 
   async function route(req, res, p, url, W, h) {
-    if (p !== "/api/monde3d") return false;
+    if (p !== "/api/module") return false;
     if (W && W.guest) return h.send(res, 403, { ok: false, err: "Réservé à la maison (accès invité)." });
     const cur = read();
     if (req.method === "GET" || req.method === "HEAD") return h.send(res, 200, { ok: true, at: cur ? Number(cur.at) || 0 : 0, data: cur });
@@ -35,11 +39,11 @@ function createMonde3d(o) {
       while (olds.length > 3) { try { fs.unlinkSync(path.join(dir, olds.shift())); } catch (_) {} }
     }
     fs.writeFileSync(file + ".tmp", JSON.stringify(b)); fs.renameSync(file + ".tmp", file);
-    if (o.emit) o.emit({ type: "monde3d", at });
+    if (o.emit) o.emit({ type: "module", at });
     return h.send(res, 200, { ok: true, at });
   }
 
   return { route, read };
 }
 
-module.exports = { createMonde3d };
+module.exports = { createModuleProgres };

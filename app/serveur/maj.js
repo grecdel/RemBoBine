@@ -325,6 +325,7 @@ function createMaj(o) {
 
   // ---------- décompresser à côté et vérifier (Linux : .tar.gz) ----------
   const pubKey = () => (o.publicKey !== undefined ? o.publicKey : require("./maj-cle").PUBLIC_KEY);
+  const signee = () => !!pubKey();   // les mises à jour sont-elles vérifiées par signature ?
   // contrôles communs à une version décompressée (dossier « dir ») : signature, numéro
   async function controler(dir, why, exe) {
     if (!fs.existsSync(path.join(dir, exe)) || !fs.existsSync(path.join(dir, "resources", "app", "main.js"))) throw new Error(`Ce fichier n'est pas une version de Rembobine pour cette machine (il faut ${archiveName(plat, arch)}).`);
@@ -352,7 +353,7 @@ function createMaj(o) {
       if (fs.existsSync(dest)) fs.rmSync(dest, { recursive: true, force: true });
       fs.renameSync(tmp, dest);
       for (const f of ["rembobine", "rembobine-bin", "chrome-sandbox"]) { try { fs.chmodSync(path.join(dest, f), 0o755); } catch (_) {} }
-      try { for (const g of fs.readdirSync(path.join(dest, "resources", "gamebox3d"))) fs.chmodSync(path.join(dest, "resources", "gamebox3d", g), 0o755); } catch (_) {}
+      try { for (const g of fs.readdirSync(path.join(dest, "resources", "module"))) fs.chmodSync(path.join(dest, "resources", "module", g), 0o755); } catch (_) {}
       return { ...nv, dir: dest };
     } catch (e) { clean(); throw e; }
   }
@@ -531,7 +532,10 @@ function createMaj(o) {
     const name = archiveName(plat, arch), out = [], dirs = [];
     let mounts = ""; try { mounts = fs.readFileSync(o.mountsFile || "/proc/mounts", "utf8"); } catch (_) {}
     for (const l of mounts.split("\n")) { const m = l.split(" ")[1]; if (m && /^\/(media|run\/media|mnt)\//.test(m)) dirs.push(m.replace(/\\040/g, " ")); }
-    dirs.push(...(o.usbDirs || []), ...(o.roots || []).slice(0, 1), ...(o.roots || []).slice(0, 1).map((r) => path.join(r, "MisesAJour")));
+    // le dossier Rembobine (et son MisesAJour) est partagé en écriture sur le réseau (Samba) : tant que les mises à jour
+    // ne sont pas signées (pas de clé publique dans maj-cle.js), on n'y cherche rien — seulement les vraies clés USB
+    dirs.push(...(o.usbDirs || []));
+    if (signee()) dirs.push(...(o.roots || []).slice(0, 1), ...(o.roots || []).slice(0, 1).map((r) => path.join(r, "MisesAJour")));
     for (const d of [...new Set(dirs)]) { const f = path.join(d, name); try { const s = fs.statSync(f); if (s.isFile()) out.push({ file: f, size: s.size, t: s.mtimeMs, where: (o.roots || []).some((r) => f.startsWith(r)) ? "dossier Rembobine" : "clé USB" }); } catch (_) {} }
     return out;
   }
@@ -606,7 +610,7 @@ function createMaj(o) {
       config: { ...cfg(), channel: "stable" }, last: juste(last), busy: busy || (enAttente ? "mise à jour" : ""), prog: P, pending: readJson(essaiFile, null), history: s.history.slice(0, 20), bad: s.bad, recent: recent(),
       installDir: M === "installation" ? (IB.startsWith(home + path.sep) ? "~/" + path.relative(home, IB) : IB) : "", previous: canInstall ? previous() : "", usb: usbArchives(), downloaded: dl && fs.existsSync(dl) && M === "manuel" ? dl : "" };
   }
-  return { status, check: (opts) => guard("vérification", () => check(opts || {})), apply, start, rollback, fromFile, uploaded, nightly, usbArchives, ouvrirInstallee, layout: L, mode: () => M, stop: () => clearInterval(timer) };
+  return { status, check: (opts) => guard("vérification", () => check(opts || {})), apply, start, rollback, fromFile, uploaded, nightly, usbArchives, signee, ouvrirInstallee, layout: L, mode: () => M, stop: () => clearInterval(timer) };
 }
 
 module.exports = { createMaj, archiveName, readBuild, layout, scriptWindows, depotOk, REPO, TAG, HOTES, FERME };

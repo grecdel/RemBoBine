@@ -4,6 +4,10 @@
 # Le module facultatif est récupéré avec les secrets RBB_MODULE_DEPOT et RBB_MODULE_JETON (voir ci/module.sh) ;
 # ses étapes n'affichent ici que des résumés. Ces deux secrets ne sont donnés QU'AUX étapes qui appellent ci/module.sh
 # (et au checkout du module) : jamais à une étape qui installe ou lance du code téléchargé (npm, pip, Godot, apt…).
+# La clé de chiffrement du module (64 caractères hexadécimaux) est calculée par ci/cle_coffre.sh au début de chaque job
+# qui en a besoin : le secret RBB_PCK_KEY s'il existe, sinon dérivée du secret RBB_UPDATE_KEY (séparation de domaine) ;
+# masquée aussitôt, elle n'est donnée qu'aux étapes qui fabriquent le module. Sans aucun des deux secrets, la
+# fabrication s'arrête avec un message clair (rien n'est publié).
 name: Fabrication de Rembobine
 
 on:
@@ -75,14 +79,26 @@ jobs:
           bash ci/module.sh poser
           bash ci/module.sh garde "$AVANT" || { bash ci/module.sh journal garde; exit 1; }
 
-  module:
-    name: Module (bureau)
+  composants:
+    # composants du module, compilés une fois puis gardés en cache (refaits seulement s'ils changent) ;
+    # en cas d'échec, le détail part dans le journal du module (rien à l'écran)
+    name: Module (composants ${{ matrix.cible }})
     needs: preparer
     runs-on: ubuntu-24.04
     permissions: { contents: read }
-    timeout-minutes: 80
+    timeout-minutes: 180
+    strategy:
+      fail-fast: true
+      matrix:
+        cible: [linux-x86_64, linux-arm64, windows, web, android-arm64, android-arm32]
     steps:
       - uses: actions/checkout@v4
+      - name: Clé du coffre
+        id: coffre
+        env:
+          RBB_PCK_KEY: ${{ secrets.RBB_PCK_KEY }}
+          RBB_UPDATE_KEY: ${{ secrets.RBB_UPDATE_KEY }}
+        run: bash ci/cle_coffre.sh
       - name: Masquer
         run: bash ci/module.sh masquer
         env:
@@ -96,7 +112,83 @@ jobs:
           path: .module
           persist-credentials: false
       - run: bash ci/module.sh poser
+      - name: Nom du cache
+        id: cc
+        env:
+          RBB_PCK_KEY: ${{ steps.coffre.outputs.cle }}
+        run: bash ci/module/fabriquer.sh cle-composants ${{ matrix.cible }}
+      - uses: actions/cache@v4
+        id: cache
+        with:
+          path: build/composants/${{ matrix.cible }}
+          key: ${{ steps.cc.outputs.nom }}
+      - name: Compiler
+        if: steps.cache.outputs.cache-hit != 'true'
+        env:
+          RBB_PCK_KEY: ${{ steps.coffre.outputs.cle }}
+        run: bash ci/module/fabriquer.sh composants ${{ matrix.cible }}
+      - name: Journal du module
+        if: failure()
+        run: bash ci/module.sh journal composants-${{ matrix.cible }}
+        env:
+          RBB_MODULE_DEPOT: ${{ secrets.RBB_MODULE_DEPOT }}
+          RBB_MODULE_JETON: ${{ secrets.RBB_MODULE_JETON }}
+
+  module:
+    name: Module (bureau)
+    needs: [preparer, composants]
+    runs-on: ubuntu-24.04
+    permissions: { contents: read }
+    timeout-minutes: 80
+    steps:
+      - uses: actions/checkout@v4
+      - name: Clé du coffre
+        id: coffre
+        env:
+          RBB_PCK_KEY: ${{ secrets.RBB_PCK_KEY }}
+          RBB_UPDATE_KEY: ${{ secrets.RBB_UPDATE_KEY }}
+        run: bash ci/cle_coffre.sh
+      - name: Masquer
+        run: bash ci/module.sh masquer
+        env:
+          RBB_MODULE_DEPOT: ${{ secrets.RBB_MODULE_DEPOT }}
+          RBB_MODULE_JETON: ${{ secrets.RBB_MODULE_JETON }}
+      - uses: actions/checkout@v4
+        with:
+          repository: ${{ secrets.RBB_MODULE_DEPOT }}
+          token: ${{ secrets.RBB_MODULE_JETON }}
+          ref: main
+          path: .module
+          persist-credentials: false
+      - run: bash ci/module.sh poser
+      - name: Noms des caches
+        id: cc
+        env:
+          RBB_PCK_KEY: ${{ steps.coffre.outputs.cle }}
+        run: bash ci/module/fabriquer.sh cle-composants linux-x86_64 linux-arm64 windows web
+      - uses: actions/cache/restore@v4
+        with:
+          path: build/composants/linux-x86_64
+          key: ${{ steps.cc.outputs.linux_x86_64 }}
+          fail-on-cache-miss: true
+      - uses: actions/cache/restore@v4
+        with:
+          path: build/composants/linux-arm64
+          key: ${{ steps.cc.outputs.linux_arm64 }}
+          fail-on-cache-miss: true
+      - uses: actions/cache/restore@v4
+        with:
+          path: build/composants/windows
+          key: ${{ steps.cc.outputs.windows }}
+          fail-on-cache-miss: true
+      - uses: actions/cache/restore@v4
+        with:
+          path: build/composants/web
+          key: ${{ steps.cc.outputs.web }}
+          fail-on-cache-miss: true
       - name: Fabriquer le module
+        env:
+          RBB_PCK_KEY: ${{ steps.coffre.outputs.cle }}
         run: bash ci/module/fabriquer.sh bureau
       - name: Livrer le module
         if: ${{ !cancelled() }}
@@ -238,7 +330,7 @@ jobs:
 
   android:
     name: Application Android (APK)
-    needs: preparer
+    needs: [preparer, composants]
     runs-on: ubuntu-24.04
     timeout-minutes: 45
     permissions: { contents: write }
@@ -246,6 +338,12 @@ jobs:
       GH_TOKEN: ${{ github.token }}
     steps:
       - uses: actions/checkout@v4
+      - name: Clé du coffre
+        id: coffre
+        env:
+          RBB_PCK_KEY: ${{ secrets.RBB_PCK_KEY }}
+          RBB_UPDATE_KEY: ${{ secrets.RBB_UPDATE_KEY }}
+        run: bash ci/cle_coffre.sh
       - name: Masquer
         run: bash ci/module.sh masquer
         env:
@@ -261,8 +359,24 @@ jobs:
           path: .module
           persist-credentials: false
       - run: bash ci/module.sh poser
+      - name: Noms des caches
+        id: cc
+        env:
+          RBB_PCK_KEY: ${{ steps.coffre.outputs.cle }}
+        run: bash ci/module/fabriquer.sh cle-composants android-arm64 android-arm32
+      - uses: actions/cache/restore@v4
+        with:
+          path: build/composants/android-arm64
+          key: ${{ steps.cc.outputs.android_arm64 }}
+          fail-on-cache-miss: true
+      - uses: actions/cache/restore@v4
+        with:
+          path: build/composants/android-arm32
+          key: ${{ steps.cc.outputs.android_arm32 }}
+          fail-on-cache-miss: true
       - name: Fabriquer l'APK
         env:
+          RBB_PCK_KEY: ${{ steps.coffre.outputs.cle }}
           # dépôt où l'appli Android cherchera ses mises à jour (écrit dans res/raw/rbb_build.json)
           RBB_DEPOT: ${{ needs.preparer.outputs.depot }}
         run: bash ci/module/fabriquer.sh android

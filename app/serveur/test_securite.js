@@ -148,6 +148,35 @@ function stream(host, tok) {
   check(shareOn && shareOn.ok === false && !sysRuns.some((c) => /smbd/.test(c)), "téléphone relié : n'allume pas le partage réseau");
   check((await local("/api/dev", { body: { action: "ssh", on: true } })).json.ok === true && sysRuns.some((c) => /enable --now ssh/.test(c)), "écran de la TV : SSH s'allume");
   check(await refused("/api/share") && await refused("/api/dev"), "invité : ni partage ni SSH");
+  // partage réseau (Samba) : allumé par défaut, se coupe et se rallume sur l'écran de la TV, choix gardé au redémarrage
+  sysRuns.length = 0;
+  const shareOff = (await local("/api/share", { body: { on: false } })).json;
+  const sudoOff = sysRuns.filter((c) => c.startsWith("sudo "));
+  check(shareOff && shareOff.ok === true && ["smbd", "nmbd", "wsdd", "rembobine-partage-annonce"].every((x) => sudoOff.includes("sudo -n /usr/bin/systemctl disable --now " + x)), "écran de la TV : le partage se coupe (smbd, nmbd, wsdd, annonce Bonjour)");
+  check(!sysRuns.some((c) => / stop /.test(c + " ")) && sudoOff.every((c) => / disable --now /.test(c)), "… avec « disable » : il reste coupé après un redémarrage");
+  sysRuns.length = 0;
+  const shareBack = (await local("/api/share", { body: { on: true } })).json;
+  const sudoOn = sysRuns.filter((c) => c.startsWith("sudo "));
+  check(shareBack && shareBack.ok === true && ["smbd", "nmbd", "wsdd", "rembobine-partage-annonce"].every((x) => sudoOn.includes("sudo -n /usr/bin/systemctl enable --now " + x)), "écran de la TV : le partage se rallume (et reste allumé au redémarrage)");
+  // chaque commande lancée avec sudo est écrite telle quelle dans les sudoers de Rembobine OS (aucune commande large)
+  {
+    const bos = fs.readFileSync(path.join(__dirname, "..", "..", "ci", "build_os.sh"), "utf8");
+    const blk = (bos.match(/rembobine-systeme" >\/dev\/null <<'EOF'\n([\s\S]*?)\nEOF/) || [])[1] || "";
+    const permis = new Set(blk.split("\n").flatMap((l) => (l.split("NOPASSWD:")[1] || "").split(",").map((x) => x.trim())).filter(Boolean));
+    await local("/api/dev", { body: { action: "ssh", on: false } });
+    const lances = [...new Set([...sudoOff, ...sudoOn, ...sysRuns.filter((c) => c.startsWith("sudo "))].map((c) => c.replace(/^sudo -n /, "")))];
+    check(permis.size >= 6 && lances.length >= 6 && lances.every((c) => permis.has(c)), "sudoers : partage et SSH n'utilisent que des commandes exactes permises (" + lances.filter((c) => !permis.has(c)).join(" | ") + ")");
+    check(![...permis].some((c) => /\*|ALL$|^\/usr\/bin\/systemctl$/.test(c)), "sudoers : aucune commande large (ni *, ni ALL, ni systemctl seul)");
+    check(/systemctl enable smbd nmbd/.test(bos), "Rembobine OS : le partage est allumé par défaut");
+    check(permis.has("/usr/bin/systemctl disable --now rembobine-partage-annonce") && permis.has("/usr/bin/systemctl enable --now rembobine-partage-annonce"), "sudoers : l'annonce Bonjour se coupe et se rallume par une règle exacte");
+    check(/systemctl enable rembobine-partage-annonce/.test(bos) && /ExecStop=\/usr\/bin\/rm -f \/etc\/avahi\/services\/rembobine-partage\.service/.test(bos) && !/tee "\$R\/etc\/avahi\/services\//.test(bos), "Rembobine OS : l'annonce Bonjour est posée et retirée par son unité (allumée par défaut, pas de fichier fixe)");
+  }
+  // mises à jour pas encore signées (pas de clé publique) : un fichier ne s'installe que depuis l'écran de la TV
+  const upPhone = (await req("/api/update/upload", { body: { x: 1 }, tok })).json, filePhone = (await req("/api/update", { body: { action: "file", file: "/media/usb/Rembobine-Linux-PC.tar.gz" }, tok })).json;
+  // avec la clé publique de maj-cle.js, le téléphone peut envoyer un fichier : il ne s'installe que bien signé (vérifié plus bas)
+  const avecCle = !!require("./maj-cle").PUBLIC_KEY;
+  check(upPhone && upPhone.ok === false && filePhone && filePhone.ok === false && (avecCle ? !upPhone.tv && !filePhone.tv : upPhone.tv && filePhone.tv),
+    avecCle ? "téléphone relié, mises à jour signées : un fichier non signé n'est pas installé" : "téléphone relié, mises à jour non signées : ni envoi ni installation d'un fichier");
 
   // ---------- 5. fichiers piégés ----------
   const adv = lib.items.find((x) => x.kind === "game" && /Aventure/.test(x.title));
@@ -248,7 +277,30 @@ function stream(host, tok) {
   r = await MJ.fromFile(f);
   check(r.ok && link() === "versions/1.0.0+2", "mise à jour signée par la bonne clé : installée");
   MJ.stop();
+  // l'appli livrée : aucune option « publicKey » → la clé de maj-cle.js (la vraie), qui refuse la clé jetable de l'essai
+  const VRAIE = require("./maj-cle").PUBLIC_KEY;
+  let lisible = false; try { SIG.publicKeyOf(VRAIE); lisible = true; } catch (_) {}
+  check(lisible && VRAIE !== pub, "maj-cle.js : une vraie clé publique Ed25519, différente de la clé d'essai");
+  MJ = mkMaj(undefined);
+  f = await archive("1.0.0+3", "signed"); r = await MJ.fromFile(f);
+  check(!r.ok && /fausse/.test(r.err) && link() === "versions/1.0.0+2", "appli livrée (clé de maj-cle.js) : version signée par une clé d'essai refusée");
+  f = await archive("1.0.0+3", "unsigned"); r = await MJ.fromFile(f);
+  check(!r.ok && /pas signée/.test(r.err) && link() === "versions/1.0.0+2", "appli livrée (clé de maj-cle.js) : version non signée refusée");
+  MJ.stop();
+  // la clé d'essai ne passe que par le code des essais : ni variable d'environnement, ni réglage, ni option de l'appli livrée
+  const src = (f) => fs.readFileSync(path.join(__dirname, f), "utf8");
+  check(/publicKey: opt\.updateKey,/.test(src("os.js")) && !/process\.env\.[A-Z_]*(CLE|KEY|SIGN)/i.test(src("maj.js") + src("os.js") + src("maj-signature.js") + src("maj-cle.js")),
+    "la clé de vérification ne se lit dans aucune variable d'environnement (maj.js, os.js, maj-signature.js, maj-cle.js)");
+  const mainJs = fs.readFileSync(path.join(__dirname, "..", "main.js"), "utf8"), srvJs = src("serveur.js");
+  check(!/updateKey|publicKey/.test(mainJs) && !/updateKey|publicKey/.test(srvJs), "l'appli (main.js, serveur.js) ne donne jamais d'autre clé : celle de maj-cle.js s'applique");
   MJ = mkMaj("");
+  // sans signature : le dossier Rembobine (partagé en écriture par Samba) n'est pas une source de mises à jour
+  fs.mkdirSync(path.join(M, "MisesAJour"), { recursive: true });
+  fs.writeFileSync(path.join(M, "Rembobine-Linux-PC.tar.gz"), "x"); fs.writeFileSync(path.join(M, "MisesAJour", "Rembobine-Linux-PC.tar.gz"), "x");
+  check(!MJ.usbArchives().some((x) => x.file.startsWith(M)) && !(await MJ.fromFile(path.join(M, "MisesAJour", "Rembobine-Linux-PC.tar.gz"))).ok, "sans clé publique : rien n'est pris dans le dossier partagé (Samba), seulement sur une clé USB");
+  MJ.stop(); MJ = mkMaj(pub);
+  check(MJ.usbArchives().some((x) => x.file === path.join(M, "MisesAJour", "Rembobine-Linux-PC.tar.gz")), "avec la clé publique : le dossier partagé redevient une source (tout est vérifié par la signature)");
+  MJ.stop(); MJ = mkMaj("");
   check((await SIG.verifyDir(path.join(B, "versions", "1.0.0+1"), "")).unsigned === true, "sans clé publique configurée : repli (vérification par empreinte seulement)");
   MJ.stop();
   await wait(1500);   // (le gardien des mises à jour, lancé en arrière-plan, se termine)
