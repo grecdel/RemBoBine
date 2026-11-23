@@ -9998,11 +9998,11 @@ ${notes.slice(0, 6).map(n => { const pc = Number(n.pct);
   function plaque(x, y, w, label, key) {
     return `<g ${hsAttrs(key, x + w / 2, y + 14, y, label)}><g class="pull"><rect x="${x}" y="${y}" width="${w}" height="26" rx="4" fill="#c9a26b"/><text x="${x + w / 2}" y="${y + 18}" text-anchor="middle" class="pl-t plaque">${esc(label.toUpperCase())}</text></g></g>`;
   }
-  function shelfFrame(x0, label, tab) {
+  function shelfFrame(x0, label, tab, sansPlaque) {
     return `<rect x="${x0}" y="104" width="320" height="472" fill="#24170f"/>
       <rect x="${x0}" y="104" width="12" height="472" fill="url(#gWood)"/><rect x="${x0 + 308}" y="104" width="12" height="472" fill="url(#gWood)"/>
       ${SHELF_Y.map(y => `<rect x="${x0}" y="${y}" width="320" height="12" fill="#6b452d"/><rect x="${x0}" y="${y}" width="320" height="2" fill="#8a5d3d"/>`).join("")}
-      <rect x="${x0 - 4}" y="576" width="328" height="24" fill="#3e281b"/>${plaque(x0 + 104, 70, 112, label, "tab:" + tab)}`;
+      <rect x="${x0 - 4}" y="576" width="328" height="24" fill="#3e281b"/>${sansPlaque ? "" : plaque(x0 + 104, 70, 112, label, "tab:" + tab)}`;
   }
   function decorSvg(x, base, kind) {
     if (kind === 1 && ["Hiver", "Noël"].includes(decoSeason())) return `<g transform="translate(${x} ${base})"><rect x="-14" y="-8" width="28" height="8" rx="2" fill="#6b452d"/><circle cy="-26" r="19" fill="rgba(200,230,255,.22)" stroke="rgba(220,240,255,.6)"/><path d="M-8 -12 l8 -16 l8 16 Z" fill="#2f6b3a"/><rect x="-1.5" y="-12" width="3" height="4" fill="#5a3a26"/>${[[-8, -34], [5, -38], [10, -24], [-12, -22], [0, -32]].map(([a, b2], i) => `<circle class="gsnow" cx="${a}" cy="${b2}" r="1.4" fill="#fff" style="animation-delay:${i * .3}s"/>`).join("")}</g>`;
@@ -10039,7 +10039,8 @@ ${notes.slice(0, 6).map(n => { const pc = Number(n.pct);
   };
   function consoleShelf(x0) {
     const games = dedupeT(visibleItems().filter(i => i.kind === "game")), names = Object.keys(CONSOLES_2D);
-    let html = `<rect x="${x0}" y="104" width="320" height="472" fill="#1a1110"/>${SHELF_Y.map(y => `<rect x="${x0}" y="${y}" width="320" height="10" fill="#4a3022"/>`).join("")}<rect x="${x0 + 12}" y="104" width="296" height="472" fill="url(#gConsGlow)" opacity=".55"/>`;
+    let html = `<rect x="${x0}" y="104" width="320" height="472" fill="#1a1110"/>${SHELF_Y.map(y => `<rect x="${x0}" y="${y}" width="320" height="10" fill="#4a3022"/>`).join("")}<rect x="${x0 + 12}" y="104" width="296" height="472" fill="url(#gConsGlow)" opacity=".55"/>
+      <g aria-hidden="true"><rect x="${x0 + 108}" y="118" width="104" height="24" rx="4" fill="#b8925e"/><rect x="${x0 + 108}" y="118" width="104" height="3" rx="1.5" fill="#d9b886"/><circle cx="${x0 + 115}" cy="130" r="1.6" fill="#7a5a32"/><circle cx="${x0 + 205}" cy="130" r="1.6" fill="#7a5a32"/><text x="${x0 + 160}" y="135" text-anchor="middle" class="pl-t plaque" font-size="11">CONSOLES</text></g>`;
     names.forEach((n, i) => { const row = Math.floor(i / 2), col = i % 2, cx = x0 + 88 + col * 148, base = SHELF_Y[row + 1], cnt = games.filter(g => g.platform === n).length;
       html += `<g ${hsAttrs("cons:" + n, cx, base - 30, base - 70, n)} opacity="${cnt ? 1 : 0.45}"${salon.shelfOpen ? "" : ' style="display:none"'}>${CONSOLES_2D[n](cx, base)}<text x="${cx}" y="${base + 9}" text-anchor="middle" class="pl-t" font-size="7.5">${esc(n.toUpperCase())}${cnt ? ` · ${cnt}` : ""}</text></g>`; });
     return html;
@@ -10056,13 +10057,43 @@ ${notes.slice(0, 6).map(n => { const pc = Number(n.pct);
     document.body.appendChild(el);
     el.addEventListener("click", (e) => { const k = e.target.closest("[data-cl]")?.dataset.cl; if (!k) { if (e.target === el) el.remove(); return; } el.remove(); if (k === "x") return; const it = state.items.find(x => x.id === k); if (it) openSheet(it); });
   }
+  // ce qui reste fixe au-dessus du meuble à jeux (l'étiquette), et l'ombre que le meuble porte quand il glisse
+  function shelfFixed(x0) { return plaque(x0 + 104, 70, 112, "Jeux", "tab:game"); }
+  function shelfShadow(x0) {
+    return `<defs><linearGradient id="gShelfSh" x1="1" y1="0" x2="0" y2="0"><stop offset="0" stop-color="#000" stop-opacity=".55"/><stop offset="1" stop-color="#000" stop-opacity="0"/></linearGradient></defs>
+      <g class="gsh-ombre" opacity="${salon.shelfOpen ? 1 : 0}" pointer-events="none"><rect x="${x0 - 30}" y="104" width="30" height="472" fill="url(#gShelfSh)"/><ellipse cx="${x0 + 160}" cy="601" rx="176" ry="7" fill="rgba(0,0,0,.45)"/></g>`;
+  }
+  // le meuble glisse comme un vrai meuble lourd : il démarre doucement, freine, touche la butée et rebondit à peine ;
+  // l'ombre le suit. Animations coupées : il est tout de suite à sa place ; ralenties : il glisse plus lentement.
+  const SHELF = { x: null, v: 0, raf: 0, from: 0, to: 0, t: 0, hit: false };
+  function shelfSlide(g, open) {
+    const W = 316, els = () => [g, ...document.querySelectorAll("#sstage .hp-rs")], ombre = () => g.querySelector(".gsh-ombre");
+    const put = (x) => { els().forEach(e => { e.style.transition = "none"; e.style.transform = `translateX(${x.toFixed(2)}px)`; }); const o = ombre(); if (o) o.setAttribute("opacity", Math.min(1, x / 40).toFixed(2)); };
+    const fin = () => { cancelAnimationFrame(SHELF.raf); SHELF.raf = 0; SHELF.x = null; els().forEach(e => { e.style.transform = ""; e.style.transition = ""; }); const o = ombre(); if (o) o.setAttribute("opacity", open ? "1" : "0"); };
+    if (SHELF.x === null || !SHELF.raf) { SHELF.x = open ? 0 : W; SHELF.v = 0; }
+    g.classList.toggle("open", open);
+    if (roomStill() || !g.isConnected) { fin(); return; }
+    SHELF.from = SHELF.x; SHELF.to = open ? W : 0; SHELF.t = 0; SHELF.hit = false; put(SHELF.x); playRoom("glisse");
+    const slow = (() => { try { const k = window.rbbAnimations.facteur(); return k > 0 && k < 1 ? k : 1; } catch (_) { return 1; } })();
+    let last = performance.now(); cancelAnimationFrame(SHELF.raf);
+    const step = (now) => {
+      if (!g.isConnected) { fin(); return; }
+      let dt = Math.min(0.05, (now - last) / 1000) * slow; last = now;
+      for (let n = 0; n < 4; n++) { const h = dt / 4; SHELF.t += h; const u = Math.min(1, SHELF.t / 0.85), tg = SHELF.from + (SHELF.to - SHELF.from) * u * u * (3 - 2 * u);
+        const a = -121 * (SHELF.x - tg) - 2 * 0.62 * 11 * SHELF.v; SHELF.v += a * h; SHELF.x += SHELF.v * h; }
+      if (!SHELF.hit && (SHELF.to > SHELF.from ? SHELF.x >= SHELF.to - 1 : SHELF.x <= SHELF.to + 1)) { SHELF.hit = true; playRoom("thump"); }
+      if (SHELF.t > 0.85 && Math.abs(SHELF.x - SHELF.to) < 0.3 && Math.abs(SHELF.v) < 3) { fin(); return; }
+      put(SHELF.x); SHELF.raf = requestAnimationFrame(step);
+    };
+    SHELF.raf = requestAnimationFrame(step);
+  }
   function gameShelf(x0) {
     const games = dedupeT(visibleItems().filter(i => i.kind === "game"));
     const plats = [...new Set(histSort(games).map(g => g.platform))];
     const groups = plats.slice(0, 3).map(p => [p, histSort(games.filter(g => g.platform === p))]);
     if (plats.length > 3) groups.push(["Autres consoles", histSort(games.filter(g => !plats.slice(0, 3).includes(g.platform)))]);
     const dims = (it) => it.platform === "PlayStation" ? { w: 13, h: 84, style: "cd" } : /Game Boy|DS/.test(it.platform) ? { w: 18, h: 58, style: "small" } : { w: 24, h: 78, style: "box" };
-    let html = shelfFrame(x0, "Jeux", "game");
+    let html = shelfFrame(x0, "Jeux", "game", true);   // l'étiquette « Jeux » reste vissée au mur (shelfFixed) : elle ne part pas avec le meuble
     for (let k = 0; k < 4; k++) {
       const g = groups[k];
       if (!g) { html += decorSvg(x0 + 90 + (k % 2) * 120, SHELF_Y[k + 1], (k + 1) % 3); continue; }
@@ -10276,7 +10307,7 @@ ${notes.slice(0, 6).map(n => { const pc = Number(n.pct);
     const planks = Array.from({ length: 30 }, (_, i) => { const x = -300 + i * 110; return `<path d="M${x} 600 L${1300 + (x - 1300) * 1.4} 720" stroke="#140d09" stroke-width="2" opacity=".55"/>`; }).join("");
     const spd = specialDay(), neonTxt = spd === "poisson" ? "REMBOBIEN" : spd === "nouvelan" ? "BONNE ANNÉE" : spd === "valentin" ? "REMB♥BINE" : "REMBOBINE";
     OX = 0;
-    const left = seasonFloorSvg() + vinylUnit() + windowSvg() + underWindowSvg() + videoShelf(440) + consoleShelf(1880) + `<g id="gShelfMove" class="gshelf${salon.shelfOpen ? " open" : ""}">${gameShelf(1880)}</g>` + vitrineSvg() + shelfSwitch(1880);
+    const left = seasonFloorSvg() + vinylUnit() + windowSvg() + underWindowSvg() + videoShelf(440) + consoleShelf(1880) + `<g id="gShelfMove" class="gshelf${salon.shelfOpen ? " open" : ""}">${shelfShadow(1880)}${gameShelf(1880)}</g>` + shelfFixed(1880) + vitrineSvg() + shelfSwitch(1880);
     OX = 640; const back = middleBack(), front = middleFront(); OX = 0;
     return `<svg viewBox="${salon.camX.toFixed(1)} 0 ${VW} 720" preserveAspectRatio="xMidYMid meet" role="group" aria-label="Le salon">
       <defs>
@@ -15433,7 +15464,7 @@ FETES2D["saison:halloween"] = (() => {
     if (k === "vitrine" || k === "tab:vitrine") { openVitrine(0); return; }
     if (k === "vadd") { openVitrine(-1, true); return; }
     if (k.startsWith("tab:")) { setTab(k.slice(4)); return; }
-    if (k === "shelfsw") { salon.shelfOpen = !salon.shelfOpen; playRoom("switch"); setTimeout(() => playRoom("scrape"), 150); const g = document.getElementById("gShelfMove"); if (g) g.classList.toggle("open", salon.shelfOpen); el.querySelector("rect:nth-child(2)")?.setAttribute("y", salon.shelfOpen ? 316 : 327); el.querySelector("rect:nth-child(2)")?.setAttribute("fill", salon.shelfOpen ? "#5ad17a" : "#8a7f70"); clearTimeout(salon.consTm); if (salon.shelfOpen) document.querySelectorAll('#salon [data-hs^="cons:"]').forEach(c => { c.style.display = ""; }); else salon.consTm = setTimeout(() => { if (!salon.shelfOpen) document.querySelectorAll('#salon [data-hs^="cons:"]').forEach(c => { c.style.display = "none"; }); }, 950); if (salon.shelfOpen && !U().consTold) { U().consTold = 1; saveAll(); toast("Le meuble glisse… Derrière, toutes les consoles."); } return; }
+    if (k === "shelfsw") { salon.shelfOpen = !salon.shelfOpen; playRoom("switch"); const g = document.getElementById("gShelfMove"); if (g) setTimeout(() => shelfSlide(g, salon.shelfOpen), 120); el.querySelector("rect:nth-child(2)")?.setAttribute("y", salon.shelfOpen ? 316 : 327); el.querySelector("rect:nth-child(2)")?.setAttribute("fill", salon.shelfOpen ? "#5ad17a" : "#8a7f70"); clearTimeout(salon.consTm); if (salon.shelfOpen) document.querySelectorAll('#salon [data-hs^="cons:"]').forEach(c => { c.style.display = ""; }); else salon.consTm = setTimeout(() => { if (!salon.shelfOpen) document.querySelectorAll('#salon [data-hs^="cons:"]').forEach(c => { c.style.display = "none"; }); }, 1400); if (salon.shelfOpen && !U().consTold) { U().consTold = 1; saveAll(); toast("Le meuble glisse… Derrière, toutes les consoles."); } return; }
     if (k.startsWith("cons:")) { consoleList(k.slice(5)); return; }
     if (k === "tv") { const pick = tvPick(); if (pick) { tvOn(pick, inProgress(pick) ? "À reprendre" : "Surprise", false); setTimeout(() => openSheet(pick), 1500); } }
     else if (k === "fire") setFire(!salon.fire);
@@ -15853,7 +15884,7 @@ FETES2D["saison:halloween"] = (() => {
   function playRoomRaw(kind) {
     kind = ({ pour: "splash", flicker: "switch", steps: "step", radio: "tv", musicbox: "piano", leaves: "crackle", twig: "crackle" })[kind] || kind;
     const ctx = roomCtx(); if (!ctx) return;
-    const t = ctx.currentTime + 0.01, v = C("soundVol", 50) / 100;
+    const t = ctx.currentTime + 0.01, v = AUD.vol != null ? AUD.vol : C("soundVol", 50) / 100;   // AUD.vol : « Volume des bruitages » (sons du salon)
     if (kind === "crackle") { noise(ctx, t, 0.02 + Math.random() * 0.05, "bandpass", 1500 + Math.random() * 3000, v * 0.35); if (Math.random() < .3) noise(ctx, t + 0.03, 0.02, "highpass", 4000, v * 0.2); }
     else if (kind === "whoosh") { const f = noise(ctx, t, 1.1, "lowpass", 300, v * 0.35, 0.35); f.frequency.linearRampToValueAtTime(1600, t + 0.9); }
     else if (kind === "howl") { const o2 = tone(ctx, t, 380, 2.2, "sine", v * 0.05); o2.frequency.linearRampToValueAtTime(620, t + 0.7); o2.frequency.linearRampToValueAtTime(560, t + 1.6); o2.frequency.linearRampToValueAtTime(360, t + 2.2); }
@@ -18659,58 +18690,88 @@ FETES2D["saison:halloween"] = (() => {
     return o;
   }
 
-  /* ---- 9. Le feu de cheminée (salon 2D) : flammes vivantes, étincelles, braises, fumée ---- */
-  const FIRE = { raf: 0, I: 0, t: 0, last: 0, sparks: [], smoke: [], licks: [], g: null, on: false };
+  /* ---- 9. Le feu de cheminée (salon 2D) : flammes vivantes en plusieurs couches, braises, étincelles, fumée, lueur qui vacille ---- */
+  const FIRE = { raf: 0, I: 0, t: 0, last: 0, sparks: [], smoke: [], licks: [], g: null, on: false, emb: [], burst: 0 };
   const fn1 = (t) => Math.sin(t) * 0.5 + Math.sin(t * 2.3 + 1.7) * 0.3 + Math.sin(t * 5.1 + 0.3) * 0.2;
+  // braises posées sur le lit de cendres et sur les bûches : chacune rougeoie à son rythme
+  const FIRE_EMB = [[506, 591, 2.6], [518, 588, 2], [530, 593, 3], [546, 590, 2.4], [558, 593, 2.8], [572, 589, 2.2], [524, 584, 1.6], [552, 583, 1.8], [584, 592, 2], [496, 594, 1.8]];
   function fireEnsure() {
     const fl = $("flames"); if (!fl) return null; if (FIRE.g && FIRE.g.isConnected) return FIRE.g;
     const NS = "http://www.w3.org/2000/svg", host = fl.parentNode;
     if (!$("fclip")) { const cp = document.createElementNS(NS, "clipPath"); cp.id = "fclip"; cp.innerHTML = `<path d="M466 600 V472 Q466 432 540 432 Q614 432 614 472 V600 Z"/>`; host.insertBefore(cp, fl); }
     const g = document.createElementNS(NS, "g"); g.id = "flive"; g.setAttribute("clip-path", "url(#fclip)"); g.setAttribute("aria-hidden", "true");
-    g.innerHTML = `<defs><radialGradient id="gBed" cx=".5" cy=".5" r=".5"><stop offset="0" stop-color="#ffd27a"/><stop offset=".5" stop-color="#ff7a22" stop-opacity=".7"/><stop offset="1" stop-color="#ff5a10" stop-opacity="0"/></radialGradient></defs>
-      <ellipse class="fbed" cx="540" cy="588" rx="70" ry="14" fill="url(#gBed)"/><g class="fsmoke"></g><path class="fo" fill="url(#gFlameO)"/><path class="fm" fill="url(#gFlameM)"/><path class="fi" fill="url(#gFlameI)"/><g class="flick"></g><g class="fsp"></g>
+    g.innerHTML = `<defs><radialGradient id="gBed" cx=".5" cy=".5" r=".5"><stop offset="0" stop-color="#ffd27a"/><stop offset=".5" stop-color="#ff7a22" stop-opacity=".7"/><stop offset="1" stop-color="#ff5a10" stop-opacity="0"/></radialGradient>
+        <radialGradient id="gHearthIn" cx=".5" cy=".75" r=".6"><stop offset="0" stop-color="#ff8a32" stop-opacity=".55"/><stop offset=".55" stop-color="#b8401a" stop-opacity=".18"/><stop offset="1" stop-color="#b8401a" stop-opacity="0"/></radialGradient>
+        <linearGradient id="gFlameB" x1="0" y1="1" x2="0" y2="0"><stop offset="0" stop-color="#c22a10" stop-opacity=".9"/><stop offset=".6" stop-color="#e0461a" stop-opacity=".5"/><stop offset="1" stop-color="#ff6a1f" stop-opacity="0"/></linearGradient>
+        <radialGradient id="gBlue"><stop offset="0" stop-color="#9fc0ff" stop-opacity=".9"/><stop offset="1" stop-color="#3a64ff" stop-opacity="0"/></radialGradient></defs>
+      <ellipse class="fin" cx="540" cy="560" rx="80" ry="90" fill="url(#gHearthIn)" opacity="0"/>
+      <ellipse class="fbed" cx="540" cy="588" rx="70" ry="14" fill="url(#gBed)"/><g class="fsmoke"></g><path class="fb" fill="url(#gFlameB)"/><path class="fo" fill="url(#gFlameO)"/><path class="fm" fill="url(#gFlameM)"/><path class="fi" fill="url(#gFlameI)"/>
+      <g class="fblue">${[518, 540, 562].map(x => `<ellipse cx="${x}" cy="585" rx="9" ry="4" fill="url(#gBlue)" opacity="0"/>`).join("")}</g><g class="flick"></g><g class="fsp"></g>
       <path class="fcrack" d="M500 586 l10 -3 l8 4 l12 -4 M552 584 l10 3 l12 -4 l8 3" stroke="#ff9a3c" stroke-width="1.6" fill="none" stroke-linecap="round"/>`;
     fl.after(g); FIRE.g = g;
-    // les bûches et les braises passent devant le pied des flammes
-    let at = g; host.querySelectorAll(':scope > rect[transform^="rotate"], :scope > .ember').forEach(e => { at.after(e); at = e; }); FIRE.sparks = []; FIRE.smoke = []; FIRE.licks = []; return g;
+    // les bûches et les braises passent devant le pied des flammes ; de nouvelles braises vivantes par-dessus
+    let at = g; host.querySelectorAll(':scope > rect[transform^="rotate"], :scope > .ember').forEach(e => { if (e.classList.contains("ember")) e.style.display = "none"; at.after(e); at = e; });
+    const eg = document.createElementNS(NS, "g"); eg.setAttribute("aria-hidden", "true"); eg.setAttribute("pointer-events", "none");
+    eg.innerHTML = FIRE_EMB.map(([x, y, r]) => `<circle cx="${x}" cy="${y}" r="${r}" fill="#ff7a22" opacity=".4"/>`).join("") + `<path class="fglowlog" d="M494 588 q22 -6 46 -2 q24 4 50 -3" stroke="#ff8a2a" stroke-width="2.2" fill="none" stroke-linecap="round" opacity="0"/>`;
+    at.after(eg); FIRE.emb = [...eg.querySelectorAll("circle")]; FIRE.glowlog = eg.querySelector(".fglowlog");
+    // la lueur sur le sol devant le foyer (derrière le canapé et la table : ils la cachent naturellement)
+    const fg = $("fglow"); if (fg && !$("fglowSol")) { const e = document.createElementNS(NS, "ellipse"); e.id = "fglowSol"; e.setAttribute("cx", "922"); e.setAttribute("cy", "618"); e.setAttribute("rx", "250"); e.setAttribute("ry", "44"); e.setAttribute("fill", "url(#gFire)"); e.setAttribute("opacity", "0"); e.setAttribute("pointer-events", "none"); e.style.mixBlendMode = "screen"; fg.after(e); }
+    FIRE.sparks = []; FIRE.smoke = []; FIRE.licks = []; return g;
   }
   // une langue de flamme : base large, pointe qui ondule
   function tongue(cx, b, w, h, sw) {
     const x0 = cx - w / 2, x1 = cx + w / 2, xt = cx + sw;
     return `M${x0.toFixed(1)} ${b}C${(x0 + sw * 0.15).toFixed(1)} ${(b - h * 0.5).toFixed(1)} ${(xt - w * 0.18 - sw * 0.35).toFixed(1)} ${(b - h * 0.78).toFixed(1)} ${xt.toFixed(1)} ${(b - h).toFixed(1)}C${(xt + w * 0.12 - sw * 0.25).toFixed(1)} ${(b - h * 0.72).toFixed(1)} ${(x1 + sw * 0.1).toFixed(1)} ${(b - h * 0.45).toFixed(1)} ${x1.toFixed(1)} ${b}Z`;
   }
-  function fireLayer(t, I, sc, seed) {
+  // une couche de flammes ; « vent » = balancement commun à toutes les langues (le tirage de la cheminée)
+  function fireLayer(t, I, sc, seed, wind) {
     const B = 590, xs = [-44, -24, -6, 12, 30, 46], hs = [0.55, 0.8, 1, 0.92, 0.75, 0.5]; let d = "";
     for (let k = 0; k < xs.length; k++) { const n = fn1(t * (2.1 + k * 0.17) + k * 3.1 + seed), n2 = fn1(t * 3.3 + k * 1.9 + seed * 2);
-      const h = 132 * sc * hs[k] * I * (0.72 + 0.28 * n), w = (30 + 8 * n2) * sc * (0.75 + 0.25 * I), sw = (9 * n2 + 5 * Math.sin(t * 4.2 + k)) * sc; if (h < 3) continue; d += tongue(540 + xs[k] * sc * (0.8 + 0.2 * I), B, w, h, sw); }
+      const h = 132 * sc * hs[k] * I * (0.72 + 0.28 * n), w = (30 + 8 * n2) * sc * (0.75 + 0.25 * I), sw = (9 * n2 + 5 * Math.sin(t * 4.2 + k) + (wind || 0) * hs[k]) * sc; if (h < 3) continue; d += tongue(540 + xs[k] * sc * (0.8 + 0.2 * I), B, w, h, sw); }
     d += `M${540 - 58 * sc} ${B}Q540 ${B - 34 * sc * I - 6} ${540 + 58 * sc} ${B}Z`; return d;
   }
+  // une bûche qui craque : gerbe d'étincelles (appelée aussi par le son du feu, pour que l'image et le bruit aillent ensemble)
+  function fireBurst(n) { if (FIRE.I < 0.4 || roomStill()) return; for (let i = 0; i < (n || 7); i++) FIRE.sparks.push({ x: 520 + Math.random() * 40, y: 580, vx: (Math.random() - 0.5) * 70, vy: -110 - Math.random() * 120, life: 0, max: 0.6 + Math.random() * 0.9, r: 0.7 + Math.random() * 1.3 }); FIRE.burst = 1; }
   // salon recouvert (écran de veille, vidéo en plein écran, film dans mpv devant l'appli) : ses animations se mettent en pause, rien n'est visible
   const salonCache = () => { try { const sv = $("saver"); if (sv && !sv.hidden) return true; const fs = document.fullscreenElement; if (fs && fs !== document.documentElement && fs !== document.body && !(fs.querySelector && fs.querySelector("#salon"))) return true; return !!(typeof NFC !== "undefined" && NFC.mpv); } catch (_) { return false; } };
   { const st = document.createElement("style"); st.textContent = `html.rbb-cache #salon, html.rbb-cache #salon * { animation-play-state: paused !important; }`; document.head.appendChild(st);
     const upd = () => document.documentElement.classList.toggle("rbb-cache", salonCache());
     try { new MutationObserver(upd).observe($("saver"), { attributes: true, attributeFilter: ["hidden"] }); } catch (_) {} document.addEventListener("fullscreenchange", upd); setInterval(upd, 5000); }
   function fireFrame(ts) {
-    FIRE.raf = requestAnimationFrame(fireFrame); if (ts - FIRE.last < 33) return; const dt = Math.min(0.1, (ts - FIRE.last) / 1000); FIRE.last = ts;
+    FIRE.raf = requestAnimationFrame(fireFrame); if (ts - FIRE.last < 33) return; let dt = Math.min(0.1, (ts - FIRE.last) / 1000); FIRE.last = ts;
     const s = $("salon"); if (!s || document.hidden || roomStill() || salonCache()) { if (!s || roomStill()) { cancelAnimationFrame(FIRE.raf); FIRE.raf = 0; if (s) s.classList.remove("fire-live"); } else { cancelAnimationFrame(FIRE.raf); FIRE.raf = -1; setTimeout(() => { FIRE.raf = requestAnimationFrame(fireFrame); }, 500); } return; }
+    // animations « ralenties » : le feu bouge plus lentement (même facteur que le reste du salon)
+    try { const k = window.rbbAnimations ? window.rbbAnimations.facteur() : 1; if (k > 0 && k < 1) dt *= k; } catch (_) {}
     const g = fireEnsure(); if (!g) return; s.classList.add("fire-live"); FIRE.t += dt; const t = FIRE.t;
     // le feu prend doucement, vacille, retombe à l'extinction
     const target = salon.fire ? 1 : 0; FIRE.I += (target - FIRE.I) * Math.min(1, dt * (target > FIRE.I ? 0.55 + FIRE.I * 0.8 : 1.4)); if (target && FIRE.I > 0.995) FIRE.I = 1;
-    const I = FIRE.I * (0.94 + 0.06 * fn1(t * 7.3)), q = (c) => g.querySelector(c);
-    q(".fo").setAttribute("d", I > 0.02 ? fireLayer(t, I, 1, 0) : ""); q(".fm").setAttribute("d", I > 0.05 ? fireLayer(t * 1.15, I, 0.68, 4) : ""); q(".fi").setAttribute("d", I > 0.1 ? fireLayer(t * 1.4, I, 0.38, 9) : "");
+    FIRE.burst = Math.max(0, FIRE.burst - dt * 3);
+    const I = FIRE.I * (0.94 + 0.06 * fn1(t * 7.3)) * (1 + 0.08 * FIRE.burst), q = (c) => g.querySelector(c), wind = 7 * fn1(t * 0.7 + 4);
+    q(".fb").setAttribute("d", I > 0.04 ? fireLayer(t * 0.8, I * 0.9, 1.08, 17, wind * 1.3) : "");
+    q(".fo").setAttribute("d", I > 0.02 ? fireLayer(t, I, 1, 0, wind) : ""); q(".fm").setAttribute("d", I > 0.05 ? fireLayer(t * 1.15, I, 0.68, 4, wind * 0.7) : ""); q(".fi").setAttribute("d", I > 0.1 ? fireLayer(t * 1.4, I, 0.38, 9, wind * 0.4) : "");
+    q(".fin").setAttribute("opacity", (I * (0.75 + 0.25 * fn1(t * 3.7 + 1))).toFixed(3));
     q(".fbed").setAttribute("opacity", (Math.max(salon.fire ? 0.35 : 0.15 * FIRE.I, I) * (0.8 + 0.2 * fn1(t * 2))).toFixed(2)); q(".fcrack").setAttribute("opacity", (0.25 + 0.6 * Math.max(I, 0.2) * (0.6 + 0.4 * fn1(t * 1.3 + 2))).toFixed(2));
-    const glow = $("fglow"); if (glow) { glow.style.animation = "none"; glow.style.opacity = salon.fire || FIRE.I > 0.02 ? (0.25 + 0.75 * I * (0.85 + 0.15 * fn1(t * 6.1))).toFixed(3) : "0"; }
+    g.querySelectorAll(".fblue ellipse").forEach((e, i) => e.setAttribute("opacity", (I > 0.3 ? 0.45 * I * (0.55 + 0.45 * fn1(t * 5 + i * 2.1)) : 0).toFixed(3)));
+    // braises : elles rougeoient même quand les flammes retombent, puis s'éteignent lentement
+    const hot = Math.max(I, salon.fire ? 0.5 : FIRE.I * 0.8);
+    FIRE.emb.forEach((e, i) => { const n = 0.5 + 0.5 * fn1(t * (0.9 + (i % 4) * 0.23) + i * 1.7); e.setAttribute("opacity", (hot * (0.25 + 0.75 * n)).toFixed(3)); e.setAttribute("fill", n > 0.7 ? "#ffb347" : n > 0.4 ? "#ff7a22" : "#c8401a"); });
+    if (FIRE.glowlog) FIRE.glowlog.setAttribute("opacity", (hot * (0.35 + 0.35 * fn1(t * 1.1))).toFixed(3));
+    // la lueur sur la pièce : elle vacille et suit un peu le balancement des flammes
+    const glow = $("fglow"), fl = 0.82 + 0.12 * fn1(t * 6.1) + 0.06 * fn1(t * 13.7), lit = salon.fire || FIRE.I > 0.02;
+    if (glow) { glow.style.animation = "none"; glow.style.opacity = lit ? (0.25 + 0.75 * I * fl).toFixed(3) : "0"; glow.setAttribute("cx", (922 + wind * 0.8).toFixed(1)); glow.setAttribute("rx", (430 * (0.96 + 0.05 * fl)).toFixed(1)); }
+    const sol = $("fglowSol"); if (sol) { sol.setAttribute("opacity", lit ? (0.7 * I * fl).toFixed(3) : "0"); sol.setAttribute("cx", (922 + wind * 1.2).toFixed(1)); }
     // flammèches qui se détachent
-    if (I > 0.5 && Math.random() < dt * 2.2) FIRE.licks.push({ x: 540 + (Math.random() - 0.5) * 50, y: 590 - 90 * I - Math.random() * 20, r: 4 + Math.random() * 4, life: 0, max: 0.35 + Math.random() * 0.3 });
+    if (I > 0.5 && Math.random() < dt * 2.6) FIRE.licks.push({ x: 540 + (Math.random() - 0.5) * 50, y: 590 - 90 * I - Math.random() * 20, r: 4 + Math.random() * 4, life: 0, max: 0.35 + Math.random() * 0.3 });
     // étincelles
-    if (I > 0.3 && Math.random() < dt * 9 * I) FIRE.sparks.push({ x: 540 + (Math.random() - 0.5) * 60, y: 575, vx: (Math.random() - 0.5) * 30, vy: -60 - Math.random() * 90, life: 0, max: 0.8 + Math.random() * 1.2, r: 0.8 + Math.random() * 1.4 });
+    if (I > 0.3 && Math.random() < dt * 7 * I) FIRE.sparks.push({ x: 540 + (Math.random() - 0.5) * 60, y: 575, vx: (Math.random() - 0.5) * 30, vy: -60 - Math.random() * 90, life: 0, max: 0.8 + Math.random() * 1.2, r: 0.8 + Math.random() * 1.4 });
     // fumée quand le feu s'éteint
     if (!salon.fire && FIRE.I > 0.01 && FIRE.I < 0.6 && Math.random() < dt * 6) FIRE.smoke.push({ x: 540 + (Math.random() - 0.5) * 40, y: 580, r: 6, life: 0, max: 3 + Math.random() * 2 });
+    if (FIRE.sparks.length > 60) FIRE.sparks.splice(0, FIRE.sparks.length - 60);
     const upd = (arr, host, mk) => { let h = ""; for (let i = arr.length - 1; i >= 0; i--) { const p = arr[i]; p.life += dt; if (p.life > p.max) { arr.splice(i, 1); continue; } h += mk(p, p.life / p.max); } q(host).innerHTML = h; };
-    upd(FIRE.licks, ".flick", (p, k) => { p.y -= dt * 60; p.x += Math.sin(t * 9 + p.r) * dt * 12; return `<ellipse cx="${p.x.toFixed(1)}" cy="${p.y.toFixed(1)}" rx="${(p.r * (1 - k * 0.6)).toFixed(1)}" ry="${(p.r * 1.7 * (1 - k * 0.4)).toFixed(1)}" fill="url(#gFlameO)" opacity="${(1 - k).toFixed(2)}"/>`; });
+    upd(FIRE.licks, ".flick", (p, k) => { p.y -= dt * 60; p.x += (Math.sin(t * 9 + p.r) * 12 + wind * 2) * dt; return `<ellipse cx="${p.x.toFixed(1)}" cy="${p.y.toFixed(1)}" rx="${(p.r * (1 - k * 0.6)).toFixed(1)}" ry="${(p.r * 1.7 * (1 - k * 0.4)).toFixed(1)}" fill="url(#gFlameO)" opacity="${(1 - k).toFixed(2)}"/>`; });
     upd(FIRE.sparks, ".fsp", (p, k) => { p.x += p.vx * dt + Math.sin(t * 6 + p.max * 9) * dt * 18; p.y += p.vy * dt; p.vy += dt * 12; return `<circle cx="${p.x.toFixed(1)}" cy="${p.y.toFixed(1)}" r="${p.r.toFixed(1)}" fill="${k < 0.4 ? "#fff3b0" : "#ffb347"}" opacity="${(1 - k).toFixed(2)}"/>`; });
     upd(FIRE.smoke, ".fsmoke", (p, k) => { p.y -= dt * 34; p.x += Math.sin(t * 0.8 + p.max * 3) * dt * 10; p.r += dt * 9; return `<circle cx="${p.x.toFixed(1)}" cy="${p.y.toFixed(1)}" r="${p.r.toFixed(1)}" fill="#8a8590" opacity="${(0.22 * Math.sin(k * Math.PI)).toFixed(3)}"/>`; });
-    if (!salon.fire && FIRE.I < 0.01 && !FIRE.smoke.length && !FIRE.sparks.length) { q(".fo").setAttribute("d", ""); q(".fm").setAttribute("d", ""); q(".fi").setAttribute("d", "");
+    if (!salon.fire && FIRE.I < 0.01 && !FIRE.smoke.length && !FIRE.sparks.length) { q(".fb").setAttribute("d", ""); q(".fo").setAttribute("d", ""); q(".fm").setAttribute("d", ""); q(".fi").setAttribute("d", ""); FIRE.emb.forEach(e => e.setAttribute("opacity", "0")); if (FIRE.glowlog) FIRE.glowlog.setAttribute("opacity", "0");
       // feu complètement éteint, plus rien ne bouge : l'animation s'endort (au lieu de redessiner 30 fois par seconde pour rien) ;
       // elle se réveille dès qu'on rallume (fireStart) ou, par sécurité, au plus tard 0,4 s après un changement
       if (!FIRE.licks.length) { cancelAnimationFrame(FIRE.raf); FIRE.raf = -1; FIRE.sleep = true;
@@ -18719,6 +18780,139 @@ FETES2D["saison:halloween"] = (() => {
   function fireStart() { if (roomStill()) return; if (FIRE.sleep) { FIRE.sleep = false; FIRE.raf = 0; } if (!FIRE.raf) { FIRE.last = performance.now(); FIRE.raf = requestAnimationFrame(fireFrame); } }
   setFire = ((f) => function (on) { const r = f.apply(this, arguments); if (on && FIRE.I < 0.05) FIRE.I = 0.06; fireStart(); return r; })(setFire);
   salonMount = ((f) => function () { const r = f.apply(this, arguments); FIRE.g = null; if (salon.fire) FIRE.I = Math.max(FIRE.I, 0.9); fireStart(); return r; })(salonMount);
+
+  /* ---- 9 bis. Les sons du salon, réglables (Paramètres → Interface → Sons du salon) ; glisser le salon à la souris ----
+     Tout est fabriqué par le code (bruit filtré, petites notes) : aucun fichier son. Trois familles :
+     l'ambiance continue (feu qui crépite, pluie, tic-tac), les bruits des gestes (ce qu'on vient de cliquer) et ceux des surprises. */
+  const SND = { user: 0, act: Date.now(), out: null, lay: {}, wasFire: null, fireUntil: 0, rain: false, rainAt: 0, tick: 0, off: 0, demo: 0, clk: 0 };
+  const SND_AMB = ["Le salon : le feu, et la pluie s'il pleut à la fenêtre", "Feu de cheminée seulement", "Pluie douce", "Tic-tac de l'horloge", "Aucune (silence)"];
+  const SND_FEU = ["En continu, tant qu'il brûle", "À l'allumage seulement", "Jamais"];
+  const SND_STOP = { "Jamais": 0, "5 minutes": 5, "15 minutes": 15, "30 minutes": 30, "1 heure": 60 };
+  try {
+    const ui = SETTINGS.find(s => s.id === "ui"), F = ui.fields, i0 = F.findIndex(x => x.key === "roomSounds");
+    const rs = i0 >= 0 ? F.splice(i0, 1)[0] : { type: "toggle", key: "roomSounds", label: "Sons du salon", def: true, live: true };
+    rs.help = "Tous les bruits du salon dessiné : l'ambiance, les gestes et les surprises. Désactivé : le salon reste silencieux.";
+    let at = F.findIndex(x => x.type === "heading" && x.label === "Surprises du salon"); if (at < 0) at = F.length;
+    F.splice(at, 0, { type: "heading", label: "Sons du salon" }, rs,
+      { type: "select", key: "roomAmb", label: "Ambiance sonore", help: "Le fond sonore pendant que tu es dans le salon. « Le salon » : le feu crépite quand il est allumé, la pluie s'entend quand il pleut à la fenêtre. Ou toujours la pluie, ou le tic-tac de l'horloge, ou rien.", options: SND_AMB, def: SND_AMB[0], live: true },
+      { type: "range", key: "roomAmbVol", label: "Volume de l'ambiance", help: "Le volume du fond sonore (feu, pluie, horloge).", min: 0, max: 100, step: 5, unit: " %", def: 50, live: true },
+      { type: "select", key: "roomFireSnd", label: "Crépitement du feu", help: "En continu : le feu crépite tant qu'il brûle. À l'allumage : seulement quelques secondes quand il prend (durée juste en dessous). Jamais : un feu muet.", options: SND_FEU, def: SND_FEU[0], live: true },
+      { type: "range", key: "roomFireDur", label: "Durée du crépitement à l'allumage", help: "Avec « À l'allumage seulement » : combien de temps le feu crépite après avoir pris, avant de se taire doucement.", min: 2, max: 60, step: 1, unit: " s", def: 10, live: true },
+      { type: "select", key: "roomAmbStop", label: "Couper l'ambiance après", help: "L'ambiance se tait toute seule si personne ne touche à rien pendant ce temps ; elle revient au premier geste.", options: Object.keys(SND_STOP), def: "Jamais", live: true },
+      { type: "toggle", key: "roomGestSnd", label: "Bruits des gestes", help: "Ce que tu fais toi-même : l'interrupteur, la télé, la console, le meuble qui glisse, le feu qu'on allume…", def: true, live: true },
+      { type: "toggle", key: "roomEggSnd", label: "Sons des surprises", help: "Les bruits des surprises et des petites animations qui arrivent toutes seules (le chat, l'orage, la télé qui s'allume…).", def: true, live: true },
+      { type: "range", key: "roomFxVol", label: "Volume des bruitages", help: "Le volume des gestes et des surprises (l'ambiance a son propre volume).", min: 0, max: 100, step: 5, unit: " %", def: 50, live: true },
+      { type: "button", id: "roomSndTest", label: "Essayer", help: "Fait entendre quelques secondes l'ambiance choisie et un bruit de geste, avec les volumes réglés.", text: "Écouter" });
+  } catch (e) { console.warn("réglages des sons du salon", e); }
+  ["pointerdown", "keydown", "wheel"].forEach(ev => document.addEventListener(ev, (e) => { SND.act = Date.now(); if (ev !== "wheel") SND.user = Date.now(); }, { capture: true, passive: true }));
+  // le volume des bruitages et le tri geste / surprise (un son qui suit de près un clic ou une touche est un geste)
+  playRoom = ((f) => function (kind) {
+    if (!C("roomSounds", true)) return;
+    const geste = Date.now() - SND.user < 1500;
+    if (!(geste ? C("roomGestSnd", true) : C("roomEggSnd", true))) return;
+    AUD.vol = C("roomFxVol", 50) / 100;
+    try { if (kind === "glisse") sndGlisse(); else return f.apply(this, arguments); } catch (_) {} finally { AUD.vol = null; }
+  })(playRoom);
+  // le meuble lourd qui frotte le sol pendant qu'il glisse
+  function sndGlisse() {
+    const ctx = roomCtx(); if (!ctx) return; const t = ctx.currentTime + 0.01, v = AUD.vol != null ? AUD.vol : 0.5;
+    const s = ctx.createBufferSource(); s.buffer = noiseBuf(ctx); s.loop = true; const bp = ctx.createBiquadFilter(); bp.type = "bandpass"; bp.Q.value = 3.5; bp.frequency.setValueAtTime(200, t); bp.frequency.linearRampToValueAtTime(330, t + 0.45); bp.frequency.linearRampToValueAtTime(240, t + 0.95);
+    const g = ctx.createGain(); g.gain.setValueAtTime(0.0001, t); g.gain.linearRampToValueAtTime(v * 0.16, t + 0.18); g.gain.setValueAtTime(v * 0.14, t + 0.7); g.gain.exponentialRampToValueAtTime(0.0001, t + 1.05);
+    s.connect(bp); bp.connect(g); g.connect(ctx.destination); s.start(t, Math.random() * 0.5); s.stop(t + 1.1);
+  }
+  // l'ancien crépitement (un bruit tiré toutes les 150 ms) est remplacé par l'ambiance ci-dessous
+  setFire = ((f) => function (on) { const r = f.apply(this, arguments); clearInterval(salon.crackle); salon.crackle = on ? -1 : 0; return r; })(setFire);
+  function sndLayer(ctx, name, mk) {
+    let L = SND.lay[name]; if (L && L.ctx === ctx) return L;
+    const s = ctx.createBufferSource(); s.buffer = noiseBuf(ctx); s.loop = true; const g = ctx.createGain(); g.gain.value = 0.0001;
+    const tail = mk(ctx, s); tail.connect(g); g.connect(SND.out); s.start(0, Math.random() * 0.5);
+    return (SND.lay[name] = { ctx, s, g });
+  }
+  function sndBurst(ctx, t, f, peak, dur, q) {
+    const s = ctx.createBufferSource(); s.buffer = noiseBuf(ctx); const bp = ctx.createBiquadFilter(); bp.type = "bandpass"; bp.frequency.value = f; bp.Q.value = q || 1.2;
+    const g = ctx.createGain(); g.gain.setValueAtTime(Math.max(0.0002, peak), t); g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    s.connect(bp); bp.connect(g); g.connect(SND.out); s.start(t, Math.random() * 0.8); s.stop(t + dur + 0.03);
+  }
+  function sndNote(ctx, t, f, peak, dur) { const o = ctx.createOscillator(), g = ctx.createGain(); o.type = "sine"; o.frequency.value = f; g.gain.setValueAtTime(peak, t); g.gain.exponentialRampToValueAtTime(0.0001, t + dur); o.connect(g); g.connect(SND.out); o.start(t); o.stop(t + dur + 0.02); }
+  function sndStopAll() { for (const k in SND.lay) { try { SND.lay[k].s.stop(); SND.lay[k].g.disconnect(); } catch (_) {} } SND.lay = {}; }
+  function sndTick() {
+    const now = Date.now(), demo = now < SND.demo, amb = C("roomAmb", SND_AMB[0]), stopMin = SND_STOP[C("roomAmbStop", "Jamais")] || 0;
+    let ok = C("roomSounds", true) && !document.hidden && (demo || (salonOn() && !overlayOpen() && !salonCache() && !(stopMin && now - SND.act > stopMin * 60000)));
+    const ctx = ok ? roomCtx() : (SND.out && SND.out.context.state === "running" ? SND.out.context : null);
+    if (!ctx) return;
+    if (!SND.out || SND.out.context !== ctx) { SND.lay = {}; SND.out = ctx.createGain(); SND.out.gain.value = 0; SND.out.connect(ctx.destination); }
+    const t = ctx.currentTime;
+    SND.out.gain.setTargetAtTime(ok ? C("roomAmbVol", 50) / 100 : 0, t, 0.35);
+    if (!ok) { if (!SND.off) SND.off = now; else if (now - SND.off > 2500 && Object.keys(SND.lay).length) sndStopAll(); return; }
+    SND.off = 0;
+    // le feu : continu, ou quelques secondes après qu'il a pris
+    const fire = !!salon.fire, mode = C("roomFireSnd", SND_FEU[0]);
+    if (fire && SND.wasFire === false) SND.fireUntil = now + C("roomFireDur", 10) * 1000;
+    SND.wasFire = fire;
+    const wantFire = (amb === SND_AMB[0] || amb === SND_AMB[1]) && mode !== "Jamais" && (fire || (demo && SND.demoFire)) && (mode === SND_FEU[0] || now < SND.fireUntil || demo);
+    const I = Math.max(demo ? 1 : 0, typeof FIRE !== "undefined" && FIRE.I > 0.01 ? FIRE.I : fire ? 1 : 0);
+    if (amb === SND_AMB[0] && now - SND.rainAt > 5000) { SND.rainAt = now; try { const w = rbsWxNow(); SND.rain = !!w && /pluie|bruine|orage/.test(wxKind(w)); } catch (_) { SND.rain = false; } }
+    const wantRain = amb === SND_AMB[2] || (amb === SND_AMB[0] && SND.rain);
+    // fond du feu : un souffle grave qui respire ; pluie : un ruissellement doux
+    if (wantFire || SND.lay.feu) { const L = sndLayer(ctx, "feu", (c, s) => { const lp = c.createBiquadFilter(); lp.type = "lowpass"; lp.frequency.value = 380; s.connect(lp); return lp; });
+      L.g.gain.setTargetAtTime(wantFire ? 0.09 * I * (0.75 + 0.25 * Math.sin(now / 900) * Math.sin(now / 2300)) : 0.0001, t, wantFire ? 0.4 : 0.9); }
+    if (wantRain || SND.lay.pluie) { const L = sndLayer(ctx, "pluie", (c, s) => { const hp = c.createBiquadFilter(), lp = c.createBiquadFilter(); hp.type = "highpass"; hp.frequency.value = 900; lp.type = "lowpass"; lp.frequency.value = 6500; s.connect(hp); hp.connect(lp); return lp; });
+      L.g.gain.setTargetAtTime(wantRain ? 0.07 : 0.0001, t, 1.2); if (wantRain && Math.random() < 0.06) sndNote(ctx, t + Math.random() * 0.1, 1700 + Math.random() * 900, 0.025, 0.07); }
+    if (wantFire) {
+      // crépitements : petits craquements au hasard, parfois une bûche qui éclate (avec sa gerbe d'étincelles à l'image)
+      if (Math.random() < 0.34 * I) { const n = 1 + (Math.random() < 0.35 ? 1 + Math.floor(Math.random() * 3) : 0); for (let i = 0; i < n; i++) sndBurst(ctx, t + 0.02 + i * (0.015 + Math.random() * 0.05), 1400 + Math.random() * 3600, (0.12 + Math.random() * 0.22) * I, 0.012 + Math.random() * 0.03); }
+      if (Math.random() < 0.012 * I) { sndBurst(ctx, t + 0.02, 700 + Math.random() * 500, 0.5 * I, 0.06, 0.8); sndBurst(ctx, t + 0.05, 3000, 0.25 * I, 0.04); for (let i = 0; i < 5; i++) sndBurst(ctx, t + 0.1 + i * 0.04 + Math.random() * 0.05, 2500 + Math.random() * 3000, 0.12 * I, 0.02); try { fireBurst(8); } catch (_) {} }
+      if (Math.random() < 0.004 * I) { const s = ctx.createBufferSource(); s.buffer = noiseBuf(ctx); const hp = ctx.createBiquadFilter(); hp.type = "highpass"; hp.frequency.value = 3500; const g = ctx.createGain(); g.gain.setValueAtTime(0.0001, t); g.gain.linearRampToValueAtTime(0.05 * I, t + 0.3); g.gain.exponentialRampToValueAtTime(0.0001, t + 1.4); s.connect(hp); hp.connect(g); g.connect(SND.out); s.start(t); s.stop(t + 1.5); }   // la sève qui siffle
+    }
+    if (amb === SND_AMB[3] && now - SND.clk >= 1000) { SND.clk = now - (now % 1000); SND.tick = 1 - SND.tick; sndNote(ctx, t + 0.01, SND.tick ? 2300 : 1900, 0.09, 0.03); sndBurst(ctx, t + 0.01, 3500, 0.06, 0.015, 2); }
+  }
+  setInterval(() => { try { sndTick(); } catch (_) {} }, 120);
+  document.addEventListener("click", (e) => {
+    const b = e.target.closest && e.target.closest('[data-act="roomSndTest"]'); if (!b) return;
+    if (!C("roomSounds", true)) { toast("Les sons du salon sont désactivés (case « Sons du salon »)."); return; }
+    SND.demo = Date.now() + 5000; SND.demoFire = true; SND.fireUntil = Date.now() + 5000;
+    setTimeout(() => { SND.user = Date.now(); playRoom("switch"); }, 400); setTimeout(() => { SND.user = Date.now(); playRoom("glisse"); }, 1400);
+  });
+
+  /* ---- glisser le salon : clic maintenu (ou doigt) pour se déplacer, avec un peu d'élan au lâcher ; un simple clic reste un clic ---- */
+  const DRAG = { p: null, raf: 0 };
+  function salonDragBind(st) {
+    if (!st || st.dataset.glisse) return; st.dataset.glisse = "1";
+    const k = () => VW / Math.max(1, st.getBoundingClientRect().width);
+    st.addEventListener("pointerdown", (e) => {
+      cancelAnimationFrame(DRAG.raf); DRAG.raf = 0; DRAG.p = null;
+      if (e.pointerType === "mouse" && e.button !== 0) return;
+      if (e.target.closest("button, .span, #salonFs")) return;
+      DRAG.p = { id: e.pointerId, x: e.clientX, cam: salon.camT, moved: false, mouse: e.pointerType !== "touch", hist: [[performance.now(), salon.camT]] };
+      if (DRAG.p.mouse) salon.touch = { x: e.clientX, cam: salon.camT, moved: false };
+    });
+    st.addEventListener("pointermove", (e) => {
+      const d = DRAG.p; if (!d || e.pointerId !== d.id) return;
+      if (d.mouse) {
+        if (!(e.buttons & 1)) { DRAG.p = null; st.classList.remove("sdrag"); return; }
+        const dx = e.clientX - d.x;
+        if (!d.moved && Math.abs(dx) > 6) { d.moved = true; if (salon.touch) salon.touch.moved = true; st.classList.add("sdrag"); try { st.setPointerCapture(e.pointerId); } catch (_) {} if ($("sTip")) $("sTip").hidden = true; }
+        if (d.moved) { salon.panDir = 0; setCam(d.cam - dx * k(), false); }
+      } else if (salon.touch && salon.touch.moved) d.moved = true;
+      if (d.moved) { d.hist.push([performance.now(), salon.camT]); if (d.hist.length > 8) d.hist.shift(); }
+    });
+    const end = (e) => {
+      const d = DRAG.p; if (!d || e.pointerId !== d.id) return; DRAG.p = null; st.classList.remove("sdrag");
+      if (!d.moved || e.type === "pointercancel" || roomStill()) return;
+      // vitesse des derniers instants du geste (rien si le pointeur est resté immobile avant d'être lâché)
+      const now = performance.now(), h = d.hist, L = h[h.length - 1]; if (h.length < 2 || now - L[0] > 160) return;
+      let i = h.length - 2; while (i > 0 && L[0] - h[i - 1][0] <= 120) i--;
+      const dtm = L[0] - h[i][0]; let v = dtm > 8 ? (L[1] - h[i][1]) / dtm : 0;   // en unités de la pièce par milliseconde
+      v = Math.max(-5, Math.min(5, v)); if (Math.abs(v) < 0.06) return;
+      let last = now; const step = (ts) => { const dt = Math.min(40, ts - last); last = ts; v *= Math.pow(0.93, dt / 16.7); const before = salon.camT; setCam(salon.camT + v * dt, false);
+        if (Math.abs(v) < 0.02 || salon.camT === before || !salonOn()) { DRAG.raf = 0; return; } DRAG.raf = requestAnimationFrame(step); };
+      DRAG.raf = requestAnimationFrame(step);
+    };
+    st.addEventListener("pointerup", end); st.addEventListener("pointercancel", end);
+  }
+  salonMount = ((f) => function () { const r = f.apply(this, arguments); try { salonDragBind($("sstage")); } catch (_) {} return r; })(salonMount);
+  { const st = document.createElement("style"); st.textContent = `.sstage.sdrag, .sstage.sdrag * { cursor: grabbing !important; } .sstage.sdrag .scur2 { visibility: hidden; }`; document.head.appendChild(st); }
+  setTimeout(() => { try { salonDragBind($("sstage")); } catch (_) {} }, 700);
 
   /* ---- réglages ---- */
   try {
