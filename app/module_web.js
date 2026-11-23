@@ -3,7 +3,7 @@
 // Demande du propriétaire (impérative) : passer du logiciel au module par un simple fondu, dans la MÊME application,
 // sans fenêtre qui se ferme ni une autre qui s'ouvre. Ici, il n'y a qu'une fenêtre :
 //  1. peu après le démarrage (logiciel au repos), la version Web du module (rembobine-module.html)
-//     est chargée dans une VUE de la fenêtre (WebContentsView), cachée sous la page du logiciel ; elle construit tout
+//     est chargée dans une VUE de la fenêtre (WebContentsView), « garée » (voir park) ; elle construit tout
 //     derrière un voile noir, puis se met en pause (mode « web » du module) ;
 //  2. à l'ouverture : la page fond au noir, la vue passe devant (encore noire), le jeu apparaît en fondu ;
 //  3. « Retour au logiciel » : le jeu fond au noir, la vue repasse dessous (le jeu en pause, PAS fermé), la page
@@ -20,7 +20,16 @@ const fs = require("fs");
 module.exports = function moduleWeb(o) {
   // o : { app, win(), serveur(), webDir(), busy(), log(), quit(), dossier() }
   const { WebContentsView, ipcMain } = require("electron");
-  const log = o.log || ((t) => console.log("[module] " + t));
+  // journal : la sortie de l'appli, et aussi un fichier (<dossier de l'appli>/module/journal-integre.txt, refait à
+  // chaque démarrage) que l'on peut envoyer quand la préparation n'aboutit pas sur une machine
+  let jf = "";
+  const log = (t) => {
+    (o.log || ((x) => console.log("[module] " + x)))(t);
+    try {
+      if (!jf) { jf = path.join(o.dossier(), "journal-integre.txt"); fs.writeFileSync(jf, ""); }
+      if (fs.statSync(jf).size < 1000000) fs.appendFileSync(jf, new Date().toISOString() + " " + t + "\n");
+    } catch (_) {}
+  };
   let V = null;            // { view, key, args, state, t0, wait: {ev: [fn]}, lines }
   let broken = "";         // raison pour laquelle la version intégrée ne marche pas ici (on passe alors à l'autre)
   let quitting = false;
@@ -39,16 +48,34 @@ module.exports = function moduleWeb(o) {
     return !!(S && S.port && d && fs.existsSync(path.join(d, "rembobine-module.wasm")) && fs.existsSync(path.join(d, "rembobine-module.pck")));
   }
 
-  // la vue occupe toute la zone de la fenêtre (sous la barre de titre), et suit ses changements de taille
+  // La vue a toujours la taille de la zone de la fenêtre (sous la barre de titre), et suit ses changements de taille.
+  // Cachée, elle est « garée » : décalée en bas à droite, il n'en reste qu'UN pixel dans la fenêtre, rendu transparent.
+  // Surtout pas setVisible(false) ni une vue entièrement hors de la fenêtre : la page de la vue passe alors « hidden »,
+  // de taille 0, et Chromium n'appelle plus requestAnimationFrame — le module, qui avance image par image, s'arrête
+  // juste après « moteur démarré » (barre de progression figée vers 8 %, abandon au bout de 3 minutes).
+  // (Les essais pilotés par Playwright ne le voyaient pas : Playwright fait passer chaque page pour visible.)
   function fit() {
     const w = o.win(); if (!w || !V) return;
-    const b = w.getContentBounds(); V.view.setBounds({ x: 0, y: 0, width: b.width, height: b.height });
+    const b = w.getContentBounds();
+    V.view.setBounds({ x: V.gare ? b.width - 1 : 0, y: V.gare ? b.height - 1 : 0, width: b.width, height: b.height });
   }
-  // devant la page du logiciel, ou cachée (le jeu continue de tourner caché : backgroundThrottling coupé)
+  const OPACITE = (x) => `document.documentElement && (document.documentElement.style.opacity = "${x}")`;
+  function park(v, on) {
+    v.gare = !!on;
+    // garée : transparente (on voit la page du logiciel dessous) ; devant : noire et opaque comme avant
+    try { v.view.setBackgroundColor(on ? "#00000000" : "#000000"); } catch (_) {}
+    if (!v.exited) v.view.webContents.executeJavaScript(OPACITE(on ? 0 : 1), true).catch(() => {});
+  }
+  // devant la page du logiciel, ou garée (le jeu continue de tourner : page visible, backgroundThrottling coupé)
   function front(on) {
     if (!V) return;
+    park(V, !on);
     fit();
-    V.view.setVisible(!!on);
+  }
+  // relevé de la page du module (visibilité, taille, images) quand la préparation n'avance pas
+  function releve(v) {
+    if (v.exited) return Promise.resolve("");
+    return v.view.webContents.executeJavaScript("JSON.stringify({vis: document.visibilityState, l: innerWidth, h: innerHeight})", true).catch((e) => "relevé impossible : " + e.message);
   }
 
   // dire à la page du logiciel où en est le module (« visible », ou l'avancement de la préparation quand on l'attend)
@@ -69,10 +96,11 @@ module.exports = function moduleWeb(o) {
     if (j.ev === "pret") { v.state = "pret"; v.calme = j.calme !== false; fails = 0; log(`module intégré prêt en ${((Date.now() - v.t0) / 1000).toFixed(1)} s` + (v.calme ? "" : " (des sons restent à fabriquer)")); }
     if (j.ev === "calme") { if (!v.calme) log(`module intégré : sons prêts à ${((Date.now() - v.t0) / 1000).toFixed(1)} s`); v.calme = true; }
     // avancement de la préparation : montré par la page seulement si quelqu'un attend (ouverture demandée avant la fin)
-    if (j.ev === "etape") { const p = Number(j.p); if (p > 0 && p <= 1 && p > (v.p || 0)) { v.p = p; if (v.inUse && v.state !== "montre") tell("progres:" + p.toFixed(3)); } return; }
+    if (j.ev === "etape") { const p = Number(j.p); if (p > 0 && p <= 1 && p > (v.p || 0)) { v.p = p; v.tp = Date.now(); if (v.inUse && v.state !== "montre") tell("progres:" + p.toFixed(3)); } return; }
     // la bibliothèque que le jeu vient de lire (au moment où il démarre) : on retient son empreinte
     // (t = 0 : le jeu a démarré sans bibliothèque — analyse des dossiers pas finie — : dès qu'il y en a une, on re-prépare)
     if (j.ev === "biblio") { v.lib = Number(j.t) > 0 ? libSig() : ""; return; }
+    if (j.ev === "erreur_js") { log("module intégré, erreur de la page : " + String(j.msg || "").slice(0, 200)); return; }
     if (j.ev === "erreur") { log("module intégré : " + String(j.msg || "").slice(0, 200)); if (/WebGL/.test(String(j.msg))) broken = "webgl"; end(v, "erreur"); return; }
     if (j.ev === "quitter") { quitting = true; try { o.quit(); } catch (_) {} return; }
     const l = v.wait[j.ev]; if (l) { delete v.wait[j.ev]; l.forEach(f => f(j)); }
@@ -121,10 +149,14 @@ module.exports = function moduleWeb(o) {
     wc.on("will-navigate", (e) => e.preventDefault());
     wc.on("render-process-gone", (e, d) => { log("module intégré : processus perdu (" + (d && d.reason) + ")"); v.crash = d && d.reason; end(v, "plantage"); });
     wc.on("did-fail-load", (e, code, desc) => { log("module intégré : chargement impossible (" + desc + ")"); end(v, "chargement"); });
-    wc.on("console-message", (e, level, msg) => { if (/\[(veille|démarrage)\]/.test(msg) && process.env.REMBOBINE_MODULE_JOURNAL) log("godot " + msg); });
+    wc.on("console-message", (e, level, msg) => {
+      if (/\[(veille|démarrage)\]/.test(msg) && process.env.REMBOBINE_MODULE_JOURNAL) log("godot " + msg);
+      else if (level >= 3 && (v.erreurs = (v.erreurs || 0) + 1) <= 20) log("module intégré, console : " + String(msg).slice(0, 300));
+    });
+    wc.on("dom-ready", () => { if (v.gare) wc.executeJavaScript(OPACITE(0), true).catch(() => {}); });
     // Échap, F11 : comme dans la page du logiciel
     wc.on("before-input-event", (e, input) => { if (input.type === "keyDown" && input.key === "F11" && w) { w.setFullScreen(!w.isFullScreen()); e.preventDefault(); } });
-    view.setVisible(false);
+    park(v, true);
     w.contentView.addChildView(view);
     fit();
     if (!v.resize) { v.resize = () => fit(); w.on("resize", v.resize); }
@@ -136,7 +168,14 @@ module.exports = function moduleWeb(o) {
     const a = ["--", "--embarque", ...args, `--serveur=${S.port}`, "--veille=web"];
     wc.loadURL(`http://127.0.0.1:${S.port}/module/rembobine-module.html#${encodeURIComponent(JSON.stringify(a))}`);
     // pas de nouvelles au bout de 3 minutes : on abandonne cette préparation
-    waitFor(v, ["pret"], 180000).then((j) => { if (j.ev === "delai" && v.state !== "pret" && v.state !== "montre") { log("module intégré : trop lent à se préparer"); fails++; end(v, "delai"); } });
+    waitFor(v, ["pret"], 180000).then(async (j) => {
+      if (j.ev === "delai" && v.state !== "pret" && v.state !== "montre") {
+        log(`module intégré : trop lent à se préparer (bloqué à ${Math.round((v.p || 0) * 100)} %${v.tp ? " depuis " + Math.round((Date.now() - v.tp) / 1000) + " s" : ""} ; page ${await releve(v)})`);
+        fails++; end(v, "delai");
+        // deux fois de suite : la version intégrée ne marche pas sur cette machine, on passe au programme séparé
+        if (fails >= 2) { broken = "lent"; log("module intégré abandonné sur cette machine : programme séparé à la place"); }
+      }
+    });
     log("module intégré : préparation");
     return v;
   }
