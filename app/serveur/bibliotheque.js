@@ -177,6 +177,8 @@ async function scanLibrary(roots, onCount = () => {}, o = {}) {
   const relDir = (d) => path.relative(root, d).split(path.sep).filter(Boolean).join("/");
   // chaque titre retient son dossier racine (disque débranché : ses titres restent, hors ligne)
   const add = (it) => { if (byId.has(it.id)) return; it.root = root; byId.set(it.id, it); items.push(it); };
+  // date d'ajout (« Derniers ajouts » de l'accueil) : la date du fichier (le plus récent pour une série ou un album), en millisecondes
+  const quand = (...fs) => { let t = 0; for (const f of fs) { const st = V.stat(f); if (st && st.mtimeMs > t) t = st.mtimeMs; } return Math.round(t); };
   if (J.resetDirCache) J.resetDirCache();   // dossiers relus à neuf à chaque scan
   let jeuxSig = null; const sigJeux = () => (jeuxSig === null ? (jeuxSig = J.sigJeux ? J.sigJeux(roots) : "") : jeuxSig);
 
@@ -197,7 +199,7 @@ async function scanLibrary(roots, onCount = () => {}, o = {}) {
           const t = cleanTitle(alone ? path.basename(dir) : path.basename(f));
           const rel = path.relative(root, f), id = idOf("film", rel), cov = await coverFor(f, dir, alone, V);
           add({ id, kind: "film", title: t.title, file: f, coverFile: cov,
-            pub: { id, kind: "film", title: t.title, year: t.year || "", ext: ext(f), cover: cov ? coverUrl(id) : "", size: V.size(f), dir: relDir(dir) } });
+            pub: { id, kind: "film", title: t.title, year: t.year || "", ext: ext(f), cover: cov ? coverUrl(id) : "", size: V.size(f), dir: relDir(dir), added: quand(f) } });
         }
       }
 
@@ -218,7 +220,7 @@ async function scanLibrary(roots, onCount = () => {}, o = {}) {
           eps.sort((a, b) => a.s - b.s || a.e - b.e);
           const cov = await coverFor(null, dir, true, V);
           const it = { id, kind: "serie", title: t.title, dir, coverFile: cov, episodes: eps,
-            pub: { id, kind: "serie", title: t.title, year: t.year || "", cover: cov ? coverUrl(id) : "", dir: relDir(dir), episodes: eps.map((x) => ({ id: x.id, s: x.s, e: x.e, ext: ext(x.file) })) } };
+            pub: { id, kind: "serie", title: t.title, year: t.year || "", cover: cov ? coverUrl(id) : "", dir: relDir(dir), added: quand(...eps.map((x) => x.file)), episodes: eps.map((x) => ({ id: x.id, s: x.s, e: x.e, ext: ext(x.file) })) } };
           add(it); for (const x of eps) byId.set(x.id, x);
         }
       }
@@ -253,7 +255,7 @@ async function scanLibrary(roots, onCount = () => {}, o = {}) {
           // le jeu, son dossier (aperçus, triche posés à côté) et les dossiers BIOS / Triche / Bases ne changent pas
           const jx = forced ? { pub: {} } : { pub: V.recall("jeu|" + f, [V.sig(f), V.tree(path.dirname(f), 2), sigJeux(), sys, base, t.title].join("|"), () => J.infoJeu(f, name, sys, base, roots, t.title).pub) };
           add({ id, kind: "game", title: t.title, file: f, sys, heavy, coverFile: cov,
-            pub: { id, kind: "game", title: t.title, platform: heavy ? CS.CONSOLES[sys].nom : SYS_NAME[sys] || sys, sys, ext: e, region, heavy, cover: cov ? coverUrl(id) : "", dir: relDir(path.dirname(f)), ...jx.pub } });
+            pub: { id, kind: "game", title: t.title, platform: heavy ? CS.CONSOLES[sys].nom : SYS_NAME[sys] || sys, sys, ext: e, region, heavy, cover: cov ? coverUrl(id) : "", dir: relDir(path.dirname(f)), added: quand(f), ...jx.pub } });
         }
       }
 
@@ -268,7 +270,7 @@ async function scanLibrary(roots, onCount = () => {}, o = {}) {
             if (am) { artist = am[1]; title = am[2]; } else if (path.dirname(d) !== base) artist = path.basename(path.dirname(d));
             const cov = await coverFor(null, d, true, V);
             add({ id, kind: "album", title, files: list, coverFile: cov,
-              pub: { id, kind: "album", title, artist, cover: cov ? coverUrl(id) : "", tracks: list.map((f, i) => ({ n: i, title: cleanTrack(path.basename(f)) })) } });
+              pub: { id, kind: "album", title, artist, cover: cov ? coverUrl(id) : "", added: quand(d), tracks: list.map((f, i) => ({ n: i, title: cleanTrack(path.basename(f)) })) } });
           } else {
             const shots = list.filter((f) => !COVER_NAMES.includes(path.basename(f).replace(/\.[^.]+$/, "").toLowerCase()) || list.length === 1);
             add({ id, kind: "photos", title: name, files: shots, coverFile: shots[0],
