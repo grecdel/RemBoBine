@@ -3,7 +3,7 @@
 // Demande du propriétaire (impérative) : passer du logiciel au module par un simple fondu, dans la MÊME application,
 // sans fenêtre qui se ferme ni une autre qui s'ouvre. Ici, il n'y a qu'une fenêtre :
 //  1. peu après le démarrage (logiciel au repos), la version Web du module (rembobine-module.html)
-//     est chargée dans une VUE de la fenêtre (WebContentsView), « garée » (voir park) ; elle construit tout
+//     est chargée dans une VUE de la fenêtre (WebContentsView), « garée » (voir fit), puis cachée ; elle construit tout
 //     derrière un voile noir, puis se met en pause (mode « web » du module) ;
 //  2. à l'ouverture : la page fond au noir, la vue passe devant (encore noire), le jeu apparaît en fondu ;
 //  3. « Retour au logiciel » : le jeu fond au noir, la vue repasse dessous (le jeu en pause, PAS fermé), la page
@@ -49,10 +49,10 @@ module.exports = function moduleWeb(o) {
   }
 
   // La vue a toujours la taille de la zone de la fenêtre (sous la barre de titre), et suit ses changements de taille.
-  // Cachée, elle est « garée » : décalée en bas à droite, il n'en reste qu'UN pixel dans la fenêtre, rendu transparent.
-  // Surtout pas setVisible(false) ni une vue entièrement hors de la fenêtre : la page de la vue passe alors « hidden »,
-  // de taille 0, et Chromium n'appelle plus requestAnimationFrame — le module, qui avance image par image, s'arrête
-  // juste après « moteur démarré » (barre de progression figée vers 8 %, abandon au bout de 3 minutes).
+  // PENDANT LA PRÉPARATION, elle est « garée » : décalée en bas à droite, il n'en reste qu'UN pixel dans la fenêtre,
+  // rendu transparent. Surtout pas setVisible(false) ni une vue entièrement hors de la fenêtre à ce moment-là : la page
+  // de la vue passe alors « hidden », de taille 0, et Chromium n'appelle plus requestAnimationFrame — le module, qui
+  // avance image par image, s'arrête juste après « moteur démarré » (barre figée vers 8 %, abandon au bout de 3 minutes).
   // (Les essais pilotés par Playwright ne le voyaient pas : Playwright fait passer chaque page pour visible.)
   function fit() {
     const w = o.win(); if (!w || !V) return;
@@ -66,11 +66,23 @@ module.exports = function moduleWeb(o) {
     try { v.view.setBackgroundColor(on ? "#00000000" : "#000000"); } catch (_) {}
     if (!v.exited) v.view.webContents.executeJavaScript(OPACITE(on ? 0 : 1), true).catch(() => {});
   }
-  // devant la page du logiciel, ou garée (le jeu continue de tourner : page visible, backgroundThrottling coupé)
+  // Une fois prête (sons compris), la vue garée est « endormie » : vraiment cachée (setVisible(false)) et remise à sa
+  // place normale, opaque — comme avant. Le jeu a déjà coupé ses images : il reste figé, sans rien coûter, jusqu'au
+  // clic ; montrée, elle repart aussitôt. Au retour du jeu : cachée tout de suite, pareil.
+  // (La laisser garée-visible après « prêt » faisait tourner le module : il coupait son rendu, et le rallumer au clic
+  //  suivant coûtait une très longue image avant « visible » — 15 s sans carte graphique, essai de la fabrication dépassé.)
+  function dort(v) {
+    if (v.exited || v.inUse || v.state !== "pret" || !v.calme || !v.gare) return;
+    try { v.view.setVisible(false); } catch (_) {}
+    park(v, false);
+    if (V === v) fit();
+  }
+  // devant la page du logiciel, ou cachée (après un passage dans le jeu : endormie aussitôt)
   function front(on) {
     if (!V) return;
-    park(V, !on);
-    fit();
+    if (on && V.gare) park(V, false);   // (cliqué pendant la préparation : encore garée)
+    if (on) fit();
+    V.view.setVisible(!!on);
   }
   // relevé de la page du module (visibilité, taille, images) quand la préparation n'avance pas
   function releve(v) {
@@ -93,8 +105,8 @@ module.exports = function moduleWeb(o) {
 
   function event(v, j) {
     if (!j || typeof j !== "object") return;
-    if (j.ev === "pret") { v.state = "pret"; v.calme = j.calme !== false; fails = 0; log(`module intégré prêt en ${((Date.now() - v.t0) / 1000).toFixed(1)} s` + (v.calme ? "" : " (des sons restent à fabriquer)")); }
-    if (j.ev === "calme") { if (!v.calme) log(`module intégré : sons prêts à ${((Date.now() - v.t0) / 1000).toFixed(1)} s`); v.calme = true; }
+    if (j.ev === "pret") { v.state = "pret"; v.calme = j.calme !== false; fails = 0; log(`module intégré prêt en ${((Date.now() - v.t0) / 1000).toFixed(1)} s` + (v.calme ? "" : " (des sons restent à fabriquer)")); dort(v); }
+    if (j.ev === "calme") { if (!v.calme) log(`module intégré : sons prêts à ${((Date.now() - v.t0) / 1000).toFixed(1)} s`); v.calme = true; dort(v); }
     // avancement de la préparation : montré par la page seulement si quelqu'un attend (ouverture demandée avant la fin)
     if (j.ev === "etape") { const p = Number(j.p); if (p > 0 && p <= 1 && p > (v.p || 0)) { v.p = p; v.tp = Date.now(); if (v.inUse && v.state !== "montre") tell("progres:" + p.toFixed(3)); } return; }
     // la bibliothèque que le jeu vient de lire (au moment où il démarre) : on retient son empreinte
