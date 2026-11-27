@@ -81,6 +81,11 @@ case "$QUOI" in
     L=(build/module-journal); [ -n "$DOS" ] && [ -e "$DOS" ] && L+=("$DOS")
     tar czf "$A" "${L[@]}" 2>/dev/null || true
     gm release view "$J" || gm release create "$J" --prerelease --title "Journal $J" --notes "Journaux détaillés d'une fabrication du dépôt public." || true
+    # d'abord les textes seuls (petit, part toujours), puis l'archive complète avec les images (peut être trop grosse)
+    AT="build/journal-$NOM-textes.tar.gz"
+    find "${L[@]}" -type f \( -name '*.log' -o -name '*.txt' -o -name '*.json' \) -size -20M -print0 2>/dev/null | tar czf "$AT" --null -T - 2>/dev/null || true
+    if gm release upload "$J" "$AT" --clobber; then echo "module : journal (textes) envoyé"; else echo "module : journal (textes) non envoyé"; fi
+    ls -la "$A" 2>/dev/null | awk '{print "module : archive complète de " int($5/1048576) " Mo"}'
     if gm release upload "$J" "$A" --clobber; then echo "module : journal envoyé"; else echo "module : journal non envoyé"; fi
     # on ne garde que les 30 derniers journaux
     GH_TOKEN="$T" gh release list -R "$D" --limit 200 --json tagName -q '.[].tagName' 2>/dev/null | grep '^journal-' | sort -t- -k2 -n -r | tail -n +31 \
