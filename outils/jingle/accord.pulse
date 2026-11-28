@@ -1,0 +1,5 @@
+bpm(60)
+// l'accord final seul (celui de la version A, tenu 2 s), à poser sur le clac de fin de bande
+note("[c3,g3,c4,e4,g4]@8 ~@8").wave("supersaw").attack(0.02).release(1.8).cutoff(1900).gain(0.32).room(0.45)
+note("~@1 g5@7 ~@8").wave("bell").gain(0.16).room(0.55).release(1.6)
+note("c2@8 ~@8").wave("sine").release(1.6).gain(0.5)

@@ -18,6 +18,9 @@ cp "$ROOT/LICENSE" "$L/Rembobine-LICENSE.txt"
 # polices des époques du salon (OFL, et Go Sans, TeX Gyre Adventor, DejaVu Sans, Special Elite : leurs textes)
 [ -f "$ROOT/ci/licences/Polices-epoques.txt" ] && cp "$ROOT/ci/licences/Polices-epoques.txt" "$L/Polices-epoques.txt"
 
+# jingle de démarrage : les deux enregistrements de lecteur de cassettes (CC0)
+[ -f "$ROOT/ci/licences/Jingle-CREDITS.txt" ] && cp "$ROOT/ci/licences/Jingle-CREDITS.txt" "$L/Jingle-CREDITS.txt"
+
 # 1 ter. sons d'ambiance enregistrés libres (feu, eau, vent : CC0, liste et adresses de chaque fichier), s'ils sont livrés
 [ -f "$ROOT/godot/son/CREDITS-sons.md" ] && cp "$ROOT/godot/son/CREDITS-sons.md" "$L/Sons-libres-CREDITS.txt"
 

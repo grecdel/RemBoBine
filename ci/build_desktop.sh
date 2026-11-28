@@ -41,6 +41,8 @@ mkapp() {
   mkdir -p "$1/app/serveur"; for f in app/serveur/*.js; do case "$f" in */test_*) ;; *) cp "$f" "$1/app/serveur/" ;; esac; done
   printf '{"version":"%s","build":%s,"label":"%s+%s","date":"%s","commit":"%s","depot":"%s"}\n' "$V" "$BN" "$V" "$BN" "$BDATE" "${GITHUB_SHA:-local}" "$DEPOT" > "$1/app/build.json"
   mkdir -p "$1/app/web"; cp web/index.html "$1/app/web/index.html"
+  # les sons de démarrage par époque (un petit fichier par époque, chargé seulement pour celle du salon)
+  mkdir -p "$1/app/web/demarrage"; cp web/demarrage/*.ogg "$1/app/web/demarrage/"
   # l'aide intégrée suit le LISEZ-MOI (lisible sans internet)
   python3 outils/aide/embarquer_aide.py "$1/app/web/index.html"
   # le module facultatif (s'il est posé) complète la page

@@ -106,9 +106,10 @@ public class RembobineActivity extends Activity {
 				// films emportés hors de la maison : https://rembobine.app/horsligne/<fichier>.mp4 (lecture par morceaux)
 				if ("rembobine.app".equals(u.getHost()) && u.getPath() != null && u.getPath().startsWith("/horsligne/")) return offlineResponse(u.getLastPathSegment(), req.getRequestHeaders());
 				// le lecteur de manuels PDF (pdf.js, dossier assets/pdfjs) : https://rembobine.app/pdfjs/…, sans internet lui aussi
-				if (!"rembobine.app".equals(u.getHost()) || u.getPath() == null || !(u.getPath().startsWith("/ejs/") || u.getPath().startsWith("/pdfjs/")) || u.getPath().contains("..")) return null;
+				// (et les sons de démarrage par époque, dossier assets/demarrage : https://rembobine.app/demarrage/<époque>.ogg)
+				if (!"rembobine.app".equals(u.getHost()) || u.getPath() == null || !(u.getPath().startsWith("/ejs/") || u.getPath().startsWith("/pdfjs/") || u.getPath().startsWith("/demarrage/")) || u.getPath().contains("..")) return null;
 				String p = u.getPath().substring(1);
-				String mime = p.endsWith(".js") ? "text/javascript" : p.endsWith(".css") ? "text/css" : p.endsWith(".json") ? "application/json" : p.endsWith(".wasm") ? "application/wasm" : "application/octet-stream";
+				String mime = p.endsWith(".js") ? "text/javascript" : p.endsWith(".css") ? "text/css" : p.endsWith(".json") ? "application/json" : p.endsWith(".wasm") ? "application/wasm" : p.endsWith(".ogg") ? "audio/ogg" : "application/octet-stream";
 				HashMap<String, String> h = new HashMap<>();
 				h.put("Access-Control-Allow-Origin", "*");
 				h.put("Cache-Control", "max-age=604800");

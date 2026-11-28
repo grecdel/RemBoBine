@@ -112,6 +112,14 @@ if ejs.exists():
         (build / "build.gradle").write_text(gradle)
 else:
     print("Attention : build/ejs absent, l'émulateur passera par internet")
+# les sons de démarrage par époque (web/demarrage/*.ogg), servis par l'appli : https://rembobine.app/demarrage/…
+dem = root / "web" / "demarrage"
+if dem.exists():
+    shutil.copytree(dem, build / "rbb_assets" / "demarrage", dirs_exist_ok=True)
+    gradle = (build / "build.gradle").read_text()
+    if "rbb_assets" not in gradle:
+        gradle += "\n// Rembobine : fichiers servis par l'appli sans internet (sons de démarrage, émulateur, lecteur de PDF)\nandroid.sourceSets.main.assets.srcDirs += ['rbb_assets']\n"
+        (build / "build.gradle").write_text(gradle)
 # le lecteur de manuels PDF (préparé par ci/pdfjs.sh build), servi lui aussi par l'appli sans internet
 pdfjs = root / "build" / "pdfjs"
 if pdfjs.exists():

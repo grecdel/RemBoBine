@@ -531,6 +531,8 @@ function createServer(opt = {}) {
 
     // l'émulateur intégré (code public, sans données personnelles) : servi à tous, comme la page
     if (p.startsWith("/ejs/")) { res.setHeader("Cache-Control", "public, max-age=604800"); return serveStatic(res, req, p.slice(1)); }
+    // les sons de démarrage par époque (web/demarrage/<époque>.ogg, code public) : la page charge celui de l'époque choisie
+    if (/^\/demarrage\/[a-z0-9_-]+\.ogg$/.test(p)) { res.setHeader("Cache-Control", "public, max-age=604800"); return serveStatic(res, req, p.slice(1)); }
     // le lecteur de manuels PDF (pdf.js, code public) : pareil, pour les téléphones qui ouvrent la page du serveur
     if (p.startsWith("/pdfjs/")) { if (p.includes("..") || p.includes("\0")) return send(res, 403, { ok: false }); res.setHeader("Cache-Control", "public, max-age=604800"); return serveStatic(res, req, p.slice(1)); }
     // le module DANS la fenêtre du logiciel (sa version Web, app/module_web.js) : seulement pour l'écran de

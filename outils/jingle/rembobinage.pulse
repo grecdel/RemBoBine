@@ -1,0 +1,11 @@
+// Jingle de démarrage de Rembobine, « Rembobinage » — source en langage Pulse (live coding).
+// Un cycle de 4 s (16 pas de 0,25 s) : la montée (3 pas), puis l'accord tenu 8 pas (2 s ; il durait 5 pas à l'origine).
+// Variante plus longue essayée : accord tenu 11,5 pas (2,9 s) — bpm(40), « ~@21 », « @11.5 ~@9.5 », cloche « g5@10.5 ~@9.5 ».
+// Rendu : 5,75 s (les notes s'arrêtent à la fin du cycle, le reste est la résonance), volume × 0,8, fondu de fin de 0,5 s,
+// puis Ogg Opus 64 kb/s (ffmpeg -af "volume=0.8,afade=t=out:st=5.25:d=0.5" -ar 48000 -c:a libopus -b:a 64k).
+// Le résultat est dans web/index.html (JINGLE_SRC, bloc « Jingle de démarrage ») ; le rebond du logo suit la montée et l'accord.
+bpm(60)
+note("[c4 d4 e4 g4 a4 c5 d5 e5 g5 a5 c6 d6]@3 ~@13").wave("saw").cutoff(2600).resonance(3).release(0.05).gain(0.22).pan("-0.6 0.6")
+note("~@3 [c3,g3,c4,e4,g4]@8 ~@5").wave("supersaw").attack(0.02).release(1.8).cutoff(1900).gain(0.32).room(0.45)
+note("~@4 g5@7 ~@5").wave("bell").gain(0.16).room(0.55).release(1.6)
+note("~@3 c2@8 ~@5").wave("sine").release(1.6).gain(0.5)

@@ -1,0 +1,43 @@
+Jingle de démarrage de Rembobine — sons enregistrés
+
+Les bruits de lecteur de cassettes du jingle sont deux vrais enregistrements de BigSoundBank (https://bigsoundbank.com),
+publiés sous licence CC0 1.0 Universel (domaine public), relue sur la page de chaque son le 27 novembre 2026 :
+« License CC0 (public domain): Free and royalty-free ».
+
+| Son | Titre | N° | Auteur | Licence | Page |
+|---|---|---|---|---|---|
+| cassette glissée dans le logement, volet refermé | Cassette Player: Cassette | 0571 | Joseph SARDIN | CC0 1.0 | https://bigsoundbank.com/cassette-player-cassette-s0571.html |
+| moteur du lecteur qui se met en route (une portion calme, mise en boucle) | Cassette Player: Rewind and End | 0567 | Joseph SARDIN | CC0 1.0 | https://bigsoundbank.com/cassette-player-rewind-and-end-s0567.html |
+
+Ils ont été coupés, mis à niveau, le moteur est lu de plus en plus vite puis en boucle, et le tout est mêlé à une note et à un
+grésillement de néon fabriqués pour Rembobine (outils/jingle/). Licence CC0 : https://creativecommons.org/publicdomain/zero/1.0/deed.fr
+
+
+Démarrages par époque (réglage « Époque du salon ») — sons enregistrés
+
+Chaque époque qui a son propre démarrage (web/demarrage/<époque>.ogg, fabriqués par outils/jingle/epoques.py) mêle des bruits
+d'objets à la même note que le jingle d'origine. Les enregistrements viennent aussi de BigSoundBank, licence CC0 1.0 relue sur
+la page de chaque son le 28 novembre 2026 (« License CC0 (public domain): Free and royalty-free »). Le démarrage
+« Cyberpunk » est entièrement fabriqué par synthèse (aucun enregistrement).
+
+| Époque | Son | Titre | N° | Auteur | Licence | Page |
+|---|---|---|---|---|---|---|
+| Chaumière | l'enseigne qui grince en se balançant | Swing, very loaded | 1093 | Joseph SARDIN | CC0 1.0 | https://bigsoundbank.com/swing-very-loaded-s1093.html |
+| Chaumière | ses chaînes qui cliquettent | Heavy chain | 0359 | Denis Chardonnet | CC0 1.0 | https://bigsoundbank.com/heavy-chain-s0359.html |
+| Chaumière | le petit vent de la ruelle | Wind from inside #2 | 1715 | Joseph SARDIN | CC0 1.0 | https://bigsoundbank.com/wind-from-inside-2-s1715.html |
+| Chaumière | LE MOTIF DE TROUBADOUR : de vraies notes de hautbois (sans vibrato) | Woodwinds/Oboe/Sus/Oboe_Sus_F3_v3_Main.wav, Woodwinds/Oboe/Sus/Oboe_Sus_A#3_v3_Main.wav | — | VSCO-2-CE (Versilian Studios ; enregistré par Sam Gossner et Simon Dalzell, découpe Elan Hickler / Soundemote) | CC0 1.0 | https://github.com/sgossner/VSCO-2-CE |
+| Années 50 | la pièce qui tombe dans la fente | Coins #1 | 0193 | Joseph SARDIN | CC0 1.0 | https://bigsoundbank.com/coins-1-s0193.html |
+| Années 50 | les déclics du mécanisme | Thermostat #1 | 2191 | Joseph SARDIN | CC0 1.0 | https://bigsoundbank.com/thermostat-1-s2191.html |
+| Années 50 | le bras qui se pose sur le disque | Vinyl disc: Start #1 | 0587 | Joseph SARDIN | CC0 1.0 | https://bigsoundbank.com/vinyl-disc-start-s0587.html |
+| Années 50 | le sillon qui souffle et craque | Vinyl disc: Start #2 | 2876 | Joseph SARDIN | CC0 1.0 | https://bigsoundbank.com/vinyl-disc-start-2-s2876.html |
+
+Ils ont été coupés, filtrés (les tintements aigus sont retirés : il ne reste que des bruits sans hauteur) et mis à niveau, puis
+mêlés à la note. Pour la Chaumière (demande du propriétaire : de vrais sons seulement, et un geste de troubadour plutôt
+qu'une note tenue), le court motif est joué avec de vraies notes de hautbois enregistrées une à une (VSCO-2-CE ; choix du
+propriétaire après écoute), lues à la
+vitesse qui donne leur hauteur (deux demi-tons d'écart au plus) et enchaînées « à la main » ; il se pose sur le mi.
+Pour les années 50, la note et le souffle sont fabriqués pour Rembobine.
+
+Variantes de la Chaumière proposées au propriétaire (pas dans l'appli ; à créditer ici si l'une est retenue), toutes VSCO-2-CE,
+CC0 1.0, https://github.com/sgossner/VSCO-2-CE : flûte — LDFlute_susNV_E3_v3_1.wav, LDFlute_susNV_A3_v3_1.wav ; corde pincée — harpe KSHarp_E3_mf.wav, KSHarp_G3_mf.wav, KSHarp_B3_mf.wav ;
+tambourin sur cadre — rtomtom_frame2.wav.

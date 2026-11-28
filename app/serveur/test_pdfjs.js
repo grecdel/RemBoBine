@@ -14,6 +14,8 @@ fs.writeFileSync(path.join(WEB, "index.html"), "<!doctype html><title>Rembobine<
 fs.writeFileSync(path.join(WEB, "pdfjs", "pdf.min.js"), "window.pdfjsLib={getDocument(){}};");
 fs.writeFileSync(path.join(WEB, "pdfjs", "cmaps", "UniJIS-UTF16-H.bcmap"), Buffer.from([1, 2, 3, 4]));
 fs.writeFileSync(path.join(T, "secret.txt"), "MOT-DE-PASSE-SECRET");
+// (les sons de démarrage par époque sont servis de la même façon : web/demarrage/<époque>.ogg)
+fs.mkdirSync(path.join(WEB, "demarrage")); fs.writeFileSync(path.join(WEB, "demarrage", "chaumiere.ogg"), Buffer.from("OggS-essai"));
 
 const PORT = 22000 + Math.floor(Math.random() * 900);
 let ok = 0, ko = 0;
@@ -46,6 +48,10 @@ function get(p, headers = { Origin: "https://ailleurs.example" }) {
       const r = await get(bad); check([401, 403, 404].includes(r.status), `pas de sortie du dossier pdfjs (${bad} → ${r.status})`);
       check(!String(r.buf).includes("MOT-DE-PASSE-SECRET"), `aucun fichier hors du dossier (${bad})`);
     }
+    const dem = await get("/demarrage/chaumiere.ogg");
+    check(dem.status === 200 && String(dem.buf) === "OggS-essai" && /audio\/ogg/.test(dem.headers["content-type"] || ""), "son de démarrage d'une époque servi sans appairage, en audio/ogg");
+    check((await get("/demarrage/absent.ogg")).status === 404, "son de démarrage absent : 404");
+    for (const bad of ["/demarrage/%2e%2e/%2e%2e/secret.txt", "/demarrage/..%2fsecret.ogg", "/demarrage/index.html"]) { const r = await get(bad); check(r.status !== 200 && !String(r.buf).includes("MOT-DE-PASSE-SECRET"), `rien d'autre que les sons sous /demarrage/ (${bad} → ${r.status})`); }
     check((await get("/api/library")).status === 401, "le reste demande toujours l'appairage");
   } finally {
     await S.stop?.(); fs.rmSync(T, { recursive: true, force: true });

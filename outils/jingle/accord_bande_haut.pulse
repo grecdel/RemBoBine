@@ -1,0 +1,6 @@
+bpm(48)
+// « la bande déjà enregistrée » : l'accord final (octave de l'air d'origine) tenu 3,5 s (pas de 0,25 s), TOUTES ses voix dès le début —
+// cloche comprise. Le jingle ne lit que la tenue, après l'attaque : rien n'entre en cours de route.
+note("[c3,g3,c4,e4,g4]@14 ~@6").wave("supersaw").attack(0.02).release(1.8).cutoff(1900).gain(0.32).room(0.45)
+note("g5@14 ~@6").wave("bell").gain(0.16).room(0.55).release(1.6)
+note("c2@14 ~@6").wave("sine").release(1.6).gain(0.5)
