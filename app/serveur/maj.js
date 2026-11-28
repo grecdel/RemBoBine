@@ -376,6 +376,7 @@ function createMaj(o) {
     writeJson(essaiFile, { from, to: nv.label, t: Date.now(), why });
     relink(L.link, path.join("versions", nv.label));
     try { fs.lstatSync(path.join(L.base, "rembobine")); } catch (_) { try { fs.symlinkSync(path.join("actuelle", "rembobine"), path.join(L.base, "rembobine")); } catch (_) {} }
+    lanceur();
     try { garde(L.base, { from, to: nv.label }); }
     catch (e) {   // (sans gardien, pas de bascule : rien ne change)
       try { relink(L.link, path.join("versions", from)); } catch (_) {} try { fs.unlinkSync(essaiFile); } catch (_) {}
@@ -384,19 +385,43 @@ function createMaj(o) {
     return nv;
   }
   // installation : première mise à jour d'une appli simplement décompressée (PC Linux) → disposition de installer.sh
-  function raccourcis(base) {
-    const r = (link, target) => { try { fs.unlinkSync(link); } catch (_) {} fs.symlinkSync(target, link); };
-    r(path.join(base, "rembobine"), path.join("actuelle", "rembobine"));
-    r(path.join(base, "rembobine.png"), path.join("actuelle", "rembobine.png"));
+  // Le raccourci du menu des applications, son icône et la commande « rembobine » (les mêmes que installer.sh). Tout
+  // passe par <base>/actuelle : une fois en place, ils suivent tout seuls la version utilisée. « assurer » : ne refait que
+  // ce qui manque ou pointe ailleurs, sans toucher au reste du raccourci (types de fichiers, réglages de l'utilisateur).
+  function raccourcis(base, assurer) {
+    let change = false;
+    const r = (link, target) => {
+      if (assurer) { try { if (fs.readlinkSync(link) === target) return; } catch (_) {} try { if (!fs.lstatSync(link).isSymbolicLink()) return; } catch (_) {} }
+      try { fs.unlinkSync(link); } catch (_) {} fs.symlinkSync(target, link); change = true; };
+    try { r(path.join(base, "rembobine"), path.join("actuelle", "rembobine")); } catch (e) { if (!assurer) throw e; }
+    try { r(path.join(base, "rembobine.png"), path.join("actuelle", "rembobine.png")); } catch (e) { if (!assurer) throw e; }
     const bin = path.join(home, ".local", "bin"), apps = path.join(home, ".local", "share", "applications");
     try { fs.mkdirSync(bin, { recursive: true }); r(path.join(bin, "rembobine"), path.join(base, "rembobine")); } catch (_) {}
     try {
       fs.mkdirSync(apps, { recursive: true });
-      fs.writeFileSync(path.join(apps, "rembobine.desktop"), ["[Desktop Entry]", "Type=Application", "Name=Rembobine", "Comment=Ta médiathèque : films, séries, jeux et musique",
-        `Exec=${path.join(base, "rembobine")} %U`, `Icon=${path.join(base, "rembobine.png")}`, "Terminal=false", "Categories=AudioVideo;Video;Game;",
-        // « Ouvrir avec Rembobine » (sans devenir le lecteur par défaut), comme installer.sh
-        ...(() => { try { return [require("../seul").ligneMime()]; } catch (_) { return []; } })(), ""].join("\n"));
+      const f = path.join(apps, "rembobine.desktop"), exec = `Exec=${path.join(base, "rembobine")} %U`, icon = `Icon=${path.join(base, "rembobine.png")}`;
+      let t = null; if (assurer) { try { t = fs.readFileSync(f, "utf8"); } catch (_) {} }
+      if (t !== null && /^\[Desktop Entry\]/m.test(t) && /^Exec=/m.test(t)) {
+        let n = t.replace(/^Exec=.*$/m, exec); n = /^Icon=/m.test(n) ? n.replace(/^Icon=.*$/m, icon) : n.replace(/\n*$/, "\n") + icon + "\n";
+        if (n !== t) { fs.writeFileSync(f, n); change = true; }
+      } else {
+        fs.writeFileSync(f, ["[Desktop Entry]", "Type=Application", "Name=Rembobine", "Comment=Ta médiathèque : films, séries, jeux et musique",
+          exec, icon, "Terminal=false", "Categories=AudioVideo;Video;Game;",
+          // « Ouvrir avec Rembobine » (sans devenir le lecteur par défaut), comme installer.sh
+          ...(() => { try { return [require("../seul").ligneMime()]; } catch (_) { return []; } })(), ""].join("\n"));
+        change = true;
+      }
+      // le menu relit ses raccourcis (si l'outil est là)
+      if (change) { try { (o.spawn || spawn)("update-desktop-database", [apps], { stdio: "ignore" }).on("error", () => {}); } catch (_) {} }
     } catch (_) {}
+    return change;
+  }
+  // PC Linux installé dans ~/.local/share/rembobine (installer.sh, ou une mise à jour) : au démarrage de chaque version et
+  // après chaque mise à jour, le raccourci du menu et l'icône existent et mènent à la version utilisée. Jamais ailleurs
+  // (Rembobine OS dans /opt, plein écran sans bureau, Windows) ni pour une appli simplement décompressée.
+  function lanceur() {
+    if (plat !== "linux" || !L.versioned || L.base !== IB || o.isOs || o.kiosk) return false;
+    try { return raccourcis(L.base, true); } catch (_) { return false; }
   }
   async function installInstallation(archive, why) {
     etape("installation", 5);
@@ -579,6 +604,7 @@ function createMaj(o) {
     // restes d'une décompression interrompue (Windows : à côté du dossier de l'appli)
     if (plat === "win32" && o.appDir) { const par = path.dirname(o.appDir); try { for (const n of fs.readdirSync(par)) if (/^\.rembobine-nouvelle-\d+$/.test(n) && Date.now() - Number(n.split("-").pop()) > 3600e3) fs.rmSync(path.join(par, n), { recursive: true, force: true }); } catch (_) {} }
     if (!L.versioned) { const e = readJson(essaiFile, null); if (e && Date.now() - (Number(e.t) || 0) > 600000) { try { fs.unlinkSync(essaiFile); } catch (_) {} } return; }
+    lanceur();
     try { for (const n of fs.readdirSync(L.versions)) if (/^\.nouvelle-\d+$/.test(n) && Date.now() - Number(n.split("-").pop()) > 3600e3) fs.rmSync(path.join(L.versions, n), { recursive: true, force: true }); } catch (_) {}
     const e = readJson(essaiFile, null);
     if (e && e.to === L.current && Date.now() - e.t > 120000) { const s = st(); s.history.unshift({ t: Date.now(), from: e.from, version: e.to, ok: true, ...(e.note ? { note: e.note } : {}) }); save(s); try { fs.unlinkSync(essaiFile); } catch (_) {} }
@@ -610,7 +636,7 @@ function createMaj(o) {
       config: { ...cfg(), channel: "stable" }, last: juste(last), busy: busy || (enAttente ? "mise à jour" : ""), prog: P, pending: readJson(essaiFile, null), history: s.history.slice(0, 20), bad: s.bad, recent: recent(),
       installDir: M === "installation" ? (IB.startsWith(home + path.sep) ? "~/" + path.relative(home, IB) : IB) : "", previous: canInstall ? previous() : "", usb: usbArchives(), downloaded: dl && fs.existsSync(dl) && M === "manuel" ? dl : "" };
   }
-  return { status, check: (opts) => guard("vérification", () => check(opts || {})), apply, start, rollback, fromFile, uploaded, nightly, usbArchives, signee, ouvrirInstallee, layout: L, mode: () => M, stop: () => clearInterval(timer) };
+  return { status, check: (opts) => guard("vérification", () => check(opts || {})), apply, start, rollback, fromFile, uploaded, nightly, usbArchives, signee, ouvrirInstallee, lanceur, layout: L, mode: () => M, stop: () => clearInterval(timer) };
 }
 
 module.exports = { createMaj, archiveName, readBuild, layout, scriptWindows, depotOk, REPO, TAG, HOTES, FERME };

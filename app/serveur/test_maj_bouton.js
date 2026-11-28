@@ -277,6 +277,33 @@ const kill = () => { spawnSync("pkill", ["-f", FAKEAPP]); };
   const M7 = createMaj(base({ build: { label: "1.0.0+6", build: 6 }, appDir: path.join(IB, "versions", "1.0.0+6"), home: H7 }));
   check(M7.mode() === "versionne" && M7.status().recent && M7.status().recent.note === "installation", "relancée, elle se sait installée : les mises à jour suivantes se font à côté");
   M7.stop();
+  // le raccourci du menu et l'icône : revérifiés au démarrage de chaque version installée (et après chaque mise à jour)
+  {
+    const deskF = path.join(H7, ".local", "share", "applications", "rembobine.desktop"), png = path.join(IB, "rembobine.png"), V6 = path.join(IB, "versions", "1.0.0+6");
+    const lances = [], faux = (c, a) => { lances.push(c + " " + a.join(" ")); return { on() { return this; } }; };
+    const inst = (extra) => createMaj(base({ build: { label: "1.0.0+6", build: 6 }, appDir: V6, home: H7, spawn: faux, ...extra }));
+    const intact = fs.readFileSync(deskF, "utf8");
+    let m = inst(); check(m.lanceur() === false && fs.readFileSync(deskF, "utf8") === intact && lances.length === 0, "raccourci du menu déjà bon : rien n'est réécrit"); m.stop();
+    // plus de raccourci ni d'icône (installation ancienne, fichiers effacés) : recréés au démarrage
+    fs.unlinkSync(deskF); fs.unlinkSync(png); fs.unlinkSync(path.join(H7, ".local", "bin", "rembobine"));
+    m = inst(); m.stop();
+    const d2 = fs.existsSync(deskF) ? fs.readFileSync(deskF, "utf8") : "";
+    check(d2.includes(`Exec=${path.join(IB, "rembobine")} %U`) && d2.includes(`Icon=${png}`) && /^MimeType=.*video\/mp4/m.test(d2), "raccourci du menu absent : recréé au démarrage de la version installée");
+    check(fs.readlinkSync(png) === "actuelle/rembobine.png" && fs.realpathSync(png) === fs.realpathSync(path.join(V6, "rembobine.png")) && fs.realpathSync(path.join(IB, "rembobine")) === fs.realpathSync(path.join(V6, "rembobine")), "l'icône et le lanceur mènent à la version utilisée");
+    check(fs.readlinkSync(path.join(H7, ".local", "bin", "rembobine")) === path.join(IB, "rembobine") && lances.some((l) => l.startsWith("update-desktop-database ")), "commande « rembobine » remise, menu des applications rafraîchi");
+    // un raccourci qui mène ailleurs (ancien dossier) : seules les lignes Exec et Icon sont corrigées
+    fs.writeFileSync(deskF, "[Desktop Entry]\nType=Application\nName=Rembobine\nExec=/ancien/dossier/rembobine %U\nIcon=/ancien/dossier/rembobine.png\nMimeType=video/mp4;\nX-Perso=oui\n");
+    m = inst(); m.stop();
+    const d3 = fs.readFileSync(deskF, "utf8");
+    check(d3.includes(`Exec=${path.join(IB, "rembobine")} %U`) && d3.includes(`Icon=${png}`) && !d3.includes("/ancien/") && d3.includes("X-Perso=oui") && d3.includes("MimeType=video/mp4;"), "raccourci qui menait ailleurs : corrigé, le reste du fichier est gardé");
+    // jamais sur Rembobine OS, en plein écran, sous Windows, ni pour une installation hors de ~/.local/share/rembobine
+    fs.unlinkSync(deskF);
+    for (const extra of [{ isOs: true }, { kiosk: true }, { platform: "win32" }]) { m = inst(extra); m.stop(); }
+    const HO = path.join(T, "home-os"), VO = path.join(T, "opt", "rembobine", "versions", "1.0.0+6"); fs.mkdirSync(HO, { recursive: true }); linuxVersion(VO, "1.0.0+6", PORT);
+    m = createMaj(base({ build: { label: "1.0.0+6", build: 6 }, appDir: VO, home: HO, spawn: faux })); m.stop();
+    check(!fs.existsSync(deskF) && !fs.existsSync(path.join(HO, ".local")) && !fs.existsSync(path.join(T, "opt", "rembobine", "rembobine.png")), "Rembobine OS, plein écran, Windows, installation ailleurs : aucun raccourci créé");
+    m = inst(); m.stop(); check(fs.existsSync(deskF), "PC Linux installé : le raccourci revient");
+  }
   // l'utilisateur relance l'ancienne copie décompressée (raccourci perso, terminal) : 1.0.0+6 est déjà installée
   const M7b = createMaj(base({ build: { label: "1.0.0+5", build: 5 }, appDir: D7, home: H7 }));
   const c7b = await M7b.check();
