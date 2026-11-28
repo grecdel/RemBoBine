@@ -11432,47 +11432,85 @@ ${notes.slice(0, 6).map(n => { const pc = Number(n.pct);
       ${lum("M-12 233 q5 -6 10 -7", .6, 2.2)}
       ${feu("M20 234 Q22 244 21 250", 2)}${feu("M58 300 Q61 310 59 318")}${feu("M27 330 V366", 1.8)}${feu("M50 380 V408", 1.8)}${feu("M23 516 V570", 1.8)}</g>`;
   }
-  // l'armure LOURDE du thème Gothique (une autre armure que celle de la chaumière) : acier noirci, plaques épaisses,
-  // très grandes épaulières à lames, haut gorgerin, heaume fermé massif, gantelets lourds, larges sabots de fer, rivets
-  // dorés ; debout sur une marche de chêne noir, les bras le long du corps, dans le coin (décor seulement)
+  // l'armure LOURDE du thème Gothique (une autre armure que celle de la chaumière) : un chevalier noir d'apparat, vide,
+  // debout sur une marche de chêne noir. Plates noires aux reflets sourds, chaque pièce bordée et ciselée d'or patiné
+  // (rinceaux, fleurons), heaume fermé à visière pointue et petite crête, larges épaulières à lames hérissées, cubitières
+  // en éventail, tassettes en lames, long tabard noir à ornements dorés, grande cape noire qui s'étale au sol. Une main
+  // tient, à hauteur d'épaule, la poignée d'une immense épée noire à garde dorée posée pointe en bas (décor seulement)
   function gothArmor() {
-    const S = "url(#gothSteel)", L = "#050506", R = "#b08a3e", hi = (d, o = .35) => `<path d="${d}" stroke="#9aa0ac" stroke-width="1.6" fill="none" opacity="${o}" stroke-linecap="round"/>`;
-    const riv = (pts) => pts.map(([x, y]) => `<circle cx="${x}" cy="${y}" r="1.9" fill="${R}" stroke="#3a2a10" stroke-width=".5"/>`).join("");
-    const leg = (x) => { const o = x < 0 ? -1 : 1; return `
-      <path d="M${x - 17} 486 L${x - 15} 574 Q${x} 582 ${x + 15} 574 L${x + 17} 486 Z" fill="${S}" stroke="${L}" stroke-width="1.6"/>${hi(`M${x - 6} 492 V570`)}
-      <path d="M${x - 16} 506 h32 M${x - 15} 540 h30" stroke="${L}" stroke-width="1.2" opacity=".7"/>${riv([[x + o * 12, 496], [x + o * 12, 520], [x + o * 12, 548]])}
-      <ellipse cx="${x}" cy="484" rx="17" ry="14" fill="${S}" stroke="${L}" stroke-width="1.6"/><path d="M${x + o * 10} 476 q${o * 14} 6 ${o * 4} 18 q${-o * 6} -8 ${-o * 4} -18 Z" fill="${S}" stroke="${L}" stroke-width="1.2"/>
-      <path d="M${x - 18} 432 L${x - 16} 474 Q${x} 480 ${x + 16} 474 L${x + 18} 432 Z" fill="${S}" stroke="${L}" stroke-width="1.6"/>
-      <path d="M${x - 16} 574 L${x - 18} 588 Q${x - 16} 600 ${x + o * 8} 601 Q${x + o * 30} 600 ${x + o * 28} 590 Q${x + o * 22} 580 ${x + 16} 576 Z" fill="${S}" stroke="${L}" stroke-width="1.6"/>
-      <path d="M${x - 14} 584 q${14} -5 ${28} 0 M${x - 15} 591 q${16} -5 ${32} 1" stroke="${L}" stroke-width="1" fill="none"/>`; };
-    const arm = (o) => `
-      <path d="M${o * 46} 340 Q${o * 54} 372 ${o * 52} 398 L${o * 36} 400 Q${o * 36} 372 ${o * 32} 344 Z" fill="${S}" stroke="${L}" stroke-width="1.6"/>
-      <ellipse cx="${o * 45}" cy="402" rx="12" ry="10" fill="${S}" stroke="${L}" stroke-width="1.6"/><path d="M${o * 54} 394 q${o * 14} 8 ${o * 4} 20 q${-o * 8} -6 ${-o * 4} -20 Z" fill="${S}" stroke="${L}" stroke-width="1.2"/>
-      <path d="M${o * 54} 408 Q${o * 58} 436 ${o * 56} 452 L${o * 38} 454 Q${o * 36} 434 ${o * 36} 410 Z" fill="${S}" stroke="${L}" stroke-width="1.6"/>${riv([[o * 47, 420], [o * 47, 438]])}
-      <path d="M${o * 34} 450 L${o * 60} 446 L${o * 62} 468 L${o * 36} 470 Z" fill="${S}" stroke="${L}" stroke-width="1.6"/>${hi(`M${o * 38} 452 L${o * 58} 449`, .4)}
-      <path d="M${o * 38} 470 Q${o * 36} 492 ${o * 46} 496 Q${o * 58} 494 ${o * 58} 470 Z" fill="${S}" stroke="${L}" stroke-width="1.6"/><path d="M${o * 39} 478 h${o * 18} M${o * 39} 486 h${o * 18}" stroke="${L}" stroke-width="1"/>`;
-    const pauldron = (o) => `
-      <path d="M${o * 22} 312 Q${o * 30} 286 ${o * 58} 290 Q${o * 82} 296 ${o * 80} 326 Q${o * 78} 340 ${o * 62} 342 L${o * 30} 340 Z" fill="${S}" stroke="${L}" stroke-width="1.8"/>
-      ${[0, 1, 2, 3].map(k => `<path d="M${o * (36 + k)} ${336 + k * 9} Q${o * 60} ${342 + k * 9} ${o * (80 - k * 3)} ${334 + k * 9} L${o * (79 - k * 3)} ${343 + k * 9} Q${o * 60} ${351 + k * 9} ${o * (37 + k)} ${345 + k * 9} Z" fill="${S}" stroke="${L}" stroke-width="1.3"/>`).join("")}
-      ${hi(`M${o * 34} 300 Q${o * 50} 290 ${o * 70} 298`, .45)}${riv([[o * 44, 300], [o * 60, 296], [o * 74, 306], [o * 77, 322]])}
-      <path d="M${o * 24} 294 L${o * 25} 278 Q${o * 32} 270 ${o * 42} 276 L${o * 40} 292 Z" fill="${S}" stroke="${L}" stroke-width="1.3"/><path d="M${o * 25} 278 Q${o * 32} 270 ${o * 42} 276" stroke="${R}" stroke-width="1.6" fill="none"/>`;
-    return `<g aria-hidden="true" transform="translate(774 0)"><defs><linearGradient id="gothSteel" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#08080a"/><stop offset=".38" stop-color="#3a3d45"/><stop offset=".55" stop-color="#1c1d22"/><stop offset="1" stop-color="#060607"/></linearGradient></defs>
-      <ellipse cx="0" cy="618" rx="72" ry="7" fill="rgba(0,0,0,.45)"/><rect x="-62" y="600" width="124" height="16" rx="2" fill="#1e120c"/><rect x="-56" y="596" width="112" height="6" rx="1" fill="#2e1c12"/>
-      ${[-62, 54].map(x => `<rect x="${x}" y="600" width="8" height="16" fill="#0e0e10"/>`).join("")}
+    const S = "url(#gothSteel)", S2 = "url(#gothSteel2)", OR = "url(#gothOr)", L = "#030304", G = "#c9a24e", G2 = "#5e4416", T = "#0c0b10";
+    const P = (d, f = S, w = 1.5) => `<path d="${d}" fill="${f}" stroke="${L}" stroke-width="${w}" stroke-linejoin="round"/>`;
+    const hi = (d, o = .35, w = 1.3) => `<path d="${d}" stroke="#a9a6b8" stroke-width="${w}" fill="none" opacity="${o}" stroke-linecap="round" stroke-linejoin="round"/>`;
+    const gr = (d, w = 1.1) => `<path d="${d}" stroke="${L}" stroke-width="${w}" fill="none" stroke-linecap="round" stroke-linejoin="round"/>`;
+    const or = (d, w = 1.3, o = 1) => `<path d="${d}" stroke="${G2}" stroke-width="${w + 1}" fill="none" opacity="${o}" stroke-linecap="round" stroke-linejoin="round"/><path d="${d}" stroke="${G}" stroke-width="${w}" fill="none" opacity="${o}" stroke-linecap="round" stroke-linejoin="round"/>`;
+    const fin = (d, o = .9) => `<path d="${d}" stroke="${G}" stroke-width=".9" fill="none" opacity="${o}" stroke-linecap="round" stroke-linejoin="round"/>`;
+    // un rinceau (petite volute) et un fleuron (losange à deux feuilles) : les deux motifs d'or de l'armure
+    const rinc = (x, y, sx = 1, sy = 1, k = 1) => `<g transform="translate(${x} ${y}) scale(${sx * k} ${sy * k})">${fin("M0 0 C3 -8 14 -9 15 -1 C15 5 7 6 7 1 C7 -2 10 -3 11 -1 M4 -5 C0 -9 -5 -8 -6 -4")}</g>`;
+    const fleur = (x, y, k = 1) => `<path transform="translate(${x} ${y}) scale(${k})" d="M0 -9 L3 -2 L0 6 L-3 -2 Z M-3 0 Q-10 -2 -10 -9 Q-4 -7 -3 0 Z M3 0 Q10 -2 10 -9 Q4 -7 3 0 Z M0 6 L2 11 L0 15 L-2 11 Z" fill="${OR}" stroke="${G2}" stroke-width="${(.7 / k).toFixed(2)}" stroke-linejoin="round"/>`;
+    const leg = (o) => `
+      ${P(`M${o * 5} 420 L${o * 36} 416 L${o * 40} 492 L${o * 12} 498 Z`)}${hi(`M${o * (22 - o * 4)} 426 V488`, .28)}${or(`M${o * 9} 452 Q${o * 23} 460 ${o * 38} 450`, 1.1, .9)}${rinc(o * 16, 480, o, 1, .8)}
+      ${P(`M${o * 14} 512 L${o * 40} 510 L${o * 42} 580 Q${o * 28} 590 ${o * 15} 582 Z`)}${gr(`M${o * 28} 522 V584`, 1.2)}${hi(`M${o * (28 - o * 4)} 528 V578`, .3)}
+      ${or(`M${o * 16} 581 Q${o * 28} 589 ${o * 41} 579`, 1.2)}${fin(`M${o * 18} 546 L${o * 28} 536 L${o * 39} 546 M${o * 19} 560 L${o * 28} 551 L${o * 39} 560`, .85)}
+      ${P(`M${o * 40} 488 q${o * 14} 6 ${o * 6} 26 q${-o * 6} -9 ${-o * 8} -20 Z`, S, 1.2)}
+      ${P(`M${o * 10} 490 Q${o * 26} 470 ${o * 42} 488 L${o * 41} 512 L${o * 27} 530 L${o * 12} 514 Z`, S2)}${hi(`M${o * 14} 489 Q${o * 26} 474 ${o * 38} 488`, .5)}
+      ${or(`M${o * 12} 513 L${o * 27} 529 L${o * 41} 511`, 1.2)}${fleur(o * 26.5, 502, .62)}
+      ${P(`M${o * 15} 580 L${o * 10} 600 L${o * 62} 600 Q${o * 50} 588 ${o * 42} 580 Q${o * 28} 590 ${o * 15} 580 Z`)}${gr(`M${o * 22} 598 q${o * 4} -9 0 -13 M${o * 34} 599 q${o * 4} -8 0 -12`)}${or(`M${o * 12} 598.5 L${o * 58} 598.5`, 1, .8)}${hi(`M${o * 20} 586 Q${o * 32} 592 ${o * 46} 587`, .3)}`;
+    const epaule = (o) => `
+      ${[2, 1, 0].map(k => P(`M${o * 30} ${308 + k * 11} Q${o * 58} ${294 + k * 11} ${o * (88 - k * 4)} ${316 + k * 11} L${o * (86 - k * 4)} ${331 + k * 11} Q${o * 58} ${311 + k * 11} ${o * 32} ${322 + k * 11} Z`, S, 1.4) + or(`M${o * (85.5 - k * 4)} ${330 + k * 11} Q${o * 58} ${310 + k * 11} ${o * 33} ${321 + k * 11}`, 1.1) + P(`M${o * (88 - k * 4)} ${316 + k * 11} l${o * 9} -5 l${o * -4} 14 Z`, S2, 1)).join("")}
+      ${P(`M${o * 40} 278 L${o * 35} 250 L${o * 55} 272 Z`, S2, 1.3)}${P(`M${o * 62} 272 L${o * 72} 244 L${o * 80} 280 Z`, S2, 1.3)}${fin(`M${o * 41} 274 L${o * 38} 258 M${o * 66} 270 L${o * 72} 254`, .8)}
+      ${P(`M${o * 24} 302 Q${o * 32} 268 ${o * 60} 268 Q${o * 92} 276 ${o * 90} 316 Q${o * 60} 292 ${o * 30} 316 Z`, S, 1.7)}${hi(`M${o * 32} 290 Q${o * 42} 272 ${o * 62} 272`, .5)}
+      ${or(`M${o * 30} 315 Q${o * 60} 291 ${o * 89.5} 315`, 1.4)}${or(`M${o * 26} 300 Q${o * 33} 270 ${o * 60} 269.5 Q${o * 82} 274 ${o * 89} 300`, 1, .8)}
+      ${rinc(o * 44, 294, o, 1, 1.1)}${rinc(o * 64, 296, o, -1, .8)}`;
+    // l'épée à deux mains : lame noire très large, gouttière ornée d'or, garde en croix et pommeau dorés
+    const epee = `<g transform="translate(-80 0)">
+      ${P("M-15 300 L15 300 L15 574 L0 600 L-15 574 Z", S, 1.7)}${hi("M-11.5 306 V572", .4)}${gr("M11 304 V574", .9)}
+      ${P("M-4 304 L4 304 L4 468 L0 486 L-4 468 Z", "#09080c", .9)}${fin("M-4 306 V466 M4 306 V466", .8)}
+      ${[0, 1, 2, 3].map(k => `<path d="M0 ${316 + k * 36} l3.4 7 l-3.4 9 l-3.4 -9 Z" fill="${OR}" stroke="${G2}" stroke-width=".6"/>` + fin(`M0 ${334 + k * 36} v14`, .8)).join("")}
+      ${fin("M0 488 l-2 10 l2 12 l2 -12 Z", .8)}
+      ${P("M-42 288 L-36 281 L-9 288 L9 288 L36 281 L42 288 L36 298 L9 296 L0 306 L-9 296 L-36 298 Z", OR, 1.4)}<path d="M-34 288 L-10 291 M34 288 L10 291" stroke="${G2}" stroke-width="1" fill="none"/><path d="M-36 284.5 L-10 290 M36 284.5 L10 290" stroke="#f1dc9a" stroke-width=".9" fill="none" opacity=".7"/>
+      <path d="M0 289 l4.5 5 l-4.5 6 l-4.5 -6 Z" fill="#16131a" stroke="${G2}" stroke-width=".8"/>
+      <rect x="-4.5" y="222" width="9" height="66" rx="2" fill="#121016" stroke="${L}" stroke-width="1.2"/>${[0, 1, 2, 3, 4, 5, 6].map(k => `<path d="M-4.5 ${233 + k * 8} l9 -5" stroke="#2c2932" stroke-width="1.6"/>`).join("")}
+      <rect x="-6" y="220" width="12" height="5" rx="1.5" fill="${OR}" stroke="${G2}" stroke-width=".8"/><rect x="-6" y="283" width="12" height="5" rx="1.5" fill="${OR}" stroke="${G2}" stroke-width=".8"/>
+      <path d="M0 196 L6 206 L4.5 220 L-4.5 220 L-6 206 Z" fill="${OR}" stroke="${G2}" stroke-width="1"/><circle cx="0" cy="194" r="3.4" fill="${OR}" stroke="${G2}" stroke-width=".9"/></g>`;
+    return `<g aria-hidden="true" transform="translate(774 0)"><defs>
+      <linearGradient id="gothSteel" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#08080a"/><stop offset=".38" stop-color="#383740"/><stop offset=".58" stop-color="#19181e"/><stop offset="1" stop-color="#060607"/></linearGradient>
+      <linearGradient id="gothSteel2" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#131217"/><stop offset=".4" stop-color="#4c4a56"/><stop offset=".65" stop-color="#26252c"/><stop offset="1" stop-color="#0e0e11"/></linearGradient>
+      <linearGradient id="gothOr" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#8a6a2a"/><stop offset=".45" stop-color="#e2c272"/><stop offset="1" stop-color="#8f6c2a"/></linearGradient></defs>
+      <ellipse cx="-12" cy="619" rx="150" ry="7" fill="rgba(0,0,0,.5)"/>
+      <path d="M-36 288 Q-60 380 -66 500 Q-78 572 -134 598 Q-162 606 -150 616 Q-120 622 -96 616 L74 616 Q110 622 136 614 Q146 604 122 596 Q82 570 68 500 Q60 380 36 288 Z" fill="${T}" stroke="${L}" stroke-width="1.4" stroke-linejoin="round"/>
+      <path d="M-54 400 Q-62 500 -110 600 M-48 440 Q-52 530 -80 606 M56 400 Q64 500 104 598 M-140 606 Q-120 600 -104 610" stroke="#25232c" stroke-width="1.5" fill="none" stroke-linecap="round"/><path d="M-62 470 Q-72 560 -128 602" stroke="#3a3250" stroke-width="1.1" fill="none" opacity=".55"/><path d="M-66 500 Q-78 572 -134 598 Q-158 605 -150 614" stroke="#4a4658" stroke-width="1.2" fill="none" opacity=".7"/>
+      <rect x="-104" y="600" width="174" height="16" rx="2" fill="#1e120c"/><rect x="-98" y="596" width="162" height="6" rx="1" fill="#2e1c12"/>${[-104, 62].map(x => `<rect x="${x}" y="600" width="8" height="16" fill="#0e0e10"/>`).join("")}
       <rect x="-2" y="420" width="4" height="178" fill="#16161a"/>
-      ${leg(-19)}${leg(19)}
-      <path d="M-42 400 L42 400 L46 418 Q0 426 -46 418 Z" fill="${S}" stroke="${L}" stroke-width="1.6"/>
-      ${[-1, 1].map(o => `<path d="M${o * 6} 418 L${o * 46} 416 L${o * 44} 452 Q${o * 24} 458 ${o * 6} 452 Z" fill="${S}" stroke="${L}" stroke-width="1.5"/><path d="M${o * 7} 430 L${o * 45} 428 M${o * 7} 441 L${o * 45} 440" stroke="${L}" stroke-width="1.1"/>${riv([[o * 40, 422], [o * 40, 434], [o * 40, 446]])}`).join("")}
-      <path d="M-38 310 Q0 296 38 310 L38 384 Q0 398 -38 384 Z" fill="${S}" stroke="${L}" stroke-width="1.8"/>${hi("M-14 318 Q-12 350 -16 380", .3)}
-      <path d="M0 304 V392" stroke="${L}" stroke-width="1.6"/><path d="M-34 362 Q0 344 34 362 L36 388 Q0 402 -36 388 Z" fill="${S}" stroke="${L}" stroke-width="1.5"/>${riv([[-28, 368], [-14, 360], [0, 356], [14, 360], [28, 368]])}
-      <path d="M-38 386 L38 386 L40 402 L-40 402 Z" fill="#141012" stroke="${L}" stroke-width="1.2"/><rect x="-6" y="388" width="12" height="11" rx="1.5" fill="none" stroke="${R}" stroke-width="2"/>
-      ${arm(-1)}${arm(1)}${pauldron(-1)}${pauldron(1)}
-      ${[0, 1, 2, 3].map(k => `<path d="M${-22 + k * 2} ${296 - k * 7} h${44 - k * 4} l1 7 h${-46 + k * 4} Z" fill="${S}" stroke="${L}" stroke-width="1.2"/>`).join("")}
-      <path d="M-24 272 L-25 238 Q-22 208 0 205 Q22 208 25 238 L24 272 Q0 280 -24 272 Z" fill="${S}" stroke="${L}" stroke-width="1.8"/>
-      <path d="M-25 236 Q0 228 25 236 L24 262 Q0 270 -24 262 Z" fill="#202228" stroke="${L}" stroke-width="1.4"/><path d="M-18 243 h14 M4 243 h14" stroke="#000" stroke-width="3"/>
-      <path d="M0 205 V276" stroke="${L}" stroke-width="1.6"/>${hi("M-14 214 Q-6 208 4 208", .45)}
-      ${[0, 1, 2].map(i => [0, 1].map(j => `<circle cx="${8 + i * 5}" cy="${252 + j * 6}" r="1.4" fill="#000"/>`).join("")).join("")}
-      <circle cx="-25" cy="240" r="3" fill="${R}"/><circle cx="25" cy="240" r="3" fill="${R}"/></g>`;
+      ${leg(-1)}${leg(1)}
+      ${P("M-40 398 L40 398 L44 424 L-44 424 Z", "#101014", 1.2)}
+      ${[-1, 1].map(o => [2, 1, 0].map(k => P(`M${o * 8} ${412 + k * 12} L${o * (44 + k)} ${408 + k * 12} L${o * (46 + k)} ${423 + k * 12} Q${o * 27} ${432 + k * 12} ${o * 8} ${426 + k * 12} Z`, k ? S : S2, 1.3) + or(`M${o * (45.5 + k)} ${422.5 + k * 12} Q${o * 27} ${431 + k * 12} ${o * 9} ${425.5 + k * 12}`, 1.1)).join("") + rinc(o * 20, 420, o, 1, .8)).join("")}
+      <path d="M-15 408 L15 408 L17 556 L0 576 L-17 556 Z" fill="${T}" stroke="${L}" stroke-width="1.3" stroke-linejoin="round"/><path d="M-7 412 V548 M6 412 V552" stroke="#24222b" stroke-width="1.3"/>
+      ${or("M-15.5 520 L-16 555 L0 574 L16 555 L15.5 520", 1.3)}${fleur(0, 540, 1.05)}${rinc(-4, 556, -1, 1, .55)}${rinc(4, 556, 1, 1, .55)}${fleur(0, 456, .8)}${fin("M0 470 V500 M-4 478 L0 484 L4 478", .8)}
+      ${P("M-40 300 L40 300 L36 402 L-36 402 Z", "#111015", 1.3)}
+      ${[1, 0].map(k => P(`M${-38 + k * 2} ${362 + k * 13} L0 ${384 + k * 13} L${38 - k * 2} ${362 + k * 13} L${37 - k * 2} ${376 + k * 13} L0 ${398 + k * 13} L${-37 + k * 2} ${376 + k * 13} Z`, S, 1.3) + or(`M${-36.5 + k * 2} ${375.5 + k * 13} L0 ${397 + k * 13} L${36.5 - k * 2} ${375.5 + k * 13}`, 1.1)).join("")}
+      ${P("M-44 298 Q0 282 44 298 L41 352 Q22 370 0 386 Q-22 370 -41 352 Z", S, 1.7)}${hi("M-18 304 Q-22 330 -18 356", .35, 2)}${gr("M0 292 V382", 1.2)}
+      ${or("M-40.5 351 Q-22 369 0 384.5 Q22 369 40.5 351", 1.4)}${or("M-38 304 Q0 290 38 304", 1.1, .85)}
+      ${fleur(0, 322, 1.25)}${[-1, 1].map(o => rinc(o * 9, 330, o, 1, 1.25) + rinc(o * 12, 352, o, -1, .9) + fin(`M${o * 6} 344 Q${o * 20} 350 ${o * 34} 340`, .8)).join("")}
+      ${P("M-38 398 L38 398 L40 411 L-40 411 Z", "#141218", 1.2)}${or("M-38 399.5 H38 M-39 409.5 H39", .9, .8)}
+      <path d="M-12 393 L12 393 L12 409 L0 421 L-12 409 Z" fill="${OR}" stroke="${G2}" stroke-width="1.2" stroke-linejoin="round"/><path d="M0 398 l4.5 6 l-4.5 8 l-4.5 -8 Z" fill="#16131a" stroke="${G2}" stroke-width=".8"/>
+      ${P("M46 308 L66 312 L69 364 L50 366 Z")}${hi("M52 314 V360", .3)}${or("M50 340 L68 338", 1, .85)}
+      ${P("M49 382 L70 382 L68 430 L51 432 Z")}${hi("M54 386 V426", .3)}${fin("M54 398 L60 392 L66 398 M54 412 L60 406 L66 412", .85)}
+      ${P("M47 362 L72 358 L88 372 L72 388 L49 384 Z", S2, 1.4)}${or("M72 359 L87 372 L72 387", 1.2)}${fin("M56 372 L78 372 M58 366 L74 364 M58 378 L74 380", .8)}
+      ${P("M46 428 L72 426 L77 442 L46 444 Z", S2, 1.3)}${or("M46.5 443 L76 441", 1.1)}${P("M50 442 Q48 464 58 470 Q71 468 73 442 Z")}${gr("M52 452 q10 4 20 -1 M53 460 q9 3 17 -1")}
+      ${P("M-46 306 L-66 304 L-76 340 L-56 348 Z")}${or("M-52 326 L-71 322", 1, .85)}
+      ${epaule(-1)}${epaule(1)}
+      ${epee}
+      ${P("M-78 346 L-55 340 L-66 286 L-89 288 Z")}${hi("M-72 340 L-80 292", .3)}${fin("M-62 322 L-72 316 L-80 324 M-64 308 L-74 302 L-82 310", .85)}
+      ${P("M-80 332 L-54 330 L-44 346 L-58 360 L-80 354 Z", S2, 1.4)}${or("M-54 331 L-44.5 346 L-58 359", 1.2)}${fin("M-74 344 L-52 344 M-72 338 L-56 337 M-72 350 L-58 352", .8)}
+      ${P("M-92 286 L-64 284 L-66 270 L-92 272 Z", S2, 1.3)}${or("M-91 285 L-65 283", 1.1)}
+      ${P("M-92 272 Q-94 250 -80 248 Q-66 250 -66 270 Z", S, 1.5)}${gr("M-91 258 q11 -4 24 0 M-92 265 q12 -4 26 0")}${hi("M-88 254 Q-80 250 -70 253", .45)}
+      ${[1, 0].map(k => P(`M${-20 + k * 2} ${288 - k * 9} h${40 - k * 4} l2 10 h${-44 + k * 4} Z`, S, 1.2) + or(`M${-20 + k * 2} ${297 - k * 9} h${40 - k * 4}`, 1, .9)).join("")}${fleur(-25, 303, .6)}${fleur(25, 303, .6)}
+      ${[-1, 1].map(o => P(`M${o * 20} 236 l${o * 9} -13 l${o * -1} 17 Z`, S2, 1.1)).join("")}
+      ${P("M-20 266 L-21 234 Q-18 208 0 205 Q18 208 21 234 L20 266 Q0 274 -20 266 Z", S, 1.7)}${hi("M-13 216 Q-6 209 3 209", .5)}
+      ${P("M-3.5 208 L0 188 L3.5 208 Z", S2, 1.1)}${P("M-3 214 L0 202 L3 214 Z", S2, .9)}${gr("M0 206 V236", 1.2)}
+      ${P("M-21 236 Q0 227 21 236 L16 260 L0 277 L-16 260 Z", S2, 1.5)}${gr("M0 232 V275", 1.2)}${or("M-21 236 Q0 227 21 236", 1.3)}${or("M-15.5 259.5 L0 275.5 L15.5 259.5", 1, .85)}
+      <path d="M-15 242 L-3 245.5 M3 245.5 L15 242" stroke="#000" stroke-width="3" stroke-linecap="round"/>${[-9, -5.5, 5.5, 9].map(x => `<path d="M${x} 252 V${263 - Math.abs(x) * .5}" stroke="#000" stroke-width="1.4" stroke-linecap="round"/>`).join("")}
+      ${fleur(0, 221, .75)}</g>`;
   }
   const CHM_CSS = `.chm-float { animation: chmFloat 5s ease-in-out infinite alternate; } @keyframes chmFloat { from { transform: translateY(0); } to { transform: translateY(-8px); } }
       .chm-sw1 { animation: chmSpin 26s linear infinite; } .chm-sw2 { animation: chmSpin 34s linear infinite reverse; } .chm-sw3 { animation: chmSpin 41s linear infinite; }
@@ -11591,7 +11629,7 @@ ${notes.slice(0, 6).map(n => { const pc = Number(n.pct);
     // Gothique : un style (bois sombre, velours bordeaux, papier peint damassé, chandelier), rien d'effrayant.
     // La seule lumière ajoutée vient des flammes des bougies (source visible).
     "Gothique": { code: "gothique", wall: ["#1e0a11", "#2e1019"], wain: "#160a0c", trim: "#b08a3e", rug: "#4a0f18", wood: ["#2a1a14", "#3e2820"], view: "cimetiere",
-      // l'armure lourde d'acier noirci, dans le coin (voir gothArmor)
+      // l'armure lourde noir et or et sa grande épée, dans le coin (voir gothArmor)
       mid: () => gothArmor(),
       pat: (y) => `<g opacity=".2" fill="#7a2c3a">${Array.from({ length: 58 }, (_, i) => { const r = i % 2, x = Math.floor(i / 2) * 92 + (r ? 46 : 0) + 20, yy = y - 40 + r * 70;
         return `<g transform="translate(${x} ${yy})"><path d="M0 -30 C9 -19 9 -10 0 -5 C-9 -10 -9 -19 0 -30 Z"/><path d="M0 5 C10 11 10 24 0 32 C-10 24 -10 11 0 5 Z"/><circle r="5"/><path d="M-6 -2 C-18 -14 -30 -4 -22 6 C-18 10 -13 6 -15 2 M6 -2 C18 -14 30 -4 22 6 C18 10 13 6 15 2" fill="none" stroke="#7a2c3a" stroke-width="3"/><path d="M-32 -34 Q-46 0 -32 34 M32 -34 Q46 0 32 34" fill="none" stroke="#7a2c3a" stroke-width="2"/></g>`; }).join("")}</g>`,
